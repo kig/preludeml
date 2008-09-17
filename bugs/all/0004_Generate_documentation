@@ -1,0 +1,14 @@
+title: Generate documentation
+status: OPEN
+date: 2008-09-17 16:56:26+0300
+author: Ilmari Heikkinen <ilmari.heikkinen@gmail.com>
+
+
+-- opened by Ilmari Heikkinen <ilmari.heikkinen@gmail.com> on 2008-09-17 16:56:26+0300
+
+Problem description:
+There is no documentation.
+
+Proposed solution:
+Generate the interface files and write documentation for each, include the (**T 
+tests to the documentation under "Examples:"
