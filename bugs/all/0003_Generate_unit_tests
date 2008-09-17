@@ -1,0 +1,15 @@
+title: Generate unit tests
+status: OPEN
+date: 2008-09-17 16:55:05+0300
+author: Ilmari Heikkinen <ilmari.heikkinen@gmail.com>
+
+
+-- opened by Ilmari Heikkinen <ilmari.heikkinen@gmail.com> on 2008-09-17 16:55:05+0300
+
+Problem description:
+There are no unit tests.
+The (**T unit tests were stripped out when refactoring.
+
+Proposed solution:
+Bring in the old unit tests and write new ones, every function should have a test.
+Aliases can be skipped.
