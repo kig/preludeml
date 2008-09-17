@@ -1,0 +1,353 @@
+module PString =
+struct
+  include String
+
+  let uget = String.unsafe_get
+  let uset = String.unsafe_set
+
+  let init f l =
+    let s = create l in
+    for i=0 to l-1 do uset s i (f i) done;
+    s
+
+  let reverse s =
+    let len = length s in
+    let s2 = create len in
+    let mlen = len - 1 in
+    for i=0 to mlen do
+      uset s2 (mlen-i) (uget s i)
+    done;
+    s2
+  let rev = reverse
+  let len = length
+  let normalizeIndex i s = if i < 0 then (len s) + i else i
+
+  let map f s = init (fun i -> uget s i) (len s)
+  let filter f s =
+    let rec aux f s i res =
+      if i < 0 then implode res
+      else
+        let c = uget s i in
+        let res = if f c then c::res else res in
+        aux f s (i-1) res in
+    aux f s (len s - 1) []
+
+  let zipWith f a b =
+    let len = min (len a) (len b) in
+    init (fun i -> f (uget a i) (uget b i) ) len
+  let map2 = zipWith
+  (**
+    String.zipWith (fun x y -> chr ((ord x + ord y) / 2)) "abc" "cde" = "bcd"
+    String.map2 (fun x y -> x) "foo" "barq" = "foo"
+  **)
+
+  let from_array a = init (Array.unsafe_get a) (Array.length a)
+  (**
+    String.from_array [|'f'; 'o'; 'o'; 'b'; 'a'; 'r'|] = "foobar"
+    String.from_array (explodeArray "") = ""
+    String.from_array (explodeArray "foo") = "foo"
+  **)
+  let to_array s = ainit (uget s) (len s)
+  (**
+    String.to_array "foobar" = [|'f'; 'o'; 'o'; 'b'; 'a'; 'r'|]
+    String.to_array "" = [||]
+  **)
+  let to_byte_array s = ainit (fun i -> ord (uget s i)) (len s)
+  let from_byte_array a = init (fun i -> chr (Array.unsafe_get a i)) (Array.length a)
+
+  let from_bigarray ba = init (baget ba) (balen ba)
+  let to_bigarray s = bainit Bigarray.char (uget s) (len s)
+
+  let foldl f init s =
+    let rec aux f s len v i =
+      if i >= len then v else aux f s len (f v (uget s i)) (i+1) in
+    aux f s (len s) init 0
+
+  let foldl1 f a =
+    let rec aux f i acc len a =
+      if i >= len then acc
+      else aux f (i+1) (f acc (uget a i)) len a in
+    let len = len a in
+    if len < 1 then raise Not_found;
+    aux f 1 (uget a 0) len a
+
+  let foldr f init s =
+    let rec aux f s v i =
+      if i < 0 then v else aux f s (f (uget s i) v) (i-1) in
+    aux f s init (len s - 1)
+
+  let foldr1 f a =
+    let rec aux f i acc a =
+      if i < 0 then acc
+      else aux f (i-1) (f (uget a i) acc) a in
+    let len = len a in
+    if len < 1 then raise Not_found;
+    aux f (len-2) (uget a (len-1)) a
+
+  let substring i len s = String.sub s (normalizeIndex i s) len
+  (**
+    String.substring 0 2 "foobar" = "fo"
+    String.substring 1 2 "foobar" = "oo"
+    String.substring (-2) 2 "foobar" = "ar"
+    maybeE true (fun v -> ignore (String.substring 3 (-1) v); false) "foobar"
+  **)
+  let sub = substring
+
+  let groupsOf n a =
+    let count, rem = quot_rem (len a) n in
+    unfoldrWhile (gte 0) (fun i -> sub (i*n) n a, i-1) (count-1) @
+    if rem = 0 then [] else [sub (-rem) rem a]
+  (**
+    String.groupsOf 2 "foobar" = [ "fo"; "ob"; "ar" ]
+    String.groupsOf 3 "foobarbazq" = [ "foo"; "bar"; "baz"; "q" ]
+  **)
+  let splitInto n range =
+    let len = len range in
+    let plen = int (ceil (float len /. float n)) in
+    groupsOf plen range
+  (**
+    String.splitInto 2 "foobar" = [ "foo"; "bar" ]
+    String.splitInto 4 "foobar" = [ "fo"; "ob"; "ar" ]
+    String.splitInto 4 "foobarbazq" = [ "foo"; "bar"; "baz"; "q" ]
+  **)
+
+  let sum a = bfoldl (+) 0 a
+  (**
+    String.sum "\001\002\003" = 6
+  **)
+  let sumf a = float (bfoldl (+) 0 a)
+  (**
+    String.sumf "\001\002\003" = 6.
+  **)
+  let average a = sum a / len a
+  (**
+    String.average "ABC" = 66
+  **)
+  let averagef a = sumf a /. float (len a)
+  (**
+    String.averagef "ABC" = 66.
+  **)
+  let subStride stride i len a =
+    let i = normalizeIndex i a in
+    if i + (len-1) * stride >= length a
+    then invalid_arg "String.subStride: index out of bounds";
+    init (fun j -> uget a (i + j*stride)) len
+
+  let strip = Pcre.replace ~rex:(Pcre.regexp "^\\s+|\\s+$") ~templ:""
+
+  let split ?n sep s = Pcre.split ?max:n ~pat:sep s
+  let rsplit ?n sep s = List.rev (List.map rev (split ?n sep (rev s)))
+  let nsplit sep n s = split ~n sep s
+  let nrsplit sep n s = rsplit ~n sep s
+
+  let rx = Pcre.regexp
+  let rex = Pcre.regexp
+  let escape_rex = Pcre.quote
+
+  let rexsplit ?n rex s =
+    List.map (function Pcre.Text s -> s | _ -> "") @@
+    List.filter (function Pcre.Text _ -> true | _ -> false) @@
+    Pcre.full_split ?max:n ~rex s
+  let rexrsplit ?n rex s = List.rev (List.map rev (rexsplit ?n rex (rev s)))
+  let xsplit ?n rexs s = rexsplit ?n (rx rexs) s
+  let xrsplit ?n rexs s = rexrsplit ?n (rx rexs) s
+  let xnsplit rexs n s = xsplit ~n rexs s
+  let xnrsplit rexs n s = xrsplit ~n rexs s
+
+  let rexscan rex s =
+    try Array.to_list (Array.map Array.to_list (Pcre.extract_all ~rex s))
+    with _ -> []
+  let scan rexs s = rexscan (rx rexs) s
+
+  let rexscan_nth rex n s =
+    try
+      let arr = Pcre.extract_all ~rex s in
+      list (amap (fun a ->
+        if alen a <= n
+        then invalid_arg "Prelude.rexscan_nth: index out of bounds";
+        a.(n)
+      ) arr)
+    with _ -> []
+  let scan_nth rexs n s = rexscan_nth (rx rexs) n s
+
+  let xfind x s = first (scan_nth x 0 s)
+  let xfindOpt x s = optNF first (scan_nth x 0 s)
+
+  let smatch pat = Pcre.pmatch ~pat
+  let rexmatch rex = Pcre.pmatch ~rex
+  let xmatch s = rexmatch (rx s)
+
+  let replace pat templ = Pcre.replace ~pat ~templ
+  let rexreplace rex templ = Pcre.replace ~rex ~templ
+  let xreplace s = rexreplace (rx s)
+
+  let frexreplace f rex s =
+    let split = Pcre.full_split ~rex s in
+    let processed = List.map (function
+      | Pcre.Text s -> s
+      | Pcre.Delim s -> f s
+      | _ -> "") split in
+    String.concat "" processed
+  let fxreplace f s = frexreplace f (rx s)
+
+  let quote l r s = l ^ s ^ r
+
+  let join = String.concat
+  let join_array s a = join s (Array.to_list a)
+
+  let xreplaceMulti x_rep s =
+    let pat = x_rep |> List.map (quote "(" ")" @. fst) |> join "|" in
+    frexreplace (fun p -> assocBy (fun x -> xmatch x p) x_rep) (rex pat) s
+  (**
+    xreplaceMulti ["f.o","bar"; "b.r","foo"] "foobar" = "barfoo"
+    xreplaceMulti ["f.o","bar"; "bar","foo"] "foobar" = "barfoo"
+  **)
+
+  let replaceMulti pat_rep s =
+    let pat = pat_rep |> List.map fst |> List.map escape_rex |> join "|" in
+    frexreplace (flip assoc pat_rep) (rex pat) s
+  (**
+    String.replaceMulti ["foo","bar"; "bar","foo"] "foobar" = "barfoo"
+    String.replaceMulti ["f.o","bar"; "bar","foo"] "foobar" = "foofoo"
+  **)
+
+  let slice i j s =
+    let i = normalizeIndex i s
+    and j = normalizeIndex j s + (if j < 0 then 1 else 0) in
+    let len = j - i in
+    String.sub s i len
+  (**
+    String.slice 0 2 "foobar" = "fo"
+    String.slice 1 (-1) "foobar" = "oobar"
+    String.slice 1 (-2) "foobar" = "ooba"
+    String.slice (-3) (-2) "foobar" = "ba"
+    String.slice (-3) (-3) "foobar" = "b"
+    String.slice (-3) (-4) "foobar" = ""
+    maybeE true (fun v -> ignore (String.slice (-3) (-5) v); false) "foobar"
+  **)
+  let sumSub i len a =
+    let rec aux s i l c =
+      if l = 0 then c else
+      aux s (i+1) (l-1) (c + ord (uget s i)) in
+    if i < 0 || len < 0 || i + len > length a
+    then invalid_arg "String.sumSub: index ouf of bounds"
+    else aux a i len 0
+  (**
+    String.sumSub 0 3 "foo" = String.sum "foo"
+    String.sumSub 0 3 "foobar" = String.sum "foo"
+    String.sumSub 3 3 "foobar" = String.sum "bar"
+    maybeE true (fun s -> ignore @@ String.sumSub (-1) 3 s; false) "foo"
+    maybeE true (fun s -> ignore @@ String.sumSub 1 3 s; false) "foo"
+  **)
+  let sumSubf i len a = float (sumSub i len a)
+  let sumSlice i j s =
+    let i = normalizeIndex i s
+    and j = normalizeIndex j s + (if j < 0 then 1 else 0) in
+    let len = j - i in
+    sumSub i len s
+  (**
+    String.sumSlice 0 3 "foo" = String.sum "foo"
+    String.sumSlice 0 3 "foobar" = String.sum "foo"
+    String.sumSlice 3 3 "foobar" = String.sum ""
+    String.sumSlice 3 (-1) "foobar" = String.sum "bar"
+    maybeE true (fun s -> ignore @@ String.sumSlice 1 4 s; false) "foo"
+  **)
+  let sumSlicef i len a = float (sumSlice i len a)
+  let averageSub i len a = sumSub i len a / len
+  (**
+    String.averageSub 0 3 "foo" = String.average "foo"
+    String.averageSub 0 3 "foobar" = String.average "foo"
+    String.averageSub 3 3 "foobar" = String.average "bar"
+  **)
+  let averageSubf i len a = sumSubf i len a /. float len
+  (**
+    String.averageSubf 0 3 "foo" = String.averagef "foo"
+    String.averageSubf 0 3 "foobar" = String.averagef "foo"
+    String.averageSubf 3 3 "foobar" = String.averagef "bar"
+  **)
+  let averageSlice i j s =
+    let i = normalizeIndex i s
+    and j = normalizeIndex j s + (if j < 0 then 1 else 0) in
+    let len = j - i in
+    sumSub i len s / len
+  (**
+    String.averageSlice 0 3 "foo" = String.average "foo"
+    String.averageSlice 0 3 "foobar" = String.average "foo"
+    String.averageSlice 3 (-1) "foobar" = String.average "bar"
+  **)
+  let averageSlicef i j s =
+    let i = normalizeIndex i s
+    and j = normalizeIndex j s + (if j < 0 then 1 else 0) in
+    let len = j - i in
+    float (sumSub i len s) /. float len
+  (**
+    String.averageSlicef 0 3 "foo" = String.averagef "foo"
+    String.averageSlicef 0 3 "foobar" = String.averagef "foo"
+    String.averageSlicef 3 (-1) "foobar" = String.averagef "bar"
+  **)
+
+  let words s = rexsplit (rx "\\s+") s
+  let unwords a = join " " a
+
+  let lines s = split "\n" s
+  let unlines a = join "\n" a ^ "\n"
+
+  let rexsplitPartition rex s =
+    let rec aux splits l = match splits with
+      | [] -> (List.rev l, None)
+      | (a::[]) -> (List.rev l, Some a)
+      | (a::b::t) -> aux t ((a,b)::l) in
+    let cleaned_split =
+      Pcre.full_split ~rex s |>
+      List.filter (function Pcre.Text _ | Pcre.Delim _ -> true | _ -> false) in
+    let padded_split = match cleaned_split with
+      | (Pcre.Delim _ :: t) -> (Pcre.Text "") :: cleaned_split
+      | _ -> cleaned_split in
+    let string_split =
+      List.map (function Pcre.Text s | Pcre.Delim s -> s | _ -> "") padded_split in
+    aux string_split []
+  let xsplitPartition x s = rexsplitPartition (rex x) s
+
+  let pick indices s = List.map (fun i -> get s i) indices
+  let pickWith funcs s = List.map (fun f -> f s) funcs
+
+  let concat = String.concat ""
+
+  let par_mapReduce ?process_count ~combine ~process l =
+    let process_count = process_count |? !global_process_count in
+    splitInto process_count l |> par_map ~process_count process |> combine
+
+  let pmapReduce combine process = par_mapReduce ~combine ~process
+
+  let pfoldl r f init = pmapReduce (PList.foldl1 r) (foldl f init)
+  let pfoldl1 f = pmapReduce (PList.foldl1 f) (foldl1 f)
+  let pfoldr r f init = pmapReduce (PList.foldr1 r) (foldr f init)
+  let pfoldr1 f = pmapReduce (PList.foldr1 f) (foldr1 f)
+
+  let piter f = pmapReduce ignore (iter f)
+  let pmap f = pmapReduce concat (map f)
+  let pfilter f = pmapReduce concat (filter f)
+
+  let pfoldlSeqN ?process_count n r f init l =
+    PList.foldl (fun acc il -> r acc (pfoldl ?process_count r f init il))
+          init (groupsOf n l)
+
+  let piterSeqN ?process_count n r f l =
+    PList.iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
+
+  let pinit ?process_count f l =
+    let process_count = process_count |? !global_process_count in
+    let plen = int (ceil (float l /. float process_count)) in
+    let process i =
+      let start = plen * i in
+      let len = min plen (l - start) in
+      init (fun j -> f (start + j)) len in
+    concat (par_map ~process_count process (0--(process_count-1)))
+
+  let pzipWith ?process_count f a b =
+    let process_count = process_count |? !global_process_count in
+    let len = min (length a) (length b) in
+    pinit ~process_count (fun i ->
+      f (unsafe_get a i) (unsafe_get b i)
+    ) len
+end
