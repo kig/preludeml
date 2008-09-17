@@ -1,0 +1,13 @@
+title: Resolve dependencies for compiling
+status: OPEN
+date: 2008-09-17 16:53:21+0300
+author: Ilmari Heikkinen <ilmari.heikkinen@gmail.com>
+
+
+-- opened by Ilmari Heikkinen <ilmari.heikkinen@gmail.com> on 2008-09-17 16:53:21+0300
+
+Problem description:
+Some parts of the library depend on the others.
+
+Proposed solution:
+Find out what depends on what and restructure / rewrite accordingly.
