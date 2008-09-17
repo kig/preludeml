@@ -1,0 +1,7 @@
+SRC/ DOES NOT COMPILE YET
+
+Refactored the monolithic 2000-line prelude.ml into subfiles,
+currently in the process of making the refactoring work.
+
+Included the monolithic prelude.ml in the top dir, that one
+does compile and work, but gets no further development.
