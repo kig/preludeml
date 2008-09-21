@@ -1,0 +1,40 @@
+NATIVE_ENABLED = true
+BYTE_ENABLED = true
+
+USE_OCAMLFIND = true
+
+OCAMLPACKS[] = unix pcre netstring
+PRELUDE_OBJECTS[] = 
+  array
+  bigarray
+  bytestring
+  combinators
+  comparisons
+  conversions
+  exceptions
+  filesystem
+  float
+  int
+  io
+  list
+  option
+  parallel
+  path
+  pervasives
+  pipe
+  range
+  shell
+  string
+  time
+  tuple
+  unfolds
+
+OCamlLibrary(prelude, $(PRELUDE_OBJECTS))
+
+.DEFAULT: prelude.cmxa
+
+.PHONY: clean
+
+clean:
+	rm -f $(filter-proper-targets $(ls R, .))
+
