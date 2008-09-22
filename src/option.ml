@@ -15,6 +15,8 @@ let optOr y o = match o with Some x -> x | None -> y
   optOr 0 (Some 10) = 10
 **)
 
+let optMap f o = match o with Some x -> Some (f x) | None -> None
+
 let maybe v f o = match o with Some x -> f x | None -> v
 (**T
   maybe 0 parseInt (Some "10") = 10
