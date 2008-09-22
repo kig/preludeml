@@ -20,3 +20,16 @@ let getcwd = Sys.getcwd
 let pwd = Sys.getcwd
 let chdir = Unix.chdir
 let cd = Unix.chdir
+
+let chmod perm filename = Unix.chmod filename perm
+
+let chownUid ?gid uid fn = 
+  let gid = match gid with None -> fileGid fn | Some gid -> gid in
+  Unix.chown fn uid gid
+
+let chown ?group user fn =
+  let gid = optMap groupGid group in
+  chownUid ?gid (userUid user) fn
+
+let chgrpGid gid fn = chownUid ~gid (fileUid fn) fn
+let chgrp group fn = chgrpGid (groupGid group) fn
