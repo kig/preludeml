@@ -84,8 +84,10 @@ let isBlockDev = isKind Unix.S_BLK
 let fileInode fn = (stat fn).Unix.st_ino
 let filePermissions fn = (stat fn).Unix.st_perm
 let fileDevice fn = (stat fn).Unix.st_dev
-let fileOwner fn = (stat fn).Unix.st_uid
-let fileGroup fn = (stat fn).Unix.st_gid
+let fileUid fn = (stat fn).Unix.st_uid
+let fileOwner fn = userName (fileUid fn)
+let fileGid fn = (stat fn).Unix.st_gid
+let fileGroup fn = groupName (fileGid fn)
 
 let atime fn = (stat fn).Unix.st_atime
 let mtime fn = (stat fn).Unix.st_mtime
