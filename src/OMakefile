@@ -28,6 +28,7 @@ PRELUDE_OBJECTS[] =
   time
   tuple
   unfolds
+  user
 
 OCamlLibrary(prelude, $(PRELUDE_OBJECTS))
 
