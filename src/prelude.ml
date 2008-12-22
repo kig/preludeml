@@ -1,7 +1,7 @@
 (*
 Prelude.ml: OCaml utility functions
 
-Copyright (C) 2007  Ilmari Heikkinen <ilmari.heikkinen@gmail.com>
+Copyright (C) 2007-2008  Ilmari Heikkinen <ilmari.heikkinen@gmail.com>
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
@@ -23,16 +23,7 @@ HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
-*)
 
-(*
-  #use "topfind";;
-  #require "pcre";;
-  #require "unix";;
-  #require "netstring";;
-  #require "bigarray";;
-  #use "prelude.ml";;
-  interact @@ uppercase @. join "-" @. words;;
 *)
 
 include Printf
