@@ -2,6 +2,19 @@ module String =
 struct
   include String
 
+  open PreOption
+  open PreExceptions
+  open PreCombinators
+  open PreTuple
+  open PreUnfolds
+  open PreComparisons
+  open PreConversions
+  open PreInt
+  open PreFloat
+  open PreList
+  open PreArray
+  open PreParallel
+
   let init f l =
     let s = create l in
     for i=0 to l-1 do unsafe_set s i (f i) done;
@@ -19,7 +32,7 @@ struct
   let len = length
   let normalizeIndex i s = if i < 0 then (len s) + i else i
 
-  let times n a = replicate n a |> concat ""
+  let times n a = List.replicate n a |> concat ""
 
   (* Iterators *)
 
@@ -38,17 +51,14 @@ struct
 
   (* Conversions *)
 
-  let to_array s = Array.init (len s) (unsafe_get s)
+  let to_array s = Array.init (unsafe_get s) (len s)
   let of_array arr = init (Array.unsafe_get arr) (Array.length arr)
 
   let to_list s = List.init (unsafe_get s) (len s)
   let of_list l = of_array (Array.of_list l)
 
-  let to_byte_array s = Array.init (len s) (fun i -> ord (unsafe_get s i))
+  let to_byte_array s = Array.init (fun i -> ord (unsafe_get s i)) (len s)
   let of_byte_array a = init (fun i -> chr (Array.unsafe_get a i)) (Array.length a)
-
-  let to_bigarray s = bainit Bigarray.char (unsafe_get s) (len s)
-  let of_bigarray ba = init (baget ba) (balen ba)
 
   (* Searching *)
 
@@ -164,11 +174,13 @@ struct
   let last a = if len a = 0 then raise Not_found else unsafe_get a (len a - 1)
   let popped = slice 0 (-2)
 
+  let append = (^)
+
   let pop a = (popped a, last a)
-  let push v a = append a [|v|]
+  let push v a = append a (string_of_char v)
 
   let shift a = (tail a, first a)
-  let unshift v a = append [|v|] a
+  let unshift v a = append (string_of_char v) a
 
   let take n s = sub 0 n s
   let takeWhile f s = sub 0 (findIndex (fun v -> not (f v)) s + 1) s
@@ -338,16 +350,16 @@ struct
   let rexscan_nth rex n s =
     try
       let arr = Pcre.extract_all ~rex s in
-      list (amap (fun a ->
-        if alen a <= n
+      list (Array.map (fun a ->
+        if Array.length a <= n
         then invalid_arg "Prelude.rexscan_nth: index out of bounds";
         a.(n)
       ) arr)
     with _ -> []
   let scan_nth rexs n s = rexscan_nth (rx rexs) n s
 
-  let xfind x s = first (scan_nth x 0 s)
-  let xfindOpt x s = optNF first (scan_nth x 0 s)
+  let xfind x s = List.first (scan_nth x 0 s)
+  let xfindOpt x s = optNF List.first (scan_nth x 0 s)
 
   let smatch pat = Pcre.pmatch ~pat
   let rexmatch rex = Pcre.pmatch ~rex
@@ -373,7 +385,7 @@ struct
 
   let xreplaceMulti x_rep s =
     let pat = x_rep |> List.map (quote "(" ")" @. fst) |> join "|" in
-    frexreplace (fun p -> assocBy (fun x -> xmatch x p) x_rep) (rex pat) s
+    frexreplace (fun p -> List.assocBy (fun x -> xmatch x p) x_rep) (rex pat) s
   (**
     xreplaceMulti ["f.o","bar"; "b.r","foo"] "foobar" = "barfoo"
     xreplaceMulti ["f.o","bar"; "bar","foo"] "foobar" = "barfoo"
@@ -381,7 +393,7 @@ struct
 
   let replaceMulti pat_rep s =
     let pat = pat_rep |> List.map fst |> List.map escape_rex |> join "|" in
-    frexreplace (flip assoc pat_rep) (rex pat) s
+    frexreplace (flip List.assoc pat_rep) (rex pat) s
   (**
     String.replaceMulti ["foo","bar"; "bar","foo"] "foobar" = "barfoo"
     String.replaceMulti ["f.o","bar"; "bar","foo"] "foobar" = "foofoo"
@@ -418,21 +430,21 @@ struct
 
   let pmapReduce combine process = par_mapReduce ~combine ~process
 
-  let pfoldl r f init = pmapReduce (PList.foldl1 r) (foldl f init)
-  let pfoldl1 f = pmapReduce (PList.foldl1 f) (foldl1 f)
-  let pfoldr r f init = pmapReduce (PList.foldr1 r) (foldr f init)
-  let pfoldr1 f = pmapReduce (PList.foldr1 f) (foldr1 f)
+  let pfoldl r f init = pmapReduce (List.foldl1 r) (foldl f init)
+  let pfoldl1 f = pmapReduce (List.foldl1 f) (foldl1 f)
+  let pfoldr r f init = pmapReduce (List.foldr1 r) (foldr f init)
+  let pfoldr1 f = pmapReduce (List.foldr1 f) (foldr1 f)
 
   let piter f = pmapReduce ignore (iter f)
   let pmap f = pmapReduce (concat "") (map f)
   let pfilter f = pmapReduce (concat "") (filter f)
 
   let pfoldlSeqN ?process_count n r f init l =
-    PList.foldl (fun acc il -> r acc (pfoldl ?process_count r f init il))
+    List.foldl (fun acc il -> r acc (pfoldl ?process_count r f init il))
           init (groupsOf n l)
 
   let piterSeqN ?process_count n r f l =
-    PList.iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
+    List.iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
 
   let pinit ?process_count f l =
     let process_count = process_count |? !global_process_count in

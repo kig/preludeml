@@ -6,5 +6,6 @@
 *.o
 *.a
 *.omc
-
+*.cmo
+*.annot
 

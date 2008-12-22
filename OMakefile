@@ -27,6 +27,6 @@ OCAMLCFLAGS += -dtypes
 .SUBDIRS: src
 
 section
-	OCAMLPACKS[] = pcre unix netstring
+	OCAMLPACKS[] = pcre unix netstring bigarray
 
 .DEFAULT: src/prelude.cmxa

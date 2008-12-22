@@ -1,3 +1,6 @@
+open PreIo
+open PreString
+
 (* Bigarray (1D) operations *)
 
 let bacreate ?(layout=Bigarray.c_layout) kind l =
@@ -32,6 +35,9 @@ let baiter f ba =
     f (baget ba i)
   done
 
+let of_string s = bainit Bigarray.char (String.unsafe_get s) (String.len s)
+let to_string ba = String.init (baget ba) (balen ba)
+
 let bamap f ba =
   bainit ~layout:(balayout ba) (bakind ba) (fun i -> f (baget ba i)) (balen ba)
 
@@ -61,12 +67,11 @@ let baZipWith f a b =
 let bamap2 = baZipWith
 
 let bacreateMmap ?(layout=Bigarray.c_layout) ?(shared=true)
-                 ?(perm=0o600) ?(flags=[Unix.O_RDWR])
-                 kind l filename =
+                  ?(perm=0o600) ?(flags=[Unix.O_RDWR])
+                  kind l filename =
   withUnixFile ~flags ~perm filename
     (fun fd -> Bigarray.Array1.map_file fd kind layout shared l)
 
 let bacreateShared ?layout kind l =
   bacreateMmap ?layout kind l "/dev/zero"
-
 

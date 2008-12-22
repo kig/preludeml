@@ -1,8 +1,22 @@
 (* Parallel combinators *)
 
+open PreCombinators
+open PreExceptions
+open PreOption
+open PreConversions
+
 let coreCount () =
-  let countCores l = filter (xmatch "^processor\\s*:") l |> length in
-  optE (countCores @. readLines) "/proc/cpuinfo"
+  let countCores l =
+    List.filter (Pcre.pmatch ~rex:(Pcre.regexp "^processor\\s*:")) l
+    |> List.length in
+  let withFile filename f = finally close_in f (open_in_bin filename) in
+  optE (withFile "/proc/cpuinfo") (fun ic ->
+    let rec readLines ic rv =
+      match optEOF input_line ic with
+        | None -> List.rev rv
+        | Some l -> readLines ic (l::rv) in
+    countCores (readLines ic [])
+  )
 
 let global_process_count = ref (coreCount () |? 4)
 
@@ -38,6 +52,13 @@ let invoke f x =
 *)
 let par_iter ?process_count f l =
   let process_count = process_count |? !global_process_count in
+  let pop l =
+    let rec aux l res =
+      match l with
+        | [] -> raise Not_found
+        | (h::[]) -> (List.rev res, h)
+        | (h::t) -> aux t (h :: res) in
+    aux l [] in
   let rec aux f n procs l =
     let n,procs = if n >= process_count
     then match procs with [] -> 0,[] | lst ->
@@ -45,7 +66,7 @@ let par_iter ?process_count f l =
       (last (); ((n-1), l))
     else n,procs in
     match l with
-      | [] -> iter (fun f -> f ()) procs
+      | [] -> List.iter (fun f -> f ()) procs
       | (h::t) -> aux f (n+1) ((invoke f h) :: procs) t in
   aux f 0 [] l
 
@@ -54,6 +75,13 @@ let par_iter ?process_count f l =
 *)
 let par_map ?process_count f l =
   let process_count = process_count |? !global_process_count in
+  let pop l =
+    let rec aux l res =
+      match l with
+        | [] -> raise Not_found
+        | (h::[]) -> (List.rev res, h)
+        | (h::t) -> aux t (h :: res) in
+    aux l [] in
   let rec aux f n procs res l =
     let n,res,procs = if n >= process_count
     then match procs with
@@ -62,7 +90,7 @@ let par_map ?process_count f l =
                  ((n-1), (last ())::res, l)
     else n,res,procs in
     match l with
-      | [] -> (rev res) @ (rev_map (fun f -> f ()) procs)
+      | [] -> (List.rev res) @ (List.rev_map (fun f -> f ()) procs)
       | (h::t) -> aux f (n+1) ((invoke f h) :: procs) res t in
   aux f 0 [] [] l
 
@@ -79,7 +107,7 @@ let pforN ?process_count f n =
     for j = start to start+len-1 do
       f j
     done in
-  par_iter ~process_count process (0--(process_count-1))
+  par_iter ~process_count process (Array.to_list (Array.init process_count id))
 
 let mapReduce partition distribute process combine input =
   partition input |> distribute process |> combine

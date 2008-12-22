@@ -2,6 +2,18 @@ module Array =
 struct
   include Array
 
+  open PreOption
+  open PreExceptions
+  open PreCombinators
+  open PreTuple
+  open PreUnfolds
+  open PreComparisons
+  open PreConversions
+  open PreParallel
+  open PreInt
+  open PreFloat
+  open PreList
+
   let len = length
 
   (* Basic operations *)
@@ -23,10 +35,9 @@ struct
     done;
     s2
   let rev = reverse
-  let len = length
   let normalizeIndex i s = if i < 0 then (len s) + i else i
 
-  let times n a = replicate n a |> concat
+  let times n a = List.replicate n a |> concat
 
   (* Iterators *)
 
@@ -39,14 +50,6 @@ struct
 
   let map f s = init (fun i -> f (unsafe_get s i)) (len s)
   let mapWithIndex f s = init (fun i -> f (unsafe_get s i) i) (len s)
-
-  (* Conversions *)
-
-  let to_array s = Array.init (len s) (unsafe_get s)
-  let of_array arr = init (Array.unsafe_get arr) (Array.length arr)
-
-  let to_list s = List.init (unsafe_get s) (len s)
-  let of_list l = of_array (Array.of_list l)
 
   (* Searching *)
 
@@ -122,8 +125,8 @@ struct
     if len < 1 then raise Not_found;
     aux f (len-2) (unsafe_get a (len-1)) a
 
-  let maximum = foldl1 max
-  let minimum = foldl1 min
+  let maximum a = foldl1 max a
+  let minimum a = foldl1 min a
 
   let maximumBy f = foldl1 (fun s i -> if (f s) < (f i) then i else s)
   let minimumBy f = foldl1 (fun s i -> if (f s) > (f i) then i else s)
@@ -157,10 +160,10 @@ struct
 
   let first a = if len a = 0 then raise Not_found else unsafe_get a 0
   let head = first
-  let tail = slice 1 (-1)
+  let tail a = slice 1 (-1) a
 
   let last a = if len a = 0 then raise Not_found else unsafe_get a (len a - 1)
-  let popped = slice 0 (-2)
+  let popped a = slice 0 (-2) a
 
   let pop a = (popped a, last a)
   let push v a = append a [|v|]
@@ -308,21 +311,21 @@ struct
 
   let pmapReduce combine process = par_mapReduce ~combine ~process
 
-  let pfoldl r f init = pmapReduce (PList.foldl1 r) (foldl f init)
-  let pfoldl1 f = pmapReduce (PList.foldl1 f) (foldl1 f)
-  let pfoldr r f init = pmapReduce (PList.foldr1 r) (foldr f init)
-  let pfoldr1 f = pmapReduce (PList.foldr1 f) (foldr1 f)
+  let pfoldl r f init = pmapReduce (List.foldl1 r) (foldl f init)
+  let pfoldl1 f = pmapReduce (List.foldl1 f) (foldl1 f)
+  let pfoldr r f init = pmapReduce (List.foldr1 r) (foldr f init)
+  let pfoldr1 f = pmapReduce (List.foldr1 f) (foldr1 f)
 
   let piter f = pmapReduce ignore (iter f)
   let pmap f = pmapReduce concat (map f)
   let pfilter f = pmapReduce concat (filter f)
 
   let pfoldlSeqN ?process_count n r f init l =
-    PList.foldl (fun acc il -> r acc (pfoldl ?process_count r f init il))
+    List.foldl (fun acc il -> r acc (pfoldl ?process_count r f init il))
           init (groupsOf n l)
 
   let piterSeqN ?process_count n r f l =
-    PList.iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
+    List.iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
 
   let pinit ?process_count f l =
     let process_count = process_count |? !global_process_count in

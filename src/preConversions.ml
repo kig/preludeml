@@ -12,3 +12,5 @@ let showFloat f =
 let charCode = int_of_char
 let ord = int_of_char
 let chr = char_of_int
+let string_of_char c = String.make 1 c
+let char_of_string s = if String.length s <> 1 then None else Some (s.[0])

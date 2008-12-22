@@ -1,10 +1,14 @@
 (* Running commands *)
 
+open Printf
+open PreExceptions
+open PreIo
+
 let shell_escape =
   let re = Pcre.regexp "(?=[^a-zA-Z0-9._+/-])" in
   Pcre.replace ~rex:re ~templ:"\\"
 
-let escape_cmd args = join " " (map shell_escape args)
+let escape_cmd args = String.concat " " (List.map shell_escape args)
 
 exception Command_error of int * string
 let command args =
@@ -34,3 +38,11 @@ let withCmdStdout args = withRawCmdStdout (escape_cmd args)
 let readCmd args = withCmdStdout args readAll
 let readRawCmd args = withRawCmdStdout args readAll
 
+let pipeCmd f init args = withCmd args (pipeChan f init)
+let pipeCmdLines f init args = withCmd args (pipeLines f init)
+
+let pipeRawCmd f init args = withRawCmd args (pipeChan f init)
+let pipeRawCmdLines f init args = withRawCmd args (pipeLines f init)
+
+let interactWithRawCmd f args = withRawCmd args (interactWith f)
+let interactWithCmd f args = withCmd args (interactWith f)

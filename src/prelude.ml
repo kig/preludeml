@@ -37,30 +37,30 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 include Printf
 
-include Combinators
-include Tuple
-include Comparisons
-include Conversions
-include Exceptions
-include Option
-include Float
-include Int
-include Unfolds
-include Filesystem
-include Path
-include Io
-include Pipe
-include Shell
+include PreCombinators
+include PreTuple
+include PreComparisons
+include PreConversions
+include PreExceptions
+include PreOption
+include PreFloat
+include PreInt
+include PreUnfolds
+include PreFilesystem
+include PrePath
+include PreIo
+include PreShell
 
-include List
-include String
-include ByteString
-include Bigarray
-include Array
-include Range
+include PreList
+include PreString
+include PreBytestring
+include PreBigarray
+include PreArray
+include PreRange
 
-include Parallel
+include PreParallel
 
+include PreList.List
 
 (* Array operation shortcuts *)
 
@@ -157,7 +157,7 @@ let (--|) = Array.range
 
 
 (* Bigarray operation shortcuts *)
-
+(*
 let bamake = Bigarray.make
 let bacreate = Bigarray.create
 let bainit = Bigarray.init
@@ -246,8 +246,9 @@ let bapfoldlSeqN = Bigarray.pfoldlSeqN
 let bapiterSeqN = Bigarray.piterSeqN
 
 let (@||) = Bigarray.append
-let (@||*) = Bigarray.times
+let ( @||* ) = Bigarray.times
 let (--||) = Bigarray.range
+*)
 
 
 (* String operation shortcuts *)
@@ -312,7 +313,7 @@ let saveragef = String.averagef
 let saverageSubf = String.averageSubf
 let saverageSlicef = String.averageSlicef
 
-let srange = String.range
+(* let srange = String.range *)
 let szipWith = String.zipWith
 let smap2 = String.zipWith
 let szipWith3 = String.zipWith3
@@ -342,104 +343,92 @@ let spiterSeqN = String.piterSeqN
 let (^*) = String.times
 
 
-(* ByteString operation shortcuts *)
+(* Bytestring operation shortcuts *)
 
-let bmake = ByteString.make
-let bcreate = ByteString.create
-let binit = ByteString.init
-let blen = ByteString.length
-let bconcat = ByteString.concat
-let breverse a = ByteString.reverse
+let bmake = Bytestring.make
+let bcreate = Bytestring.create
+let binit = Bytestring.init
+let blen = Bytestring.length
+let bconcat = Bytestring.concat
+let breverse a = Bytestring.reverse
 let brev = areverse
 
-let bmap = ByteString.map
-let bmapSub = ByteString.mapSub
-let bmapSlice = ByteString.mapSlice
-let bmapWithIndex = ByteString.mapWithIndex
-let biter = ByteString.iter
-let biterSub = ByteString.iterSub
-let biterSlice = ByteString.iterSlice
-let biterWithIndex = ByteString.iterWithIndex
-let bfilter = ByteString.filter
-let bfilterWithIndex = ByteString.filterWithIndex
-let bfind = ByteString.find
-let bfindWithIndex = ByteString.findWithIndex
-let bfindIndex = ByteString.findIndex
+let bmap = Bytestring.map
+let bmapSub = Bytestring.mapSub
+let bmapSlice = Bytestring.mapSlice
+let bmapWithIndex = Bytestring.mapWithIndex
+let biter = Bytestring.iter
+let biterSub = Bytestring.iterSub
+let biterSlice = Bytestring.iterSlice
+let biterWithIndex = Bytestring.iterWithIndex
+let bfilter = Bytestring.filter
+let bfilterWithIndex = Bytestring.filterWithIndex
+let bfind = Bytestring.find
+let bfindWithIndex = Bytestring.findWithIndex
+let bfindIndex = Bytestring.findIndex
 
-let bfoldl = ByteString.foldl
-let bfoldl1 = ByteString.foldl1
-let bfoldlSub = ByteString.foldlSub
-let bfoldl1Sub = ByteString.foldl1Sub
-let bfoldlSlice = ByteString.foldlSlice
-let bfoldl1Slice = ByteString.foldl1Slice
+let bfoldl = Bytestring.foldl
+let bfoldl1 = Bytestring.foldl1
+let bfoldlSub = Bytestring.foldlSub
+let bfoldl1Sub = Bytestring.foldl1Sub
+let bfoldlSlice = Bytestring.foldlSlice
+let bfoldl1Slice = Bytestring.foldl1Slice
 
-let bfoldr = ByteString.foldr
-let bfoldr1 = ByteString.foldr1
-let bfoldrSub = ByteString.foldrSub
-let bfoldr1Sub = ByteString.foldr1Sub
-let bfoldrSlice = ByteString.foldrSlice
-let bfoldr1Slice = ByteString.foldr1Slice
+let bfoldr = Bytestring.foldr
+let bfoldr1 = Bytestring.foldr1
+let bfoldrSub = Bytestring.foldrSub
+let bfoldr1Sub = Bytestring.foldr1Sub
+let bfoldrSlice = Bytestring.foldrSlice
+let bfoldr1Slice = Bytestring.foldr1Slice
 
-let bsum = ByteString.sum
-let bsumSub = ByteString.sumSub
-let bsumSlice = ByteString.sumSlice
+let bsum = Bytestring.sum
+let bsumSub = Bytestring.sumSub
+let bsumSlice = Bytestring.sumSlice
 
-let bsumf = ByteString.sumf
-let bsumSubf = ByteString.sumSubf
-let bsumSlicef = ByteString.sumSlicef
+let bsumf = Bytestring.sumf
+let bsumSubf = Bytestring.sumSubf
+let bsumSlicef = Bytestring.sumSlicef
 
-let bproduct = ByteString.product
-let bproductSub = ByteString.productSub
-let bproductSlice = ByteString.productSlice
+let bproduct = Bytestring.product
+let bproductSub = Bytestring.productSub
+let bproductSlice = Bytestring.productSlice
 
-let bproductf = ByteString.productf
-let bproductSubf = ByteString.productSubf
-let bproductSlicef = ByteString.productSlicef
+let bproductf = Bytestring.productf
+let bproductSubf = Bytestring.productSubf
+let bproductSlicef = Bytestring.productSlicef
 
-let baverage = ByteString.average
-let baverageSub = ByteString.averageSub
-let baverageSlice = ByteString.averageSlice
+let baverage = Bytestring.average
+let baverageSub = Bytestring.averageSub
+let baverageSlice = Bytestring.averageSlice
 
-let baveragef = ByteString.averagef
-let baverageSubf = ByteString.averageSubf
-let baverageSlicef = ByteString.averageSlicef
+let baveragef = Bytestring.averagef
+let baverageSubf = Bytestring.averageSubf
+let baverageSlicef = Bytestring.averageSlicef
 
-let brange = ByteString.range
-let bzipWith = ByteString.zipWith
-let bmap2 = ByteString.zipWith
-let bzipWith3 = ByteString.zipWith3
-let bmap3 = ByteString.zipWith3
-let bsub = ByteString.sub
-let bslice = ByteString.slice
-let bsubStride = ByteString.subStride
-let bgroupsOf = ByteString.groupsOf
-let bsplitInto = ByteString.splitInto
-let btimes = ByteString.times
+(* let brange = Bytestring.range *)
+let bzipWith = Bytestring.zipWith
+let bmap2 = Bytestring.zipWith
+let bzipWith3 = Bytestring.zipWith3
+let bmap3 = Bytestring.zipWith3
+let bsub = Bytestring.sub
+let bslice = Bytestring.slice
+let bsubStride = Bytestring.subStride
+let bgroupsOf = Bytestring.groupsOf
+let bsplitInto = Bytestring.splitInto
+let btimes = Bytestring.times
 
-let bpick = ByteString.pick
-let bpickWith = ByteString.pickWith
+let bpick = Bytestring.pick
+let bpickWith = Bytestring.pickWith
 
-let bpmap = ByteString.pmap
-let bpiter = ByteString.piter
-let bpinit = ByteString.pinit
-let bpzipWith = ByteString.pzipWith
-let bpfilter = ByteString.pfilter
-let bpfoldl = ByteString.pfoldl
-let bpfoldl1 = ByteString.pfoldl1
-let bpfoldr = ByteString.pfoldr
-let bpfoldr1 = ByteString.pfoldr1
-let bpfoldlSeqN = ByteString.pfoldlSeqN
-let bpiterSeqN = ByteString.piterSeqN
-
-
-
-
-
-
-
-
-
-
-
-
+let bpmap = Bytestring.pmap
+let bpiter = Bytestring.piter
+let bpinit = Bytestring.pinit
+let bpzipWith = Bytestring.pzipWith
+let bpfilter = Bytestring.pfilter
+let bpfoldl = Bytestring.pfoldl
+let bpfoldl1 = Bytestring.pfoldl1
+let bpfoldr = Bytestring.pfoldr
+let bpfoldr1 = Bytestring.pfoldr1
+let bpfoldlSeqN = Bytestring.pfoldlSeqN
+let bpiterSeqN = Bytestring.piterSeqN
 

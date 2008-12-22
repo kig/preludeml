@@ -1,6 +1,18 @@
-module ByteString =
+module Bytestring =
 struct
-  include String
+  include PreString.String
+  open PreOption
+  open PreExceptions
+  open PreCombinators
+  open PreTuple
+  open PreUnfolds
+  open PreComparisons
+  open PreInt
+  open PreFloat
+  open PreConversions
+  open PreList
+  open PreParallel
+
 
   let unsafe_get s i = ord (String.unsafe_get s i)
   let unsafe_set s i c = String.unsafe_set s i (chr c)
@@ -23,9 +35,6 @@ struct
 
   let map f s = init (fun i -> f (unsafe_get s i)) (len s)
   let mapWithIndex f s = init (fun i -> f (unsafe_get s i) i) (len s)
-
-  let mapToList f s = List.init (fun i -> f (unsafe_get s i)) (len s)
-  let mapToArray f s = Array.init (fun i -> f (unsafe_get s i)) (len s)
 
   (* Conversions *)
 
@@ -150,10 +159,10 @@ struct
   let popped = slice 0 (-2)
 
   let pop a = (popped a, last a)
-  let push v a = append a [|v|]
+  let push v a = append a (string_of_char (chr v))
 
   let shift a = (tail a, first a)
-  let unshift v a = append [|v|] a
+  let unshift v a = append (string_of_char (chr v)) a
 
   let take n s = sub 0 n s
   let takeWhile f s = sub 0 (findIndex (fun v -> not (f v)) s + 1) s
@@ -302,21 +311,21 @@ struct
 
   let pmapReduce combine process = par_mapReduce ~combine ~process
 
-  let pfoldl r f init = pmapReduce (PList.foldl1 r) (foldl f init)
-  let pfoldl1 f = pmapReduce (PList.foldl1 f) (foldl1 f)
-  let pfoldr r f init = pmapReduce (PList.foldr1 r) (foldr f init)
-  let pfoldr1 f = pmapReduce (PList.foldr1 f) (foldr1 f)
+  let pfoldl r f init = pmapReduce (List.foldl1 r) (foldl f init)
+  let pfoldl1 f = pmapReduce (List.foldl1 f) (foldl1 f)
+  let pfoldr r f init = pmapReduce (List.foldr1 r) (foldr f init)
+  let pfoldr1 f = pmapReduce (List.foldr1 f) (foldr1 f)
 
   let piter f = pmapReduce ignore (iter f)
   let pmap f = pmapReduce concat (map f)
   let pfilter f = pmapReduce concat (filter f)
 
   let pfoldlSeqN ?process_count n r f init l =
-    PList.foldl (fun acc il -> r acc (pfoldl ?process_count r f init il))
+    List.foldl (fun acc il -> r acc (pfoldl ?process_count r f init il))
           init (groupsOf n l)
 
   let piterSeqN ?process_count n r f l =
-    PList.iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
+    List.iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
 
   let pinit ?process_count f l =
     let process_count = process_count |? !global_process_count in

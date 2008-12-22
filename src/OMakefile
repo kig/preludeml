@@ -3,32 +3,31 @@ BYTE_ENABLED = true
 
 USE_OCAMLFIND = true
 
-OCAMLPACKS[] = unix pcre netstring
-PRELUDE_OBJECTS[] = 
-  array
-  bigarray
-  bytestring
-  combinators
-  comparisons
-  conversions
-  exceptions
-  filesystem
-  float
-  int
-  io
-  list
-  option
-  parallel
-  path
-  pervasives
-  pipe
-  range
-  shell
-  string
-  time
-  tuple
-  unfolds
-  user
+OCAMLPACKS[] = unix pcre netstring bigarray
+PRELUDE_OBJECTS[] =
+  preArray
+  preBigarray
+  preBytestring
+  preCombinators
+  preComparisons
+  preConversions
+  preExceptions
+  preFilesystem
+  preFloat
+  preInt
+  preIo
+  preList
+  preOption
+  preParallel
+  prePath
+  preRange
+  preString
+  preShell
+  preTime
+  preTuple
+  preUnfolds
+  preUser
+  prelude
 
 OCamlLibrary(prelude, $(PRELUDE_OBJECTS))
 

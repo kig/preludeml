@@ -1,8 +1,21 @@
 (* File and IO operations *)
 
+open PreString
+open PreExceptions
+open PreCombinators
+open PreConversions
+open PreUnfolds
+open PreTuple
+open PrePath
+open PreUser
+open PreTime
+open PreList
+open PreList.List
+open Printf
+
 let putStr = print_string
 let putStrLn = print_endline
-let puts s = if rexmatch (rx "\n$") s
+let puts s = if String.rexmatch (String.rx "\n$") s
              then print_string s
              else print_endline s
 let output_line oc line =
@@ -20,13 +33,6 @@ let open_append_bin = open_out_gen [Open_wronly; Open_creat; Open_append; Open_b
 
 let fileExists = Sys.file_exists
 
-let finally finaliser f x =
-  let r = try f x with e ->
-    ( try finaliser x with _ -> () );
-    raise e in
-  finaliser x;
-  r
-
 let withFile filename f = finally close_in f (open_in_bin filename)
 let withFileOut filename f = finally close_out f (open_out_bin filename)
 let withFileAppend filename f = finally close_out f (open_append_bin filename)
@@ -43,16 +49,16 @@ let read ?buf bytes ch =
   let rec aux ch bytes c buf =
     match input ch buf c (bytes-c) with
       | 0 when c = 0 -> raise End_of_file
-      | 0 -> String.sub buf 0 c
+      | 0 -> String.sub 0 c buf
       | b when c + b = bytes -> buf
       | b -> aux ch bytes (c+b) buf in
   let buf = match buf with
     | None -> String.create bytes
     | Some s ->
-      if slen s = bytes then s
+      if String.len s = bytes then s
       else invalid_arg (sprintf
                         "Prelude.read: buffer size %d differs from read size %d"
-                        (slen s) bytes) in
+                        (String.len s) bytes) in
   aux ch bytes 0 buf
 
 let write = output_string
@@ -97,7 +103,7 @@ let readFile filename = withFile filename readAll
 let writeFile filename str = withFileOut filename (flip output_string str)
 let appendFile filename str = withFileAppend filename (flip output_string str)
 
-let readLines = lines @. readFile
+let readLines = String.lines @. readFile
 
 let tokenize t ic = unfoldlOpt (maybeEOF None (fun ic -> Some (t ic, ic))) ic
 let tokenizeN t n ic = unfoldlN t n ic
@@ -120,10 +126,50 @@ let withTempFile suffix f =
   let fn = (0--1000)
     |> find (fun i -> not (fileExists (tmpfilename i)))
     |> tmpfilename in
-  finally (fun fn -> if fileExists fn then rm fn else ()) f fn
+  finally (fun fn -> if fileExists fn then Sys.remove fn else ()) f fn
+
+
+let pipeWith f init i o = recurseOpt (f i o) init
+let pipeChan f = pipeWith (optEOF @.. f)
+let unitPipe t f = t (fun ic () -> f ic, ())
+let pipeTokenizer input output f ic oc init =
+  let line, acc = f (input ic) init in
+  output oc line;
+  acc
+
+let linePiper = pipeTokenizer input_line output_line_flush
+let blockPiper ?buf block_sz = pipeTokenizer (read ?buf block_sz) write
+
+let pipeLines f = pipeChan (linePiper f)
+let pipeBlocks block_sz f =
+  let buf = String.create block_sz in
+  pipeChan (blockPiper ~buf block_sz f)
+
+let withFiles f infile outfile =
+  withFile infile (fun ic -> withFileOut outfile (fun oc -> f ic oc))
+let withFilesAppend f infile outfile =
+  withFile infile (fun ic -> withFileAppend outfile (fun oc -> f ic oc))
+
+let pipeFiles f init = withFiles (pipeChan f init)
+let pipeFileLines f init = withFiles (pipeLines f init)
+let pipeFileBlocks block_sz f init = withFiles (pipeBlocks block_sz f init)
+
+let pipeAppend f init = withFilesAppend (pipeChan f init)
+let pipeAppendLines f init = withFilesAppend (pipeLines f init)
+let pipeAppendBlocks block_sz f init = withFilesAppend (pipeBlocks block_sz f init)
+
+let interactWith f = pipeChan (unitPipe linePiper f) ()
+let interact f = interactWith f stdin stdout
+let interactFiles f = pipeFiles (unitPipe linePiper f) ()
+let interactAppend f = pipeAppend (unitPipe linePiper f) ()
 
 let appendFileTo oc filename =
   withFile filename (fun ic -> pipeBlocks 4096 tuple () ic oc)
+
+let cp s d = pipeFileBlocks 4096 tuple () s d
+let mv s d =
+  try Sys.rename s d
+  with Sys_error "Invalid cross-device link" -> cp s d; Sys.remove s
 
 let prependFile filename str =
   if fileSize filename > 32000000 (* use temp file if larger than 32 megs *)
@@ -131,5 +177,3 @@ let prependFile filename str =
     withFileOut fn (fun oc -> write oc str; appendFileTo oc filename);
     mv fn filename)
   else writeFile filename (str ^ readFile filename)
-
-

@@ -1,43 +1,52 @@
 (* Filesystem paths *)
 
+open PreOption
+open PreExceptions
+open PreList
+open PreString.String
+open PreFilesystem
+open PreUnfolds
+open PreComparisons
+open PreCombinators
+
 (**T
 (* Simple relative *)
-  expand_path "foo" = (Filename.concat (Unix.getcwd ()) "foo")
+  expandPath "foo" = (Filename.concat (Unix.getcwd ()) "foo")
 
 (* Absolute *)
-  expand_path "/foo" = "/foo"
+  expandPath "/foo" = "/foo"
 
 (* /./ *)
-  expand_path "/foo/./bar/./baz/./" = "/foo/bar/baz"
+  expandPath "/foo/./bar/./baz/./" = "/foo/bar/baz"
 
 (* /. *)
-  expand_path "/foo/bar/." = "/foo/bar"
+  expandPath "/foo/bar/." = "/foo/bar"
 
 (* /../ *)
-  expand_path "/foo/../bar/../baz" = "/baz"
+  expandPath "/foo/../bar/../baz" = "/baz"
 
 (* /../ 2 *)
-  expand_path "/foo/../bar/../baz/../" = "/"
+  expandPath "/foo/../bar/../baz/../" = "/"
 
 (* /.. *)
-  expand_path "/foo/bar/.." = "/foo"
+  expandPath "/foo/bar/.." = "/foo"
 
 (* Mixed /./ and /../ *)
-  expand_path "/foo/../bar/./baz/qux/./.." = "/bar/baz"
+  expandPath "/foo/../bar/./baz/qux/./.." = "/bar/baz"
 
 (* Trailing / (absolute) *)
-  expand_path "/foo/" = "/foo"
+  expandPath "/foo/" = "/foo"
 
 (* Trailing / (relative) *)
-  expand_path "foo/" = (Filename.concat (Unix.getcwd ()) "foo")
+  expandPath "foo/" = (Filename.concat (Unix.getcwd ()) "foo")
 
 (* Root *)
-  expand_path "/" = "/"
+  expandPath "/" = "/"
 
 (* Current dir *)
-  expand_path "" = (Unix.getcwd ())
+  expandPath "" = (Unix.getcwd ())
 **)
-let expand_path path =
+let expandPath path =
   let rec replace re tmpl s =
     let s' = Pcre.replace ~rex:(Pcre.regexp re) ~templ:tmpl s in
     if s = s' then s
@@ -56,9 +65,9 @@ struct
 
   let absolute a =
     let rec aux a lst = match a with
-      | [] -> rev lst
+      | [] -> List.rev lst
       | (""::t) -> aux t [""]
-      | (".."::t) -> aux t (maybeNF [] tail lst)
+      | (".."::t) -> aux t (maybeNF [] List.tail lst)
       | (h::t) -> aux t (h::lst) in
     aux a []
   let make s =
@@ -69,13 +78,13 @@ struct
 
   let join_path (Path a) (Path b) = Path (absolute (a @ b))
 
-  let join_list path ss = foldl join_path path (map make ss)
+  let join_list path ss = List.foldl join_path path (List.map make ss)
   let join path s = join_path path (make s)
 
   let join_list_to_s path ss = to_s (join_list path ss)
   let join_to_s path s = to_s (join path s)
 
-  let expand path = make (expand_path (to_s path))
+  let expand path = make (expandPath (to_s path))
 end
 (**T
   Path.to_s (Path.make "/home") = "/home"
@@ -90,15 +99,16 @@ end
   Path.join_list_to_s (Path.make "/home/") [".."; "tmp"] = "/tmp"
 **)
 
-let expandPath = expand_path
-
 let (^/) = Filename.concat
-let dirExists d = fileExists d && isDir d
-let isRoot d = fileInode d = fileInode "/" && fileDevice d = fileDevice "/"
+let dirExists d = Sys.file_exists d && Sys.is_directory d
+let isRoot d =
+  let fileInode fn = (Unix.stat fn).Unix.st_ino in
+  let fileDevice fn = (Unix.stat fn).Unix.st_dev in
+  fileInode d = fileInode "/" && fileDevice d = fileDevice "/"
 let parentDirs d =
-  generateUntil (eq "") (nrsplit "/" 2 |>. first) (expandPath d) @ ["/"]
+  generateUntil (eq "") (nrsplit "/" 2 |>. List.first) (expandPath d) @ ["/"]
 
-let dirSeparator = sslice 1 (-2) ("a" ^/ "b")
+let dirSeparator = slice 1 (-2) ("a" ^/ "b")
 let splitPath p = match p with
   | "/" -> ["/"]
   | p ->
@@ -106,7 +116,7 @@ let splitPath p = match p with
       | (""::t) -> "/"::t
       | ps -> ps
     end
-let joinPath ps = foldl1 (^/) ps
+let joinPath ps = List.foldl1 (^/) ps
 (**T
   joinPath (splitPath "/foo/bar/baz") = "/foo/bar/baz"
   joinPath (splitPath "/foo/") = "/foo"
@@ -116,9 +126,13 @@ let joinPath ps = foldl1 (^/) ps
 let relativePath path =
   let cp = splitPath (expandPath ".") in
   let pp = splitPath (expandPath path) in
-  let cp, pp = dropWhile2 (=) cp pp in
-  joinPath (replicate (len cp) ".." @ pp)
+  let cp, pp = List.dropWhile2 (=) cp pp in
+  joinPath (List.replicate (List.len cp) ".." @ pp)
 
 let dirname = Filename.dirname
 let basename = Filename.basename
+
+let mkdir_p ?(perm=0o755) s =
+  let nex, ex = List.span (not @. Sys.file_exists) (parentDirs s) in
+  List.iter (mkdir ~perm) (List.reverse nex)
 
