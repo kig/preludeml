@@ -1,7 +1,166 @@
-SRC/ DOES NOT COMPILE YET
+Prelude.ml: Yet another OCaml stdlib replacement.
 
-Refactored the monolithic 2000-line prelude.ml into subfiles,
-currently in the process of making the refactoring work.
+Including a comprehensive set of functions[1] for
+munging arrays, lists and strings.
 
-Included the monolithic prelude.ml in the top dir, that one
-does compile and work, but gets no further development.
+There are two versions here, the prelude.ml in this
+directory, which includes everything in a single file,
+and src/prelude.ml, which includes the sublibraries
+and generally does things the hard way. But has a
+pretty consistent interface across arrays, strings,
+bytestrings and lists.
+
+Latest news:
+  - Split prelude.ml into many source files in src/
+  - Made src/ compile after hours of work
+
+[1] Here's preArray.mli output:
+module Array :
+  sig
+  (* default Array *)
+    external length : 'a array -> int = "%array_length"
+    external get : 'a array -> int -> 'a = "%array_safe_get"
+    external set : 'a array -> int -> 'a -> unit = "%array_safe_set"
+    external make : int -> 'a -> 'a array = "caml_make_vect"
+    external create : int -> 'a -> 'a array = "caml_make_vect"
+    val make_matrix : int -> int -> 'a -> 'a array array
+    val create_matrix : int -> int -> 'a -> 'a array array
+    val append : 'a array -> 'a array -> 'a array
+    val concat : 'a array list -> 'a array
+    val copy : 'a array -> 'a array
+    val fill : 'a array -> int -> int -> 'a -> unit
+    val blit : 'a array -> int -> 'a array -> int -> int -> unit
+    val to_list : 'a array -> 'a list
+    val of_list : 'a list -> 'a array
+    val iteri : (int -> 'a -> unit) -> 'a array -> unit
+    val mapi : (int -> 'a -> 'b) -> 'a array -> 'b array
+    val fold_left : ('a -> 'b -> 'a) -> 'a -> 'b array -> 'a
+    val fold_right : ('a -> 'b -> 'b) -> 'a array -> 'b -> 'b
+    val sort : ('a -> 'a -> int) -> 'a array -> unit
+    val stable_sort : ('a -> 'a -> int) -> 'a array -> unit
+    val fast_sort : ('a -> 'a -> int) -> 'a array -> unit
+    external unsafe_get : 'a array -> int -> 'a = "%array_unsafe_get"
+    external unsafe_set : 'a array -> int -> 'a -> unit = "%array_unsafe_set"
+  (* PreArray *)
+    val len : 'a array -> int
+    val init : (int -> 'a) -> int -> 'a array
+    val range : int -> int -> int array
+    val reverse : 'a array -> 'a array
+    val rev : 'a array -> 'a array
+    val normalizeIndex : int -> 'a array -> int
+    val times : int -> 'a array -> 'a array
+    val iter : ('a -> 'b) -> 'a array -> unit
+    val iterWithIndex : ('a -> int -> 'b) -> 'a array -> unit
+    val map : ('a -> 'b) -> 'a array -> 'b array
+    val mapWithIndex : ('a -> int -> 'b) -> 'a array -> 'b array
+    val filter : ('a -> bool) -> 'a array -> 'a array
+    val filterWithIndex : ('a -> int -> bool) -> 'a array -> 'a array
+    val findWithIndex : ('a -> int -> bool) -> 'a array -> 'a * int
+    val find : ('a -> bool) -> 'a array -> 'a
+    val findIndex : ('a -> bool) -> 'a array -> int
+    val indexOf : 'a -> 'a array -> int
+    val zipWith : ('a -> 'b -> 'c) -> 'a array -> 'b array -> 'c array
+    val map2 : ('a -> 'b -> 'c) -> 'a array -> 'b array -> 'c array
+    val zipWith3 :
+      ('a -> 'b -> 'c -> 'd) -> 'a array -> 'b array -> 'c array -> 'd array
+    val map3 :
+      ('a -> 'b -> 'c -> 'd) -> 'a array -> 'b array -> 'c array -> 'd array
+    val foldl : ('a -> 'b -> 'a) -> 'a -> 'b array -> 'a
+    val foldl1 : ('a -> 'a -> 'a) -> 'a array -> 'a
+    val foldr : ('a -> 'b -> 'b) -> 'b -> 'a array -> 'b
+    val foldr1 : ('a -> 'a -> 'a) -> 'a array -> 'a
+    val maximum : 'a array -> 'a
+    val minimum : 'a array -> 'a
+    val maximumBy : ('a -> 'b) -> 'a array -> 'a
+    val minimumBy : ('a -> 'b) -> 'a array -> 'a
+    val sub : int -> int -> 'a array -> 'a array
+    val slice_to_sub : int -> int -> 'a array -> int * int
+    val slice : int -> int -> 'a array -> 'a array
+    val subStride : int -> int -> int -> 'a array -> 'a array
+    val first : 'a array -> 'a
+    val head : 'a array -> 'a
+    val tail : 'a array -> 'a array
+    val last : 'a array -> 'a
+    val popped : 'a array -> 'a array
+    val pop : 'a array -> 'a array * 'a
+    val push : 'a -> 'a array -> 'a array
+    val shift : 'a array -> 'a array * 'a
+    val unshift : 'a -> 'a array -> 'a array
+    val take : int -> 'a array -> 'a array
+    val takeWhile : ('a -> bool) -> 'a array -> 'a array
+    val drop : int -> 'a array -> 'a array
+    val dropWhile : ('a -> bool) -> 'a array -> 'a array
+    val splitAt : int -> 'a array -> 'a array * 'a array
+    val break : ('a -> bool) -> 'a array -> 'a array * 'a array
+    val span : ('a -> bool) -> 'a array -> 'a array * 'a array
+    val interlace : 'a -> 'a array -> 'a array
+    val reject : ('a -> bool) -> 'a array -> 'a array
+    val without : 'a -> 'a array -> 'a array
+    val groupsOf : int -> 'a array -> 'a array list
+    val splitInto : int -> 'a array -> 'a array list
+    val iterSub : int -> int -> ('a -> 'b) -> 'a array -> unit
+    val iterSlice : int -> int -> ('a -> 'b) -> 'a array -> unit
+    val mapSub : int -> int -> ('a -> 'b) -> 'a array -> 'b array
+    val mapSlice : int -> int -> ('a -> 'b) -> 'a array -> 'b array
+    val foldlSub : int -> int -> ('a -> 'b -> 'a) -> 'a -> 'b array -> 'a
+    val foldl1Sub : int -> int -> ('a -> 'a -> 'a) -> 'a array -> 'a
+    val foldrSub : int -> int -> ('a -> 'b -> 'a) -> 'a -> 'b array -> 'a
+    val foldr1Sub : int -> int -> ('a -> 'a -> 'a) -> 'a array -> 'a
+    val foldlSlice : int -> int -> ('a -> 'b -> 'a) -> 'a -> 'b array -> 'a
+    val foldl1Slice : int -> int -> ('a -> 'a -> 'a) -> 'a array -> 'a
+    val foldrSlice : int -> int -> ('a -> 'b -> 'a) -> 'a -> 'b array -> 'a
+    val foldr1Slice : int -> int -> ('a -> 'a -> 'a) -> 'a array -> 'a
+    val sum : int array -> int
+    val sumf : float array -> float
+    val product : int array -> int
+    val productf : float array -> float
+    val average : int array -> int
+    val averagef : float array -> float
+    val sumSub : int -> int -> int array -> int
+    val sumSubf : int -> int -> float array -> float
+    val sumSlice : int -> int -> int array -> int
+    val sumSlicef : int -> int -> float array -> float
+    val productSub : int -> int -> int array -> int
+    val productSubf : int -> int -> float array -> float
+    val productSlice : int -> int -> int array -> int
+    val productSlicef : int -> int -> float array -> float
+    val averageSub : int -> int -> int array -> int
+    val averageSubf : int -> int -> float array -> float
+    val averageSlice : int -> int -> int array -> int
+    val averageSlicef : int -> int -> float array -> float
+    val pick : int list -> 'a array -> 'a list
+    val pickWith : ('a -> 'b) list -> 'a -> 'b list
+    val par_mapReduce :
+      ?process_count:int ->
+      combine:('a list -> 'b) -> process:('c array -> 'a) -> 'c array -> 'b
+    val pmapReduce :
+      ('a list -> 'b) ->
+      ('c array -> 'a) -> ?process_count:int -> 'c array -> 'b
+    val pfoldl :
+      ('a -> 'a -> 'a) ->
+      ('a -> 'b -> 'a) -> 'a -> ?process_count:int -> 'b array -> 'a
+    val pfoldl1 : ('a -> 'a -> 'a) -> ?process_count:int -> 'a array -> 'a
+    val pfoldr :
+      ('a -> 'a -> 'a) ->
+      ('b -> 'a -> 'a) -> 'a -> ?process_count:int -> 'b array -> 'a
+    val pfoldr1 : ('a -> 'a -> 'a) -> ?process_count:int -> 'a array -> 'a
+    val piter : ('a -> 'b) -> ?process_count:int -> 'a array -> unit
+    val pmap : ('a -> 'b) -> ?process_count:int -> 'a array -> 'b array
+    val pfilter : ('a -> bool) -> ?process_count:int -> 'a array -> 'a array
+    val pfoldlSeqN :
+      ?process_count:int ->
+      int -> ('a -> 'a -> 'a) -> ('a -> 'b -> 'a) -> 'a -> 'b array -> 'a
+    val piterSeqN :
+      ?process_count:int ->
+      int -> ('a -> 'b) -> ('c -> 'a) -> 'c array -> unit
+    val pinit : ?process_count:int -> (int -> 'a) -> int -> 'a array
+    val pzipWith :
+      ?process_count:int ->
+      ('a -> 'b -> 'c) -> 'a array -> 'b array -> 'c array
+  end
+val ( --| ) : int -> int -> int array         (* (1--|3) = [|1; 2; 3|] *)
+val ( @| ) : 'a array -> 'a array -> 'a array (* append *)
+val ( @|* ) : int -> 'a array -> 'a array     (* times *)
+
+
+
