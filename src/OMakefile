@@ -9,24 +9,13 @@ PRELUDE_OBJECTS[] =
   preBigarray
   preBytestring
   preCombinators
-  preComparisons
-  preConversions
-  preExceptions
   preFilesystem
-  preFloat
-  preInt
   preIo
   preList
-  preOption
-  preParallel
   prePath
   preRange
   preString
   preShell
-  preTime
-  preTuple
-  preUnfolds
-  preUser
   prelude
 
 OCamlLibrary(prelude, $(PRELUDE_OBJECTS))

@@ -27,12 +27,9 @@ OTHER DEALINGS IN THE SOFTWARE.
 *)
 (* Common filesystem operations *)
 
-open PreList.List
 open PreCombinators
-open PreUnfolds
+open PreList.List
 open PreString
-open PreOption
-open PreUser
 
 let rename = Sys.rename
 

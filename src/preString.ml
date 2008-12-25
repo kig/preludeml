@@ -29,18 +29,9 @@ module String =
 struct
   include String
 
-  open PreOption
-  open PreExceptions
   open PreCombinators
-  open PreTuple
-  open PreUnfolds
-  open PreComparisons
-  open PreConversions
-  open PreInt
-  open PreFloat
   open PreList
   open PreArray
-  open PreParallel
 
   let init f l =
     let s = create l in

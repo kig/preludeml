@@ -27,13 +27,9 @@ OTHER DEALINGS IN THE SOFTWARE.
 *)
 (* Filesystem paths *)
 
-open PreOption
-open PreExceptions
 open PreList
 open PreString.String
 open PreFilesystem
-open PreUnfolds
-open PreComparisons
 open PreCombinators
 
 (**T

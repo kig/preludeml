@@ -29,16 +29,7 @@ module Array =
 struct
   include Array
 
-  open PreOption
-  open PreExceptions
   open PreCombinators
-  open PreTuple
-  open PreUnfolds
-  open PreComparisons
-  open PreConversions
-  open PreParallel
-  open PreInt
-  open PreFloat
   open PreList
 
   let len = length

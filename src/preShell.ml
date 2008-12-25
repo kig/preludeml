@@ -28,7 +28,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 (* Running commands *)
 
 open Printf
-open PreExceptions
+open PreCombinators
 open PreIo
 
 let shell_escape =

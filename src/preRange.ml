@@ -27,16 +27,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 *)
 module Range =
 struct
-  open PreOption
-  open PreExceptions
   open PreCombinators
-  open PreTuple
-  open PreUnfolds
-  open PreComparisons
-  open PreConversions
-  open PreParallel
-  open PreInt
-  open PreFloat
   open PreList
   open PreArray
 

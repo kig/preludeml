@@ -28,16 +28,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 module List =
 struct
   include List
-  open PreOption
-  open PreExceptions
   open PreCombinators
-  open PreTuple
-  open PreUnfolds
-  open PreComparisons
-  open PreInt
-  open PreFloat
-  open PreConversions
-  open PreParallel
 
   let reverse = rev
 

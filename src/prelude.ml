@@ -29,14 +29,6 @@ OTHER DEALINGS IN THE SOFTWARE.
 include Printf
 
 include PreCombinators
-include PreTuple
-include PreComparisons
-include PreConversions
-include PreExceptions
-include PreOption
-include PreFloat
-include PreInt
-include PreUnfolds
 include PreFilesystem
 include PrePath
 include PreIo
@@ -48,8 +40,6 @@ include PreBytestring
 include PreBigarray
 include PreArray
 include PreRange
-
-include PreParallel
 
 include PreList.List
 

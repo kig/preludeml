@@ -28,18 +28,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 module Bytestring =
 struct
   include PreString.String
-  open PreOption
-  open PreExceptions
   open PreCombinators
-  open PreTuple
-  open PreUnfolds
-  open PreComparisons
-  open PreInt
-  open PreFloat
-  open PreConversions
   open PreList
-  open PreParallel
-
 
   let unsafe_get s i = ord (String.unsafe_get s i)
   let unsafe_set s i c = String.unsafe_set s i (chr c)

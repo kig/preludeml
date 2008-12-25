@@ -27,15 +27,9 @@ OTHER DEALINGS IN THE SOFTWARE.
 *)
 (* File and IO operations *)
 
-open PreString
-open PreExceptions
 open PreCombinators
-open PreConversions
-open PreUnfolds
-open PreTuple
+open PreString
 open PrePath
-open PreUser
-open PreTime
 open PreList
 open PreList.List
 open Printf
