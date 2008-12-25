@@ -5,17 +5,6 @@ USE_OCAMLFIND = true
 
 OCAMLPACKS[] = unix pcre netstring bigarray
 PRELUDE_OBJECTS[] =
-  preArray
-  preBigarray
-  preBytestring
-  preCombinators
-  preFilesystem
-  preIo
-  preList
-  prePath
-  preRange
-  preString
-  preShell
   prelude
 
 OCamlLibrary(prelude, $(PRELUDE_OBJECTS))
