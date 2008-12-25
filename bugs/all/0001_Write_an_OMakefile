@@ -1,10 +1,12 @@
 title: Write an OMakefile
-status: OPEN
+status: CLOSED
 date: 2008-09-17 16:52:42+0300
 author: Ilmari Heikkinen <ilmari.heikkinen@gmail.com>
-
 
 -- opened by Ilmari Heikkinen <ilmari.heikkinen@gmail.com> on 2008-09-17 16:52:42+0300
 
 Problem description:
 Need a makefile to compile the project.
+-- closed by Ilmari Heikkinen <ilmari.heikkinen@gmail.com> on 2008-12-25 19:48:14+0200
+
+FIXED
