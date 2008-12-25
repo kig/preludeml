@@ -639,6 +639,18 @@ struct
       | (h::t) when x = h -> c
       | (h::t) -> aux x (c+1) t in
     aux x 0 lst
+
+  let filterWithIndex f s =
+    let rec aux f l i res =
+      match l with
+        | [] -> rev res
+        | (h::t) when f h i -> aux f t (succ i) (h::res)
+        | (h::t) -> aux f t (succ i) res in
+    aux f s 0 []
+  (**T
+    filterWithIndex (fun _ i -> i > 5) (1--9) = (7--9)
+  **)
+
   (**T
     indexOf 'a' (explode "foobar") = 4
   **)
@@ -1827,6 +1839,12 @@ struct
   let rexmatch rex = Pcre.pmatch ~rex
   let xmatch s = rexmatch (rx s)
 
+  let xstartsWith prefix = rexmatch (rx ("^" ^ prefix))
+  let startsWith prefix = xstartsWith (escape_rex prefix)
+
+  let xendsWith suffix = rexmatch (rx (suffix ^ "$"))
+  let endsWith suffix = xendsWith (escape_rex suffix)
+
   let replace pat templ = Pcre.replace ~pat ~templ
   let rexreplace rex templ = Pcre.replace ~rex ~templ
   let xreplace s = rexreplace (rx s)
@@ -2615,6 +2633,11 @@ let unlines = PreString.unlines
 let rexsplitPartition = PreString.rexsplitPartition
 let xsplitPartition = PreString.xsplitPartition
 
+let xstartsWith = PreString.xstartsWith
+let startsWith = PreString.startsWith
+
+let xendsWith = PreString.xendsWith
+let endsWith = PreString.endsWith
 
 
 
