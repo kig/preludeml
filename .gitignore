@@ -1,5 +1,4 @@
-/.*
-/*/.*
+.*
 *.cmi
 *.cmx
 *.cmxa
@@ -8,4 +7,4 @@
 *.omc
 *.cmo
 *.annot
-
+test/run_unit_tests

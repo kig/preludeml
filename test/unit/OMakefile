@@ -1,0 +1,3 @@
+.PHONY: clean
+	rm -f auto_t*.*
+

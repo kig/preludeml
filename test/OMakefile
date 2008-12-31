@@ -1,0 +1,44 @@
+
+TESTDIRS = unit
+OCAMLPACKS += oUnit pcre unix netstring bigarray
+
+
+OCAMLINCLUDES += $(ROOT)/src
+
+FILES[] =
+EXTRACTED_TESTS[] =
+
+OCAMLINCLUDES += $(TESTDIRS) $(ROOT)/test
+
+.SUBDIRS: $(TESTDIRS)
+	include OMakefile
+	export FILES
+
+ExtractTests(file, deps) =
+    BASENAME = $(basename $(file))
+    DEST = unit/auto_t$(BASENAME)
+    $(DEST).ml: $(ROOT)/$(file).ml
+        ruby $(ROOT)/tools/make_suite.rb $^ > $@
+    EXTRACTED_TESTS += $(DEST)
+    if $(not $(mem $(ROOT)/$(file), $(FILES)))
+	FILES[] += $(ROOT)/$(file)
+	export FILES
+    export FILES
+    export EXTRACTED_TESTS
+
+ExtractTests(src/prelude, \ )
+
+OCamlProgram(run_unit_tests, tests $(FILES) $(EXTRACTED_TESTS) test_runner)
+
+unit_tests.results: run_unit_tests
+	./run_unit_tests |& tee $@
+
+.PHONY: clean
+clean:
+	rm -f *.cmi *.cmo *.cmx *.cmxa *.cma *.annot *.s *.o *.opt \
+	    *.run *.a *.inc *.results \
+	    $(addsuffixes .cmi .cmo .cmx .annot .s, $(FILES))
+
+.PHONY: test
+
+test: unit_tests.results

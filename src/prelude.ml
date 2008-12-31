@@ -1164,17 +1164,35 @@ struct
   include Array
 
   let len = length
+  (**T
+    alen (1--|10) = 10
+    alen [||] = 0
+  **)
 
   (* Basic operations *)
 
   let init f l = init l f
+  (**T
+    ainit succ 10 = (1--|10)
+    ainit pred 10 = (-1--|8)
+  **)
 
   let range s e =
     if s > e
     then init ((-) s) (s-e+1)
     else init ((+) s) (e-s+1)
+  (**T
+    arange 0 1 = [|0; 1|]
+    arange 2 4 = [|2; 3; 4|]
+    arange 2 0 = [|2; 1; 0|]
+  **)
 
-  let reverse s =
+  (**T
+    (1--|10) = array (1--10)
+    (10--|1) = array (10--1)
+  **)
+
+  let reverse (s : 'a array) =
     let len = length s in
     if len = 0 then s else
     let s2 = make len (unsafe_get s 0) in
@@ -1184,9 +1202,29 @@ struct
     done;
     s2
   let rev = reverse
+  (**T
+    arev (1--|10) = (10--|1)
+    arev [|1|] = [|1|]
+    arev (aexplode "foobar") = aexplode "raboof"
+    arev [||] = [||]
+  **)
   let normalizeIndex i s = if i < 0 then (len s) + i else i
+  (**T
+    PreArray.normalizeIndex 0 [||] = 0
+    PreArray.normalizeIndex 0 (1--|10) = 0
+    PreArray.normalizeIndex 2 (1--|10) = 2
+    PreArray.normalizeIndex (-1) (1--|10) = 9
+    PreArray.normalizeIndex (-2) (1--|10) = 8
+    PreArray.normalizeIndex (-1) (1--|2) = 1
+    PreArray.normalizeIndex (-2) (1--|2) = 0
+  **)
 
   let times n a = PreList.replicate n a |> concat
+  (**T
+    atimes 3 (1--|3) = [|1;2;3;1;2;3;1;2;3|]
+    atimes 0 (1--|3) = [||]
+    atimes 1 (1--|3) = (1--|3)
+  **)
 
   (* Iterators *)
 
@@ -1285,7 +1323,7 @@ struct
   let sub i len s =
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = max (i+len-1) (slen-1) in
+    let j = min (max 0 (i+len-1)) (slen-1) in
     init (fun x -> unsafe_get s (i+x)) (j-i+1)
 
   let slice_to_sub i j s =
@@ -1361,7 +1399,7 @@ struct
   let mapSub i len f s =
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = max (i+len-1) (slen-1) in
+    let j = min (max 0 (i+len-1)) (slen-1) in
     init (fun j -> f (unsafe_get s (i+j))) (j-i)
 
   let mapSlice i j f s =
@@ -1373,7 +1411,7 @@ struct
       if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = max (i+len-1) (slen-1) in
+    let j = min (max 0 (i+len-1)) (slen-1) in
     aux f s init i j
 
   let foldl1Sub i len f s =
@@ -1386,7 +1424,7 @@ struct
       if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = max (i+len-1) (slen-1) in
+    let j = min (max 0 (i+len-1)) (slen-1) in
     aux f s init i j
 
   let foldr1Sub i len f s =
@@ -1642,7 +1680,7 @@ struct
   let sub i len s =
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = max (i+len-1) (slen-1) in
+    let j = min (max 0 (i+len-1)) (slen-1) in
     init (fun x -> unsafe_get s (i+x)) (j-i+1)
 
   let slice_to_sub i j s =
@@ -1720,7 +1758,7 @@ struct
   let mapSub i len f s =
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = max (i+len-1) (slen-1) in
+    let j = min (max 0 (i+len-1)) (slen-1) in
     init (fun j -> f (unsafe_get s (i+j))) (j-i)
 
   let mapSlice i j f s =
@@ -1732,7 +1770,7 @@ struct
       if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = max (i+len-1) (slen-1) in
+    let j = min (max 0 (i+len-1)) (slen-1) in
     aux f s init i j
 
   let foldl1Sub i len f s =
@@ -1745,7 +1783,7 @@ struct
       if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = max (i+len-1) (slen-1) in
+    let j = min (max 0 (i+len-1)) (slen-1) in
     aux f s init i j
 
   let foldr1Sub i len f s =
@@ -2100,7 +2138,7 @@ struct
   let sub i len s =
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = max (i+len-1) (slen-1) in
+    let j = min (max 0 (i+len-1)) (slen-1) in
     init (fun x -> unsafe_get s (i+x)) (j-i+1)
 
   let slice_to_sub i j s =
@@ -2176,7 +2214,7 @@ struct
   let mapSub i len f s =
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = max (i+len-1) (slen-1) in
+    let j = min (max 0 (i+len-1)) (slen-1) in
     init (fun j -> f (unsafe_get s (i+j))) (j-i)
 
   let mapSlice i j f s =
@@ -2188,7 +2226,7 @@ struct
       if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = max (i+len-1) (slen-1) in
+    let j = min (max 0 (i+len-1)) (slen-1) in
     aux f s init i j
 
   let foldl1Sub i len f s =
@@ -2201,7 +2239,7 @@ struct
       if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = max (i+len-1) (slen-1) in
+    let j = min (max 0 (i+len-1)) (slen-1) in
     aux f s init i j
 
   let foldr1Sub i len f s =
@@ -2348,7 +2386,7 @@ struct
     PreList.init (fun i -> f (s+i) (s2+i)) l
   (**T
     Range.zipWith (+) (1-->10) (1-->11) = zipWith (+) (1--10) (1--11)
-    Range.zipWith (/) (1-->10) (2-->11) = repeat 0 10
+    Range.zipWith (/) (1-->10) (2-->11) = replicate 10 0
   **)
   let map2 = zipWith
 
@@ -2457,7 +2495,7 @@ let acreate = PreArray.create
 let ainit = PreArray.init
 let alen = PreArray.length
 let aconcat = PreArray.concat
-let areverse a = PreArray.reverse
+let areverse = PreArray.reverse
 let arev = areverse
 
 let amap = PreArray.map
@@ -2557,7 +2595,7 @@ let screate = PreString.create
 let sinit = PreString.init
 let slen = PreString.length
 let sconcat = PreString.concat
-let sreverse a = PreString.reverse
+let sreverse = PreString.reverse
 let srev = areverse
 
 let smap = PreString.map
@@ -2707,6 +2745,11 @@ let startsWith = PreString.startsWith
 let xendsWith = PreString.xendsWith
 let endsWith = PreString.endsWith
 
+let explode = PreString.to_list
+let implode = PreString.of_list
+
+let aexplode = PreString.to_array
+let aimplode = PreString.of_array
 
 
 (* Bytestring operation shortcuts *)
@@ -2719,7 +2762,7 @@ let bcreate = Bytestring.create
 let binit = Bytestring.init
 let blen = Bytestring.length
 let bconcat = Bytestring.concat
-let breverse a = Bytestring.reverse
+let breverse = Bytestring.reverse
 let brev = areverse
 
 let bmap = Bytestring.map
