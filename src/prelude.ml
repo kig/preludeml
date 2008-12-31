@@ -1134,6 +1134,18 @@ struct
     let aspl = groupsOf plen a in
     let bspl = groupsOf plen b in
     concat (par_map ~process_count (uncurry (zipWith f)) (zip aspl bspl))
+
+  let par_mapReduceWithIndex ?process_count ~combine ~process l =
+    let process_count = process_count |? !global_process_count in
+    splitInto process_count l
+      |> mapWithIndex tuple
+      |> par_map  ~process_count process |> combine
+
+  let pmapReduceWithIndex combine process =
+    par_mapReduceWithIndex ~combine ~process
+
+  let pmapWithInit init f =
+    pmapReduceWithIndex concat (fun (sublist, idx) -> map f (init sublist idx))
 end
 
 include PreList
@@ -1480,6 +1492,17 @@ struct
       f (unsafe_get a i) (unsafe_get b i)
     ) len
 
+  let par_mapReduceWithIndex ?process_count ~combine ~process l =
+    let process_count = process_count |? !global_process_count in
+    splitInto process_count l
+      |> PreList.mapWithIndex tuple
+      |> par_map  ~process_count process |> combine
+
+  let pmapReduceWithIndex combine process =
+    par_mapReduceWithIndex ~combine ~process
+
+  let pmapWithInit init f =
+    pmapReduceWithIndex concat (fun (sublist, idx) -> map f (init sublist idx))
 end
 
 
@@ -1942,6 +1965,17 @@ struct
       f (unsafe_get a i) (unsafe_get b i)
     ) len
 
+  let par_mapReduceWithIndex ?process_count ~combine ~process l =
+    let process_count = process_count |? !global_process_count in
+    splitInto process_count l
+      |> PreList.mapWithIndex tuple
+      |> par_map  ~process_count process |> combine
+
+  let pmapReduceWithIndex combine process =
+    par_mapReduceWithIndex ~combine ~process
+
+  let pmapWithInit init f =
+    pmapReduceWithIndex (concat "") (fun (sublist, idx) -> map f (init sublist idx))
 end
 
 
@@ -2279,6 +2313,18 @@ struct
     pinit ~process_count (fun i ->
       f (unsafe_get a i) (unsafe_get b i)
     ) len
+
+  let par_mapReduceWithIndex ?process_count ~combine ~process l =
+    let process_count = process_count |? !global_process_count in
+    splitInto process_count l
+      |> PreList.mapWithIndex tuple
+      |> par_map  ~process_count process |> combine
+
+  let pmapReduceWithIndex combine process =
+    par_mapReduceWithIndex ~combine ~process
+
+  let pmapWithInit init f =
+    pmapReduceWithIndex concat (fun (sublist, idx) -> map f (init sublist idx))
 end
 
 
@@ -2383,15 +2429,28 @@ struct
     let bspl = groupsOf plen b in
     PreList.concat (par_map ~process_count (uncurry (zipWith f)) (PreList.zip aspl bspl))
 
+  let par_mapReduceWithIndex ?process_count ~combine ~process l =
+    let process_count = process_count |? !global_process_count in
+    splitInto process_count l
+      |> PreList.mapWithIndex tuple
+      |> par_map  ~process_count process |> combine
+
+  let pmapReduceWithIndex combine process =
+    par_mapReduceWithIndex ~combine ~process
+
+  let pmapWithInit init f =
+    pmapReduceWithIndex PreList.concat (fun (sublist, idx) -> map f (init sublist idx))
+
 end
 
 let (-->) = Range.create
 
 
 
-
-
 (* Array operation shortcuts *)
+
+let auget = PreArray.unsafe_get
+let auset = PreArray.unsafe_set
 
 let amake = PreArray.make
 let acreate = PreArray.create
@@ -2480,12 +2539,18 @@ let apfoldr1 = PreArray.pfoldr1
 let apfoldlSeqN = PreArray.pfoldlSeqN
 let apiterSeqN = PreArray.piterSeqN
 
+let apmapReduceWithIndex = PreArray.pmapReduceWithIndex
+let apmapWithInit = PreArray.pmapWithInit
+
 let (@|) = PreArray.append
 let (@|*) = PreArray.times
 let (--|) = PreArray.range
 
 
 (* String operation shortcuts *)
+
+let suget = PreString.unsafe_get
+let suset = PreString.unsafe_set
 
 let smake = PreString.make
 let screate = PreString.create
@@ -2574,6 +2639,9 @@ let spfoldr1 = PreString.pfoldr1
 let spfoldlSeqN = PreString.pfoldlSeqN
 let spiterSeqN = PreString.piterSeqN
 
+let spmapReduceWithIndex = PreString.pmapReduceWithIndex
+let spmapWithInit = PreString.pmapWithInit
+
 let (^*) = PreString.times
 
 (* String specific shortcuts *)
@@ -2642,6 +2710,9 @@ let endsWith = PreString.endsWith
 
 
 (* Bytestring operation shortcuts *)
+
+let buget = Bytestring.unsafe_get
+let buset = Bytestring.unsafe_set
 
 let bmake = Bytestring.make
 let bcreate = Bytestring.create
@@ -2730,6 +2801,8 @@ let bpfoldr1 = Bytestring.pfoldr1
 let bpfoldlSeqN = Bytestring.pfoldlSeqN
 let bpiterSeqN = Bytestring.piterSeqN
 
+let bpmapReduceWithIndex = Bytestring.pmapReduceWithIndex
+let bpmapWithInit = Bytestring.pmapWithInit
 
 (* Common filesystem operations *)
 
@@ -3182,3 +3255,43 @@ let bacreateMmap ?(layout=Bigarray.c_layout) ?(shared=true)
 
 let bacreateShared ?layout kind l =
   bacreateMmap ?layout kind l "/dev/zero"
+
+
+
+(* Hashtables *)
+
+let string_hash_djb2 s =
+  let rec aux s len v i =
+    if i >= len then v
+    else aux s len (((v lsl 5) + v) + (ord (suget s i))) (i+1) in
+  aux s (slen s) 5381 0
+
+let string_hash_head =
+  let ws = Sys.word_size / 8 - 1 in
+  let rec aux sum s i =
+    if i < 0 then sum
+    else aux ((sum lsl 8) lor (ord (suget s i))) s (i-1) in
+  fun s -> aux 0 s ((min (slen s) ws) - 1)
+
+(* SHash is a Hashtbl with strings as keys.
+   SHash uses string_hash_djb2 as the hash function.
+*)
+module SHash = Hashtbl.Make(struct
+  type t = string
+  let equal (a:t) (b:t) = a = b
+  let hash = string_hash_djb2
+end)
+(* HHash is a Hashtbl with hash strings as keys.
+   HHash uses string_hash_head as the hash function.
+*)
+module HHash = Hashtbl.Make(struct
+  type t = string
+  let equal (a:t) (b:t) = a = b
+  let hash = string_hash_head
+end)
+
+
+(* Maps *)
+
+module SMap = Map.Make(String)
+module IMap = Map.Make(struct type t = int let compare = (-) end)
