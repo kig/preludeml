@@ -789,6 +789,17 @@ let lcm x y = match x, y with
   gcd (lcm 8 70) 70 = 70
 **)
 
+
+let predChar c = chr (ord c - 1)
+(**T
+  predChar 'b' = 'a'
+**)
+let succChar c = chr (ord c + 1)
+(**T
+  succChar 'b' = 'c'
+**)
+
+
 (* Time operations *)
 
 let timeNow = Unix.gettimeofday
@@ -951,8 +962,22 @@ struct
   **)
 
   let cons x xs = x::xs
+  (**T
+    cons 1 [] = [1]
+    cons 1 (2--10) = (1--10)
+  **)
   let head = function [] -> raise Not_found | (h::_) -> h
+  (**T
+    optNF head [] = None
+    optNF head [1] = Some 1
+    optNF head (1--10) = Some 1
+  **)
   let tail = function [] -> raise Not_found | (_::t) -> t
+  (**T
+    optNF tail [] = None
+    optNF tail [1] = Some []
+    optNF tail (1--10) = Some (2--10)
+  **)
   let pop l =
     let rec aux l res =
       match l with
@@ -962,30 +987,65 @@ struct
     aux l []
   (**T
     pop [1;2;3] = ([1;2], 3)
+    optNF pop [] = None
+    optNF pop [1] = Some ([], 1)
+    optNF pop [1;2] = Some ([1], 2)
   **)
   let popped l = fst (pop l)
   (**T
     popped [1; 2; 3] = [1; 2]
+    optNF popped [] = None
+    optNF popped [1] = Some []
   **)
   let last l = snd (pop l)
   (**T
     last [1; 2; 3] = 3
+    optNF last [] = None
   **)
   let first = head
+  (**T
+    first (2--10) = 2
+  **)
 
   let shift l = (tail l, head l)
+  (**T
+    shift (1--10) = ((2--10), 1)
+    optNF shift [] = None
+    optNF shift [1] = Some ([], 1)
+  **)
   let unshift = cons
+  (**T
+    unshift 0 (1--10) = (0--10)
+  **)
 
   let map f l = rev (rev_map f l)
+  (**T
+    map succ (1--10) = (2--11)
+    map succ [] = []
+    map succ [1] = [2]
+    (let i = ref 0 in ignore(map (fun j -> i := j; j) (1--10)); !i = 10)
+  **)
 
   let rec assocBy f l =
     match l with
       | [] -> raise Not_found
       | (k,v)::t when f k -> v
       | _::t -> assocBy f t
+  (**T
+    assocBy (gt 5) (zip (1--10) ('a'-~'z')) = 'f'
+    optNF (assocBy (gt 10)) (zip (1--10) ('a'-~'z')) = None
+  **)
 
   let lookup e l = optNF (assoc e) l
-  let lookupBy f e l = optNF (assocBy f e) l
+  (**T
+    lookup 4 (zip (1--10) ('a'-~'z')) = Some 'd'
+    lookup 11 (zip (1--10) ('a'-~'z')) = None
+  **)
+  let lookupBy f l = optNF (assocBy f) l
+  (**T
+    lookupBy (gt 5) (zip (1--10) ('a'-~'z')) = Some 'f'
+    lookupBy (gt 10) (zip (1--10) ('a'-~'z')) = None
+  **)
 
   let len = length
 
@@ -1346,6 +1406,15 @@ struct
     range 1 1 = [1]
     range 1 0 = [1; 0]
   **)
+  let charRange s e =
+    if s <= e
+    then generateR (greaterOrEqualTo s) predChar e
+    else generateR (lessOrEqualTo s) succChar e
+  (**T
+    charRange 'a' 'c' = ['a'; 'b'; 'c']
+    charRange 'a' 'a' = ['a']
+    charRange 'b' 'a' = ['b'; 'a']
+  **)
   let init f n =
     let rec aux f n res =
       if n < 0 then res
@@ -1523,6 +1592,8 @@ let (@*) l n = times n l
 (**T
   [1; 2; 3] @* 3 = [1; 2; 3; 1; 2; 3; 1; 2; 3]
 **)
+
+let (-~) = charRange
 
 
 
