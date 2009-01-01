@@ -934,15 +934,21 @@ struct
   **)
 
   let nth i l = try List.nth l (normalizeIndex i l)
-                with Failure "nth" -> raise Not_found
+                with _ -> raise Not_found
   (**T
     nth 1 (1--10) = 2
     nth (-3) (1--10) = 8
     optNF (nth 1) [1] = None
     optNF (nth 0) [] = None
+    optNF (nth (-1)) [] = None
     optNF (nth (-1)) [1] = Some 1
   **)
-  let ($$) = List.nth
+  let ($$) l i = nth i l
+  (**T
+    (1--10) $$ -1 = 10
+    (1--10) $$ 3 = 4
+    optNF (fun l -> l $$ 0) [] = None
+  **)
 
   let cons x xs = x::xs
   let head = function [] -> raise Not_found | (h::_) -> h
