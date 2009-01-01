@@ -100,7 +100,19 @@ let const x y = x
 (* Option combinators *)
 
 let some x = Some x
+(**T
+  some 10 = Some 10
+**)
 let none x = None
+(**T
+  none 10 = None
+**)
+
+let isSome o = (o <> None)
+(**T
+  isSome (Some 10) = true
+  isSome (None) = false
+**)
 
 let opt_or o y = match o with Some x -> x | None -> y
 (**T
@@ -108,6 +120,10 @@ let opt_or o y = match o with Some x -> x | None -> y
   opt_or (Some 10) 0 = 10
 **)
 let (|?) = opt_or
+(**T
+  Some 5 |? 0 = 5
+  None |? 0 = 0
+**)
 let optOr y o = match o with Some x -> x | None -> y
 (**T
   optOr 0 None = 0
@@ -115,6 +131,10 @@ let optOr y o = match o with Some x -> x | None -> y
 **)
 
 let optMap f o = match o with Some x -> Some (f x) | None -> None
+(**T
+  optMap succ (Some 10) = Some 11
+  optMap succ (None) = None
+**)
 
 let maybe v f o = match o with Some x -> f x | None -> v
 (**T
@@ -167,9 +187,33 @@ let maybeNF v f o = maybeEx Not_found v f o
 (* Exceptions to options *)
 
 let optE f o = maybeE None (some @. f) o
+(**T
+  optE last [] = None
+  optE last [1] = Some 1
+**)
 let optEx ex f o = maybeEx ex None (some @. f) o
+(**T
+  optEx Not_found last [] = None
+  optEx Not_found last [1] = Some 1
+  optEx (Failure "hi") (fun _ -> failwith "hi") 0 = None
+  optE (fun _ -> optEx (Failure "hi") (fun _ -> failwith "hi") 0) 0 = Some None
+  optE (fun _ -> optEx (Failure "ho") (fun _ -> failwith "hi") 0) 0 = None
+**)
 let optExl exl f o = maybeExl exl None (some @. f) o
+(**T
+  optExl [Not_found] last [] = None
+  optExl [Failure "hi"; Not_found] last [1] = Some 1
+  optExl [Failure "hi"; Not_found] (fun _ -> failwith "hi") 0 = None
+  optE (fun _ -> optExl [Failure "hi"; Failure "ho"] (fun _ -> failwith "hi") 0) 0 = Some None
+  optE (fun _ -> optExl [Failure "hi"; Failure "ho"] (fun _ -> failwith "ho") 0) 0 = Some None
+  optE (fun _ -> optExl [Failure "hi"; Failure "ho"] (fun _ -> failwith "ha") 0) 0 = None
+**)
 let optEOF f o = maybeEOF None (some @. f) o
+(**T
+  optEOF (fun i -> i) 0 = Some 0
+  optEOF (fun i -> raise End_of_file) 0 = None
+  optE (fun _ -> optEOF last []) 0 = None
+**)
 let optNF f o = maybeEx Not_found None (some @. f) o
 (**T
   optNF last [] = None
@@ -184,6 +228,10 @@ let finally finaliser f x =
   finaliser x;
   r
 (**T
+  (let i = ref 0 in finally (fun j -> j := 1) (fun j -> j := 2) i; !i = 1)
+  (let i = ref 0 in finally (fun j -> j := 1) (fun j -> ()) i; !i = 1)
+  (let i = ref 0 in ignore (optE (finally (fun j -> j := 1) (fun j -> failwith "")) i); !i = 1)
+  optE (finally (fun j -> j := 1) (fun j -> failwith "")) (ref 0) = None
 **)
 
 
@@ -253,7 +301,16 @@ let charCode = int_of_char
 let ord = int_of_char
 let chr = char_of_int
 let string_of_char c = String.make 1 c
-let char_of_string s = if String.length s <> 1 then None else Some (s.[0])
+(**T
+  string_of_char 'c' = "c"
+**)
+let char_of_string s =
+  if String.length s <> 1 then None else Some (String.unsafe_get s 0)
+(**T
+  char_of_string "" = None
+  char_of_string "foo" = None
+  char_of_string "f" = Some 'f'
+**)
 
 
 (* Unfolds and recursion *)
