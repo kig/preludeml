@@ -917,8 +917,31 @@ struct
   include List
 
   let reverse = rev
+  (**T
+    reverse (1--10) = (10--1)
+    reverse [] = []
+  **)
 
-  let nth i l = List.nth l i
+  let normalizeIndex i s = if i < 0 then (length s) + i else i
+  (**T
+    normalizeIndex 0 [] = 0
+    normalizeIndex 0 (1--10) = 0
+    normalizeIndex 2 (1--10) = 2
+    normalizeIndex (-1) (1--10) = 9
+    normalizeIndex (-2) (1--10) = 8
+    normalizeIndex (-1) (1--2) = 1
+    normalizeIndex (-2) (1--2) = 0
+  **)
+
+  let nth i l = try List.nth l (normalizeIndex i l)
+                with Failure "nth" -> raise Not_found
+  (**T
+    nth 1 (1--10) = 2
+    nth (-3) (1--10) = 8
+    optNF (nth 1) [1] = None
+    optNF (nth 0) [] = None
+    optNF (nth (-1)) [1] = Some 1
+  **)
   let ($$) = List.nth
 
   let cons x xs = x::xs
