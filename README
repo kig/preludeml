@@ -1,5 +1,6 @@
 Prelude.ml: an OCaml stdlib replacement with a Haskellish flavour.
 
+
 Requirements:
   pcre, netstring (ocaml-net)
   oUnit for the tests
@@ -10,8 +11,11 @@ Compile:
 Run tests:
   omake test
 
-Features:
+Licensed under the MIT license.
 
+
+Features
+--------
 A more consistent interface across lists, arrays, strings and bytestrings.
 Bytestrings, strings wrapped in char_of_int / int_of_char.
 Parallel combinators for (1D) Bigarrays and the aforementioned collections.
@@ -21,27 +25,34 @@ Path utilities.
 IO utilities.
 User/group utilities.
 Time utilities.
-Function combinators, option combinators, exception combinators, 
+Function combinators, option combinators, exception combinators,
 tuple combinators, comparisons, conversions, recursions, floats, ints,
 hashes, maps, unfolds, folds, scans, spans, slices and subs.
-Everything in a single module for a very scripting-like experience.
+
+Everything in a single module for a very scripting language -like experience.
 
 
-There are two versions here, a (currently) more fully tested 
+There are two versions here, a (currently) more fully tested
 prelude.ml in this directory, and a rewritten src/prelude.ml
 which has more stuff and a lower tests/functions-ratio.
 
-Latest news:
-  - in the progress of writing a more complete set of tests
-    for src/prelude.ml
+I have aimed to keep the list functions tail-recursive, the trade-off between a
+speed loss from reversing lists and having support for arbitrary length lists
+weighing towards the latter in my scales.
+
+
+Latest news
+-----------
+  - in the progress of writing a more complete set of tests for src/prelude.ml
   - added the testing framework
   - merged all the files in src/ into a single src/prelude.ml
 
 
-Examples:
+Examples
+--------
 
-(* who owns the last modified file in /tmp *)
-lsFull "/tmp" |> maximumBy mtime |> fileOwner |> puts
+(* my last modified file in /tmp *)
+lsFull "/tmp" |> filter (eq (currentUid ()) @. fileUid) |> maximumBy mtime
 
 (* concatenate files a, b and c into d *)
 concatFiles "d" ["a"; "b"; "c"]
@@ -63,12 +74,22 @@ bpinit (fun i -> ((buget s1 i) + (buget s2 i)) / 2) (min (blen s1) (blen s2))
 
 
 As you may notice, the different collections have different prefixes for the
-function names. List functions have no prefix, Array functions have 'a', 
-String functions have 's', Bytestring functions have 'b' and Bigarray 
+function names. List functions have no prefix, Array functions have 'a',
+String functions have 's', Bytestring functions have 'b' and Bigarray
 functions have 'ba'. Additionally, float functions use a 'f' suffix,
 e.g. sumf [1.0; 2.0] vs. sum [1; 2].
 
-There are PreList, PreArray, PreString and Bytestring modules for the 
-collections as well, but do note that they take some liberties with the 
-argument orders of some functions, e.g. Array.init : int -> (int -> 'a) vs.
-PreArray.init : (int -> 'a) -> int.
+There are PreList, PreArray, PreString and Bytestring modules for the
+collections as well, but do note that they take some liberties with the
+argument orders of some functions in the name of easier point-free composition,
+e.g. Array.init : int -> (int -> 'a) -> 'a array
+ vs. PreArray.init : (int -> 'a) -> int -> 'a array.
+
+
+Development
+-----------
+http://www.github.com/kig/preludeml/tree/master
+
+Contact
+-------
+Ilmari Heikkinen <ilmari.heikkinen@gmail.com>
