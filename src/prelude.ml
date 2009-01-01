@@ -3340,6 +3340,10 @@ let (--^) = PreString.range
 
 (* String specific shortcuts *)
 
+let uppercase = String.uppercase
+let lowercase = String.lowercase
+let capitalize = String.capitalize
+
 let strip = PreString.strip
 
 let split = PreString.split

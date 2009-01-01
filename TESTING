@@ -1,0 +1,13 @@
+When writing tests, try to write the following cases:
+
+1. common use
+2. zero-element cases (empty list, int 0, etc.)
+3. exception triggers (wrap like optNF last [] = None, use specific exceptions)
+4. negative-element cases (e.g. negative indices)
+5. one-element cases ([1], "a", 1, ...)
+
+6. if the domain of the function is small, how about an exhaustive check?
+   e.g. smap Char.uppercase ('\x00'--^'\xff') = uppercase ('\000'--^'\255')
+
+7. in-order checks for iterators where possible and sensible
+   e.g. (let i = ref 0 in ignore (map (fun j -> i:=j;j) (1--10)); !i = 10)
