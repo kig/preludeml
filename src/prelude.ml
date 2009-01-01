@@ -488,6 +488,10 @@ let invoke f x =
         ignore (Unix.waitpid [] pid);
         close_in input;
         match v with `Res x -> x | `Exn e -> raise e
+(**T
+  invoke average (1--10) () = average (1--10)
+  invoke aaveragef [|1.;2.;3.|] () = aaveragef [|1.;2.;3.|]
+**)
 
 (*
   The "par_"-functions are intended as plumbing to build other functions
@@ -541,6 +545,9 @@ let par_map ?process_count f l =
       | [] -> (List.rev res) @ (List.rev_map (fun f -> f ()) procs)
       | (h::t) -> aux f (n+1) ((invoke f h) :: procs) res t in
   aux f 0 [] [] l
+(**T
+  par_map succ (1--10) = map succ (1--10)
+**)
 
 (*
   Splits n into process_count continuous segments,
@@ -576,37 +583,129 @@ let quot f i = (truncate f) / i
   quot 5.0 2 = 2
 **)
 let recip f = 1. /. f
-let signumf f = if f > 0. then 1. else if f < 0. then (-.1.) else 0.
-let logBase base f = log f /. log base
+(**T
+  recip 42. = 1. /. 42.
+  recip 3. = 1. /. 3.
+**)
+let signumf f = if f > 0. then 1. else if f < 0. then (-1.) else 0.
+(**T
+  signumf 42. = 1.
+  signumf (-42.) = -1.
+  signumf 0. = 0.
+**)
+let logBase base f = if base = 10. then log10 f else log f /. log base
+(**T
+  logBase 10. 1000. = log10 1000.
+  absf (logBase 2. 64. -. 6.) < 0.0001
+**)
 let root rt f = f ** (recip rt)
-let absf f = (signumf f) *. f
+(**T
+  root 2. 4. = 2.
+  root 4. 16. = 2.
+**)
+let absf = abs_float
+(**T
+  absf 0.1 = 0.1
+  absf (-0.1) = 0.1
+  absf (-0.0) = 0.0
+  absf (0.0) = 0.0
+**)
 let pi = 4. *. atan 1.
+(**T
+  between 3.14 3.15 pi
+  absf ((sin pi) -. 0.) < 0.00001
+  absf ((cos pi) -. (-1.)) < 0.00001
+  absf ((sin (2.*.pi)) -. 0.) < 0.00001
+  absf ((cos (2.*.pi)) -. 1.) < 0.00001
+**)
 let addf = (+.)
+(**T
+  addf 1.0 2.0 = 1.0 +. 2.0
+**)
 let subtractf a b = b -. a
+(**T
+  (subtractf 1.0) 2.0 = 2.0 -. 1.0
+**)
 let multiplyf = ( *. )
+(**T
+  multiplyf 2.0 3.0 = 2.0 *. 3.0
+**)
 let dividef a b = b /. a
+(**T
+  (dividef 2.0) 3.0 = 3.0 /. 2.0
+**)
 let negatef v = (-.v)
+(**T
+  negatef 0. = 0.
+  negatef 1. = -1.
+  negatef (-1.) = 1.
+**)
 let average2f a b = (a +. b) /. 2.0
+(**T
+  average2f 2.0 3.0 = 2.5
+  average2f 1.0 2.0 = 1.5
+  average2f (-1.) 1. = 0.
+**)
 
 
 (* Integer operations *)
 
 let average2 a b = (a + b) / 2
+(**T
+  average2 2 3 = 2
+  average2 0 2 = 1
+  average2 (-1) 1 = 0
+**)
 let quot_rem a b =
   let q = a / b in
   (q, a - (q*b))
+(**T
+  quot_rem 10 5 = (2, 0)
+  quot_rem 10 3 = (3, 1)
+  quot_rem (-10) 3 = (-3, -1)
+  quot_rem (-10) (-3) = (3, -1)
+**)
 let rem a b = a mod b
+(**T
+  rem 10 5 = 0
+  rem 10 3 = 1
+  rem (-10) 3 = -1
+  rem (-10) (-3) = -1
+**)
 let even x = x mod 2 == 0
+(**T
+  filter even (0--10) = map (multiply 2) (0--5)
+**)
 let odd x = x mod 2 == 1
+(**T
+  filter odd (0--10) = map (add 1 @. multiply 2) (0--4)
+**)
 let signum i = if i > 0 then 1 else if i < 0 then (-1) else 0
+(**T
+  signum 0 = 0
+  signum 41 = 1
+  signum (-41) = -1
+**)
 let succ x = x + 1
+(**T
+  succ 0 = 1
+**)
 let pred x = x - 1
+(**T
+  pred 0 = -1
+**)
 let add = (+)
+(**T
+  add 2 3 = 2 + 3
+**)
 let subtract a b = b - a
 (**T
   map (subtract 10) (11--13) = [1; 2; 3]
 **)
 let multiply = ( * )
+(**T
+  multiply 2 3 = 2 * 3
+**)
 let divide a b = b / a
 (**T
   map (divide 10) [10; 20; 30] = [1; 2; 3]
@@ -616,33 +715,72 @@ let modulo a b = b mod a
   filter (modulo 2 |>. equals 0) (1--10) = [2; 4; 6; 8; 10]
 **)
 let negate v = (-v)
+(**T
+  negate 0 = 0
+  negate 1 = -1
+  negate (-1) = 1
+**)
 
+(* Greatest common divisor *)
 let rec gcd x y = match (abs x), (abs y) with
   | 0,0 -> invalid_arg "Prelude.gcd: gcd 0 0 is undefined"
   | x,0 -> x
   | x,y -> gcd y (rem x y)
+(**T
+  gcd 12 4 = 4
+  gcd 28 21 = 7
+  gcd 21 28 = 7
+  gcd 30 21 = 3
+  gcd 21 30 = 3
+**)
 
+(* Least common multiple *)
 let lcm x y = match x, y with
   | _,0 | 0,_ -> 0
   | x,y -> abs ((x / (gcd x y)) * y)
-
+(**T
+  lcm 12 4 = 12
+  lcm 3 4 = 12
+  lcm 8 70 = 280
+  gcd (lcm 8 70) 8 = 8
+  gcd (lcm 8 70) 70 = 70
+**)
 
 (* Time operations *)
 
 let timeNow = Unix.gettimeofday
+(**T
+  timeNow () > 0.
+**)
 let timeZone = Netdate.localzone
+(**T
+  timeZone <= 60*12
+  timeZone >= -60*12
+**)
 let formatTime ?(zone=timeZone) fmt f = Netdate.format ~fmt (Netdate.create ~zone f)
-let showTime = formatTime "%Y-%m-%d %H:%M:%S%z"
-let showDate = formatTime "%Y-%m-%d"
-let httpDate = formatTime ~zone:0 "%a, %d %b %Y %H:%M:%S GMT"
+(**T
+  formatTime ~zone:0 "%Y-%m-%d" 0. = "1970-01-01"
+  formatTime ~zone:0 "%Y-%m-%d %H:%M:%S%z" 0. = "1970-01-01 00:00:00+0000"
+  formatTime ~zone:0 "%Y-%m-%d %H:%M:%S%z" 3666. = "1970-01-01 01:01:06+0000"
+  formatTime ~zone:(-480) "%Y-%m-%d %z" 0. = "1969-12-31 -0800"
+**)
+let showTime ?zone = formatTime ?zone "%Y-%m-%d %H:%M:%S%z"
+(**T
+  showTime ~zone:0 0. = "1970-01-01 00:00:00+0000"
+**)
+let showDate ?zone = formatTime ?zone "%Y-%m-%d"
+(**T
+  showDate ~zone:0 0. = "1970-01-01"
+**)
+let httpDate f = formatTime ~zone:0 "%a, %d %b %Y %H:%M:%S GMT" f
+(**T
+  httpDate 0. = "Thu, 01 Jan 1970 00:00:00 GMT"
+**)
 
 let second = 1.0
 let minute = 60.0 *. second
 let hour = 60.0 *. minute
 let day = 24.0 *. hour
-let week = 7.0 *. day
-let month = 31.0 *. day
-let year = 365.0 *. day
 
 let sleep = Unix.sleep
 
