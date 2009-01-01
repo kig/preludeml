@@ -1048,18 +1048,54 @@ struct
   **)
 
   let len = length
+  (**T
+    len (1--10) = 10
+  **)
 
   let all = for_all
+  (**T
+    all (gt 5) (1--10) = false
+    all (lt 11) (1--10) = true
+    all (gt 4) [] = true
+  **)
   let any = exists
+  (**T
+    any (gt 5) (1--10) = true
+    any (gt 11) (1--10) = false
+    any (gt 4) [] = false
+  **)
 
   let allEqual l = match l with
     | [] -> true
     | (h::t) -> all ((=) h) t
+  (**T
+    allEqual (1--10) = false
+    allEqual [] = true
+    allEqual (replicate 10 'a') = true
+  **)
 
   let includes x = exists (fun y -> x = y)
+  (**T
+    includes 4 (1--10) = true
+    includes 0 (1--10) = false
+    includes 5 [] = false
+  **)
   let has = includes
+  (**T
+    has 'a' ('a'-~'g') = true
+    has 0 (1--10) = false
+  **)
   let elem = includes
+  (**T
+    elem 'b' ['a'; 'c'] = false
+    elem "foo" ["bar"; "baz"; "foo"] = true
+  **)
   let notElem x lst = not @@ elem x lst
+  (**T
+    notElem 4 (1--10) = false
+    notElem 0 (1--10) = true
+    notElem 5 [] = true
+  **)
 
   let indexOf x lst =
     let rec aux x c l = match l with
@@ -1067,6 +1103,11 @@ struct
       | (h::t) when x = h -> c
       | (h::t) -> aux x (c+1) t in
     aux x 0 lst
+  (**T
+    indexOf 14 (10--20) = 4
+    optNF (indexOf 1) (10--20) = None
+    indexOf 'a' (explode "foobar") = 4
+  **)
 
   let filterWithIndex f s =
     let rec aux f l i res =
@@ -1077,11 +1118,10 @@ struct
     aux f s 0 []
   (**T
     filterWithIndex (fun _ i -> i > 5) (1--9) = (7--9)
+    filterWithIndex (fun _ i -> i > 10) (1--9) = []
+    filterWithIndex (fun _ i -> i > 10) [] = []
   **)
 
-  (**T
-    indexOf 'a' (explode "foobar") = 4
-  **)
   let findIndex p lst =
     let rec aux p c l = match l with
       | [] -> raise Not_found
@@ -1089,6 +1129,8 @@ struct
     aux p 0 lst
   (**T
     findIndex (gt 4) (0--9) = 5
+    optNF (findIndex (gt 4)) (0--3) = None
+    optNF (findIndex (gt 4)) [] = None
   **)
   let findWithIndex p lst =
     let rec aux p c l = match l with
@@ -1097,18 +1139,31 @@ struct
     aux p 0 lst
   (**T
     findWithIndex (gt 4) (2--9) = (5,3)
+    optNF (findWithIndex (gt 4)) (0--3) = None
+    optNF (findWithIndex (gt 4)) [] = None
   **)
 
   let null = function [] -> true | _ -> false
+  (**T
+    null [] = true
+    null (1--10) = false
+  **)
 
   let concatMap f l = concat (map f l)
   (**T
     concatMap ((--) 1) [1;2;3] = [1; 1; 2; 1; 2; 3]
+    concatMap ((--) 1) [2] = [1;2]
+    concatMap ((--) 1) [] = []
   **)
 
   let pick indices l = map (flip nth l) indices
   (**T
     pick [2; 3] (explode "foobar") = ['o'; 'b']
+    pick [] [] = []
+    pick [] (1--10) = []
+    pick [0; -1] (1--10) = [1; 10]
+    optNF (pick [2;3]) [1;2;3] = None
+    optNF (pick [2;3]) [] = None
   **)
   let pickWith funcs l = map ((|>) l) funcs
   (**T
@@ -1994,6 +2049,16 @@ struct
     for i=0 to l-1 do unsafe_set s i (f i) done;
     s
 
+  let range s e =
+    if s > e
+    then init (fun i -> chr (ord s - i)) (ord s - ord e + 1)
+    else init (fun i -> chr (ord s + i)) (ord e - ord s + 1)
+  (**T
+    srange 'A' 'E' = "ABCDE"
+    srange 'C' 'C' = "C"
+    srange 'E' 'A' = "EDCBA"
+  **)
+
   let reverse s =
     let len = length s in
     let s2 = create len in
@@ -2471,6 +2536,16 @@ struct
     let s = create l in
     for i=0 to l-1 do unsafe_set s i (f i) done;
     s
+
+  let range s e =
+    if s > e
+    then init ((-) s) (s-e+1)
+    else init ((+) s) (e-s+1)
+  (**T
+    brange 65 69 = "ABCDE"
+    brange 67 67 = "C"
+    brange 69 65 = "EDCBA"
+  **)
 
   (* Iterators *)
 
@@ -3061,6 +3136,7 @@ let suset = PreString.unsafe_set
 let smake = PreString.make
 let screate = PreString.create
 let sinit = PreString.init
+let srange = PreString.range
 let slen = PreString.length
 let sconcat = PreString.concat
 let sreverse = PreString.reverse
@@ -3178,6 +3254,7 @@ let spmapReduceWithIndex = PreString.pmapReduceWithIndex
 let spmapWithInit = PreString.pmapWithInit
 
 let (^*) = PreString.times
+let (--^) = PreString.range
 
 (* String specific shortcuts *)
 
@@ -3257,6 +3334,7 @@ let buset = Bytestring.unsafe_set
 let bmake = Bytestring.make
 let bcreate = Bytestring.create
 let binit = Bytestring.init
+let brange = Bytestring.range
 let blen = Bytestring.length
 let bconcat = Bytestring.concat
 let breverse = Bytestring.reverse
@@ -3372,6 +3450,10 @@ let bpiterSeqN = Bytestring.piterSeqN
 
 let bpmapReduceWithIndex = Bytestring.pmapReduceWithIndex
 let bpmapWithInit = Bytestring.pmapWithInit
+
+let (--^|) = Bytestring.range
+
+
 
 (* Common filesystem operations *)
 
