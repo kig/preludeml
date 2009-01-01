@@ -788,23 +788,84 @@ let sleep = Unix.sleep
 (* User and group operations *)
 
 let groupByName = Unix.getgrnam
+(**T
+  groupByName "root" = groupByGid (groupGid "root")
+**)
 let groupByGid = Unix.getgrgid
+(**T
+  groupByGid (groupGid "root") = groupByName "root"
+**)
 
 let groupGid name = (groupByName name).Unix.gr_gid
+(**T
+  groupGid "root" >= 0
+**)
 let groupName gid = (groupByGid gid).Unix.gr_name
-let gidMembers gid = (groupByGid gid).Unix.gr_mem
-let groupMembers name = (groupByName name).Unix.gr_mem
+(**T
+  groupName (groupGid "root") = "root"
+**)
+let gidMembers gid = list (groupByGid gid).Unix.gr_mem
+(**T
+  len (gidMembers (groupGid "root")) >= 0
+**)
+let groupMembers name = list (groupByName name).Unix.gr_mem
+(**T
+  len (groupMembers "root") >= 0
+**)
+
 
 let userByName = Unix.getpwnam
+(**T
+  userByName (currentUserName ()) = currentUser ()
+**)
 let userByUid = Unix.getpwuid
+(**T
+  (userByUid (currentUid ())).Unix.pw_uid = currentUid ()
+**)
 
 let userUid name = (userByName name).Unix.pw_uid
+(**T
+  userUid (currentUserName ()) = currentUid ()
+**)
 let userGid name = (userByName name).Unix.pw_gid
+(**T
+  userGid (currentUserName ()) >= 0
+**)
 let userGroup name = groupName (userGid name)
+(**T
+  slen (userGroup (currentUserName ())) >= 0
+**)
 let userGecos name = (userByName name).Unix.pw_gecos
+(**T
+  slen (userGecos (currentUserName ())) >= 0
+**)
 let userDir name = (userByName name).Unix.pw_dir
+(**T
+  slen (userDir (currentUserName ())) >= 0
+**)
 let userShell name = (userByName name).Unix.pw_shell
+(**T
+  slen (userShell (currentUserName ())) >= 0
+**)
 let userName uid = (userByUid uid).Unix.pw_name
+(**T
+  slen (userName (currentUid ())) >= 0
+  userName (currentUid ()) = currentUserName ()
+**)
+
+let currentUid () = Unix.getuid ()
+(**T
+  currentUid () >= 0
+**)
+let currentUserName () = userName (currentUid ())
+(**T
+  userUid (currentUserName ()) = currentUid ()
+**)
+let currentUser () = userByUid (currentUid ())
+(**T
+  (currentUser ()).Unix.pw_uid = currentUid ()
+**)
+
 
 
 (* List *)
