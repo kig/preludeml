@@ -320,10 +320,30 @@ let rec loop f x = f x; loop f x
   loop (print_endline @. input_line) stdin;;
 *)
 let rec recurseOpt f i = match f i with None -> i | Some x -> recurseOpt f x
+(**T
+  recurseOpt (optIf (greaterThan 0 @. fst) (fun (i,l) -> (pred i, if even i then i::l else l))) (10, []) = (0, [2;4;6;8;10])
+**)
 let rec recurseWhile p f i = if p i then recurseWhile p f (f i) else i
+(**T
+  recurseWhile (greaterThan 0 @. fst) (fun (i,l) -> (pred i, if even i then i::l else l)) (10, []) = (0, [2;4;6;8;10])
+**)
 let rec recurseUntil p f i = if p i then i else recurseUntil p f (f i)
+(**T
+  recurseUntil (lessThan 0 @. fst) (fun (i,l) -> (pred i, if even i then i::l else l)) (10, []) = (-1, [0;2;4;6;8;10])
+**)
 let rec recurseTo n f i = if n = i then i else recurseTo n f (f i)
+(**T
+  recurseTo [] tail (1--100) = []
+  recurseTo 100 succ 0 = 100
+  recurseTo "foo" spopped "foobar" = "foo"
+**)
 let rec recurseN f n i = if n <= 0 then i else recurseN f (n-1) (f i)
+(**T
+  recurseN succ (-1) 5 = 5
+  recurseN succ 0 5 = 5
+  recurseN succ 1 5 = 6
+  recurseN succ 10 5 = 15
+**)
 
 let unfoldrOpt f init =
   let rec aux f v l =
@@ -2619,6 +2639,35 @@ let agroupsOf = PreArray.groupsOf
 let asplitInto = PreArray.splitInto
 let atimes = PreArray.times
 
+let afirst = PreArray.first
+let ahead = PreArray.head
+let atail = PreArray.tail
+
+let alast = PreArray.last
+let apopped = PreArray.popped
+
+let apop = PreArray.pop
+let apush = PreArray.push
+
+let ashift = PreArray.shift
+let aunshift = PreArray.unshift
+
+let atake = PreArray.take
+let atakeWhile = PreArray.takeWhile
+
+let adrop = PreArray.drop
+let adropWhile = PreArray.dropWhile
+
+let asplitAt = PreArray.splitAt
+
+let abreak = PreArray.break
+let aspan = PreArray.span
+
+let ainterlace = PreArray.interlace
+
+let areject = PreArray.reject
+let awithout = PreArray.without
+
 let apick = PreArray.pick
 let apickWith = PreArray.pickWith
 
@@ -2718,6 +2767,35 @@ let ssubStride = PreString.subStride
 let sgroupsOf = PreString.groupsOf
 let ssplitInto = PreString.splitInto
 let stimes = PreString.times
+
+let sfirst = PreString.first
+let shead = PreString.head
+let stail = PreString.tail
+
+let slast = PreString.last
+let spopped = PreString.popped
+
+let spop = PreString.pop
+let spush = PreString.push
+
+let sshift = PreString.shift
+let sunshift = PreString.unshift
+
+let stake = PreString.take
+let stakeWhile = PreString.takeWhile
+
+let sdrop = PreString.drop
+let sdropWhile = PreString.dropWhile
+
+let ssplitAt = PreString.splitAt
+
+let sbreak = PreString.break
+let sspan = PreString.span
+
+let sinterlace = PreString.interlace
+
+let sreject = PreString.reject
+let swithout = PreString.without
 
 let spick = PreString.pick
 let spickWith = PreString.pickWith
@@ -2885,6 +2963,35 @@ let bsubStride = Bytestring.subStride
 let bgroupsOf = Bytestring.groupsOf
 let bsplitInto = Bytestring.splitInto
 let btimes = Bytestring.times
+
+let bfirst = Bytestring.first
+let bhead = Bytestring.head
+let btail = Bytestring.tail
+
+let blast = Bytestring.last
+let bpopped = Bytestring.popped
+
+let bpop = Bytestring.pop
+let bpush = Bytestring.push
+
+let bshift = Bytestring.shift
+let bunshift = Bytestring.unshift
+
+let btake = Bytestring.take
+let btakeWhile = Bytestring.takeWhile
+
+let bdrop = Bytestring.drop
+let bdropWhile = Bytestring.dropWhile
+
+let bsplitAt = Bytestring.splitAt
+
+let bbreak = Bytestring.break
+let bspan = Bytestring.span
+
+let binterlace = Bytestring.interlace
+
+let breject = Bytestring.reject
+let bwithout = Bytestring.without
 
 let bpick = Bytestring.pick
 let bpickWith = Bytestring.pickWith
