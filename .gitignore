@@ -7,4 +7,7 @@
 *.omc
 *.cmo
 *.annot
+*.opt
+*.results
+test/unit/auto_t*
 test/run_unit_tests
