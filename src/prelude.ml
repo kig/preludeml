@@ -2973,6 +2973,7 @@ end
 **)
 
 let (^/) = Filename.concat
+let lsFull d = map ((^/) (expandPath d)) (ls d)
 let dirExists d = Sys.file_exists d && Sys.is_directory d
 let isRoot d =
   let fileInode fn = (Unix.stat fn).Unix.st_ino in
@@ -3100,7 +3101,7 @@ let ctime fn = (stat fn).Unix.st_ctime
 
 let readFile filename = withFile filename readAll
 let writeFile filename str = withFileOut filename (flip output_string str)
-let appendFile filename str = withFileAppend filename (flip output_string str)
+let appendToFile filename str = withFileAppend filename (flip output_string str)
 
 let readLines = lines @. readFile
 
@@ -3164,6 +3165,10 @@ let interactAppend f = pipeAppend (unitPipe linePiper f) ()
 
 let appendFileTo oc filename =
   withFile filename (fun ic -> pipeBlocks 4096 tuple () ic oc)
+
+let appendFileToFile dst src = pipeAppendBlocks 4096 tuple () dst src
+let appendFiles dst srcs = iter (appendFileToFile dst) srcs
+let concatFiles dst srcs = withFileOut dst (fun oc -> iter (appendFileTo oc) srcs)
 
 let cp s d = pipeFileBlocks 4096 tuple () s d
 let mv s d =
@@ -3299,6 +3304,11 @@ let bacreateMmap ?(layout=Bigarray.c_layout) ?(shared=true)
 let bacreateShared ?layout kind l =
   bacreateMmap ?layout kind l "/dev/zero"
 
+let par_bainit ?process_count ?layout kind f l =
+  let ba = bacreateShared ?layout kind l in
+  pforN ?process_count (fun i -> Bigarray.Array1.set ba i (f i)) l;
+  ba
+let bapinit = par_bainit
 
 
 (* Hashtables *)
