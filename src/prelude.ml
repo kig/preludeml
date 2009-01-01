@@ -1179,36 +1179,119 @@ struct
     span id [true; false; false; true] = ([true], [false; false; true])
     span (lessOrEqualTo 5) (1--10) = ([1; 2; 3; 4; 5], [6; 7; 8; 9; 10])
   **)
-  let break p = span (not @. p)
+  let break p = span (fun i -> not (p i))
   (**T
     break id [false; false; true; false] = ([false; false], [true; false])
     break (greaterThan 5) (1--10) = ([1; 2; 3; 4; 5], [6; 7; 8; 9; 10])
   **)
-
-  let takeWhile f lst = fst @@ span f lst
-  let take n lst =
+  let splitAt n lst =
     let rec aux c res l = match c, l with
         | x, (h::t) when x > 0 -> aux (c-1) (h::res) t
-        | _ -> rev res in
+        | _, t -> (rev res, t) in
     aux n [] lst
-
-  let rec dropWhile f lst = match lst with
-    | (h::t) when f h -> dropWhile f t
-    | _ -> lst
-  let rec drop n lst = match n, lst with
-    | x, (h::t) when x > 0 -> drop (n-1) t
-    | _ -> lst
-
-  let rec dropWhile2 f a b = match a,b with
-    | (x::xs), (y::ys) when f x y -> dropWhile2 f xs ys
-    | _ -> a,b
-  let rec drop2 n a b = match n,a,b with
-    | c, (x::xs), (y::ys) when c > 0 -> drop2 c xs ys
-    | _ -> a,b
-
-  let splitAt n xs = (take n xs, drop n xs)
   (**T
     splitAt 3 (explode "foobar") = (['f'; 'o'; 'o'], ['b'; 'a'; 'r'])
+  **)
+
+  let takeWhile f lst = fst (span f lst)
+  (**T
+    takeWhile (lt 5) (1--10) = (1--4)
+    takeWhile (lt 5) (6--10) = []
+    takeWhile (lt 5) [] = []
+    takeWhile (lt 5) (1--3) = (1--3)
+  **)
+  let takeUntil f lst = fst (break f lst)
+  (**T
+    takeUntil (gte 5) (1--10) = (1--4)
+    takeUntil (gte 5) (6--10) = []
+    takeUntil (gte 5) [] = []
+    takeUntil (gte 5) (1--3) = (1--3)
+  **)
+  let take n lst = fst (splitAt n lst)
+  (**T
+    take 3 (1--10) = (1--3)
+    take 0 (1--10) = []
+    take 15 (1--10) = (1--10)
+    take 3 [] = []
+    take 0 [] = []
+  **)
+
+  let dropWhile f lst = snd (span f lst)
+  (**T
+    dropWhile (lt 5) (1--10) = (5--10)
+    dropWhile (lt 5) (6--10) = (6--10)
+    dropWhile (lt 5) [] = []
+    dropWhile (lt 5) (1--3) = []
+  **)
+  let dropUntil f lst = snd (break f lst)
+  (**T
+    dropUntil (gte 5) (1--10) = (5--10)
+    dropUntil (gte 5) (6--10) = (6--10)
+    dropUntil (gte 5) [] = []
+    dropUntil (gte 5) (1--3) = []
+  **)
+  let drop n lst = snd (splitAt n lst)
+  (**T
+    drop 3 (1--10) = (4--10)
+    drop 0 (1--10) = (1--10)
+    drop 15 (1--10) = []
+    drop 3 [] = []
+    drop 0 [] = []
+  **)
+
+  let span2 f a b =
+    let rec aux f r1 r2 a b = match a,b with
+      | (x::xs), (y::ys) when f x y -> aux f (x::r1) (y::r2) xs ys
+      | xs, ys -> ((rev r1, rev r2), (xs, ys)) in
+    aux f [] [] a b
+  (**T
+    span2 (=) (1--6) [1;2;3;5] = (((1--3), (1--3)), ((4--6), [5]))
+    span2 (<>) (1--6) (7--1) = (((1--3), (7--5)), ((4--6), (4--1)))
+  **)
+  let break2 f = span2 (fun x y -> not (f x y))
+  (**T
+    break2 (<>) (1--6) [1;2;3;5] = (((1--3), (1--3)), ((4--6), [5]))
+    break2 (=) (1--6) (7--1) = (((1--3), (7--5)), ((4--6), (4--1)))
+  **)
+  let splitAt2 n a b =
+    let rec aux c r1 r2 a b = match c, a, b with
+        | c, (x::xs), (y::ys) when c > 0 -> aux (c-1) (x::r1) (y::r2) xs ys
+        | _, a,b -> ((rev r1, rev r2), (a, b)) in
+    aux n [] [] a b
+  (**T
+    splitAt2 3 (1--6) [1;2;3;5] = (((1--3), (1--3)), ((4--6), [5]))
+    splitAt2 3 (1--6) (7--1) = (((1--3), (7--5)), ((4--6), (4--1)))
+  **)
+
+  let takeWhile2 f a b = fst (span2 f a b)
+  (**T
+    takeWhile2 (=) (1--6) [1;2;3;5] = ((1--3), (1--3))
+    takeWhile2 (<>) (1--6) (7--1) = ((1--3), (7--5))
+  **)
+  let takeUntil2 f a b = fst (break2 f a b)
+  (**T
+    takeUntil2 (<>) (1--6) [1;2;3;5] = ((1--3), (1--3))
+    takeUntil2 (=) (1--6) (7--1) = ((1--3), (7--5))
+  **)
+  let take2 n a b = fst (splitAt2 n a b)
+  (**T
+    take2 3 (1--6) [1;2;3;5] = ((1--3), (1--3))
+    take2 3 (1--6) (7--1) = ((1--3), (7--5))
+  **)
+  let dropWhile2 f a b = snd (span2 f a b)
+  (**T
+    dropWhile2 (=) (1--6) [1;2;3;5] = ((4--6), [5])
+    dropWhile2 (<>) (1--6) (7--1) = ((4--6), (4--1))
+  **)
+  let dropUntil2 f a b = snd (break2 f a b)
+  (**T
+    dropUntil2 (<>) (1--6) [1;2;3;5] = ((4--6), [5])
+    dropUntil2 (=) (1--6) (7--1) = ((4--6), (4--1))
+  **)
+  let drop2 n a b = snd (splitAt2 n a b)
+  (**T
+    drop2 3 (1--6) [1;2;3;5] = ((4--6), [5])
+    drop2 3 (1--6) (7--1) = ((4--6), (4--1))
   **)
 
   let sub first len lst =
@@ -1835,7 +1918,6 @@ struct
     if i + (len-1) * stride >= length a
     then invalid_arg "subStride: index out of bounds";
     init (fun j -> unsafe_get a (i + j*stride)) len
-
 
   (* List-like interface *)
 
