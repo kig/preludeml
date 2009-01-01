@@ -305,9 +305,21 @@ let tuple5 a b c d e = (a,b,c,d,e)
 let tuple6 a b c d e f = (a,b,c,d,e,f)
 let reverseTuple (a,b) = (b,a)
 let trev = reverseTuple
+(**T
+  trev (1,2) = (2,1)
+**)
 let fuple f g a = (f a, g a)
+(**T
+  fuple pred succ 0 = (-1, 1)
+**)
 let fuplel f a = (f a, a)
+(**T
+  fuplel succ 0 = (1, 0)
+**)
 let fupler f a = (a, f a)
+(**T
+  fupler succ 0 = (0, 1)
+**)
 
 
 (* Conversions *)
@@ -321,6 +333,13 @@ let parseFloat = float_of_string
 let showInt = string_of_int
 let showFloat f =
   Pcre.replace ~rex:(Pcre.regexp "\\.$") ~templ:".0" (string_of_float f)
+(**T
+  showFloat 1. = "1.0"
+  showFloat 1.0048 = "1.0048"
+  showFloat (-0.2) = "-0.2"
+  showFloat 1e18 = "1e+18"
+  showFloat 1e-18 = "1e-18"
+**)
 let charCode = int_of_char
 let ord = int_of_char
 let chr = char_of_int
