@@ -1,6 +1,55 @@
 #!/usr/bin/env ruby
+=begin
+make_suite.rb - extract oUnit tests from OCaml comments and print them to stdout
 
-if ARGV.size != 1 
+Copyright (C) 2007-2008  Ilmari Heikkinen <ilmari.heikkinen@gmail.com>
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+
+USAGE:
+
+ruby make_suite.rb filename.ml
+
+where filename.ml contains comments like
+
+(**T
+  (* this test gets an automatic name of form "test_filename_line_X" *)
+  "an expression that evaluates to true" <> ""
+  "and another" <> ""
+**)
+
+(**T named_test
+  foo = foo
+**)
+
+(*** named_assertion_list
+  OUnit.assert_equal "foo" "foo"
+  OUnit.assert_equal "bar" "bar"
+***)
+
+=end
+
+if ARGV.size != 1
   puts "Usage: make_suite <file.ml>"
   exit 1
 end
@@ -23,7 +72,7 @@ data = data.gsub(/\(\*\*\T(.*?)\*\*\)/m){ |match|
   lines = match.split(/\n/)
   head = "List.iter (OUnit.assert_equal ~printer:string_of_bool true) ["
   tail = "]"
-  lines[1..-1].each{|l| 
+  lines[1..-1].each{|l|
     l << ";" if !l.strip.empty? and not l.strip =~ /^\(\*.*?\*\)$/
   }
   [ lines[0], head + lines[1..-2].join("\n") + tail, lines[-1] ].join("\n")
