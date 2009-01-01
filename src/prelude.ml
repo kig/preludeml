@@ -68,17 +68,41 @@ let uncurry f (a, b) = f a b
   uncurry (@) @@ unzip @@ map (fun x -> (x, x+3)) (1--3) = (1--6)
 **)
 let uncurry3 f (a,b,c) = f a b c
+(**T
+  uncurry3 (fun a b c -> a ^ b ^ c) ("a", "b", "c") = "abc"
+**)
 let uncurry4 f (a,b,c,d) = f a b c d
+(**T
+  uncurry4 (fun a b c d -> a ^ b ^ c ^ d) ("a", "b", "c", "d") = "abcd"
+**)
 let uncurry5 f (a,b,c,d,e) = f a b c d e
+(**T
+  uncurry5 (fun a b c d e -> a^b^c^d^e) ("a","b","c","d","e") = "abcde"
+**)
 let uncurry6 f (a,b,c,d,e,g) = f a b c d e g
+(**T
+  uncurry6 (fun a b c d e f -> a^b^c^d^e^f) ("a","b","c","d","e","f") = "abcdef"
+**)
 let curry f a b = f (a, b)
 (**T
   curry reverseTuple 1 2 = (2,1)
 **)
 let curry3 f a b c = f (a,b,c)
+(**T
+  curry3 (fun (a,b,c)->a^b^c) "a" "b" "c" = "abc"
+**)
 let curry4 f a b c d = f (a,b,c,d)
+(**T
+  curry4 (fun (a,b,c,d)->a^b^c^d) "a" "b" "c" "d" = "abcd"
+**)
 let curry5 f a b c d e = f (a,b,c,d,e)
+(**T
+  curry5 (fun (a,b,c,d,e)->a^b^c^d^e) "a" "b" "c" "d" "e" = "abcde"
+**)
 let curry6 f a b c d e g = f (a,b,c,d,e,g)
+(**T
+  curry6 (fun (a,b,c,d,e,f)->a^b^c^d^e^f) "a" "b" "c" "d" "e" "f" = "abcdef"
+**)
 let flip f a b = f b a
 (**T
   (flip map (65--68)) chr = ['A'; 'B'; 'C'; 'D']
