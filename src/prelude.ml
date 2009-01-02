@@ -1377,16 +1377,27 @@ struct
   let uniq ?cmp l = squeeze (sort ?cmp l)
   (**T
     uniq [3;1;2;2;2;3;3;1] = [1; 2; 3]
+    uniq ~cmp:subtract [3;1;2;2;2;3;3;1] = [3;2;1]
+    uniq [] = []
+    uniq [1] = [1]
+    uniq [1;1] = [1]
   **)
 
-  let reject f l = filter (not @. f) l
+  let reject f l = filter (fun i -> not (f i)) l
   (**T
     reject (gt 4) (1--5) = (1--4)
+    reject (gt 4) [] = []
+    reject (gt 0) (1--5) = []
+    reject (gt 5) (1--5) = (1--5)
+    reject (gt 3) (5--1) = (3--1)
   **)
 
   let without x l = filter ((<>) x) l
   (**T
     without 4 [1; 2; 4; 1; 2; 4] = [1; 2; 1; 2]
+    without 4 [] = []
+    without 4 [4] = []
+    without 4 [1] = [1]
   **)
 
   let rec neighbours item items = match items with
@@ -1418,6 +1429,7 @@ struct
     neighbourLists 2 5 (1--10) = ([1], [3; 4; 5; 6; 7])
     neighbourLists 9 3 (1--10) = ([8; 7; 6], [10])
     neighbourLists 0 4 (1--10) = ([], [])
+    neighbourLists 7 3 [] = ([], [])
   **)
 
   let mapWindow f n l =
@@ -1428,11 +1440,15 @@ struct
           let wnd = tail wnd @ [h] in
           aux f wnd t ((f wnd) :: res) in
     let wnd, t = splitAt n l in
-    aux f wnd t [f wnd]
+    if wnd = [] then []
+    else aux f wnd t [f wnd]
   (**T
     mapWindow sum 1 (1--4) = (1--4)
     mapWindow sum 2 (1--4) = [3; 5; 7]
     mapWindow sum 3 (1--4) = [6; 9]
+    mapWindow sum 3 [] = []
+    mapWindow sum 3 [1] = [1]
+    mapWindow sum 3 (1--3) = [6]
   **)
 
   let foldl = fold_left
@@ -1444,6 +1460,8 @@ struct
   (**T
     foldl1 (+) (1--10) = 55
     foldl1 (fun s i -> s ^ i) ["foo"; "bar"; "baz"] = "foobarbaz"
+    optNF (foldl1 (+)) [] = None
+    foldl1 (+) [1] = 1
   **)
 
   let foldr f s l = fold_right f l s
