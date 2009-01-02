@@ -42,10 +42,10 @@ where filename.ml contains comments like
   foo = foo
 **)
 
-(*** named_assertion_list
-  OUnit.assert_equal "foo" "foo"
-  OUnit.assert_equal "bar" "bar"
-***)
+(*** named_raw_test_body
+  assert_equal "foo" "foo";
+  assert_equal "bar" "bar"
+**)
 
 =end
 
