@@ -661,6 +661,14 @@ let pi = 4. *. atan 1.
   absf ((sin (2.*.pi)) -. 0.) < 0.00001
   absf ((cos (2.*.pi)) -. 1.) < 0.00001
 **)
+let succf x = x +. 1.
+(**T
+  succf 0. = 1.
+**)
+let predf x = x -. 1.
+(**T
+  predf 0. = -1.
+**)
 let addf = (+.)
 (**T
   addf 1.0 2.0 = 1.0 +. 2.0
@@ -694,6 +702,28 @@ let squaref x = x *. x
   squaref 0. = 0.
   squaref 2. = 4.
   squaref (-2.) = 4.
+**)
+let isNaN f = classify_float f = FP_nan
+(**T
+  isNaN 1.0 = false
+  isNaN 0.0 = false
+  isNaN (1.0 /. 0.0) = false
+  isNaN (0.0 /. 0.0) = true
+  isNaN nan = true
+  isNaN neg_infinity = false
+  isNaN infinity = false
+**)
+let isSubnormal f = classify_float f = FP_subnormal
+(**T
+  isSubnormal 1.0 = false
+  isSubnormal 1e-320 = true
+  isSubnormal (-1e-320) = true
+  isSubnormal 0.0 = false
+  isSubnormal (1.0 /. 0.0) = false
+  isSubnormal (0.0 /. 0.0) = false
+  isSubnormal nan = false
+  isSubnormal neg_infinity = false
+  isSubnormal infinity = false
 **)
 
 
@@ -1673,11 +1703,49 @@ struct
   **)
 
   let product lst = foldl ( * ) 1 lst
+  (**T
+    product (1--10) = 3628800
+    product [1;2] = 2
+    product [1] = 1
+    product [0] = 0
+    product [] = 1
+  **)
   let productf lst = foldl ( *. ) 1. lst
+  (**T
+    productf (1.--.10.) = 3628800.
+    productf [1.;2.] = 2.
+    productf [1.] = 1.
+    productf [0.] = 0.
+    productf [] = 1.
+  **)
   let sum lst = foldl (+) 0 lst
+  (**T
+    sum (1--10) = 55
+    sum [1;2] = 3
+    sum [1] = 1
+    sum [0] = 0
+    sum [] = 0
+  **)
   let sumf lst = foldl (+.) 0. lst
+  (**T
+    sumf (1.--.10.) = 55.
+    sumf [1.;2.] = 3.
+    sumf [1.] = 1.
+    sumf [0.] = 0.
+    sumf [] = 0.
+  **)
   let average lst = (sum lst) / (length lst)
+  (**T
+    average (1--10) = 5
+    average [1] = 1
+    optEx Division_by_zero average [] = None
+  **)
   let averagef lst = (sumf lst) /. (float (length lst))
+  (**T
+    averagef (1.--.10.) = 5.5
+    averagef [1.] = 1.
+    isNaN (averagef [])
+  **)
 
   let cycle n l =
     let rec aux c lst res =
@@ -1702,6 +1770,15 @@ struct
     range 1 1 = [1]
     range 1 0 = [1; 0]
   **)
+  let rangef s e =
+    if s <= e
+    then generateR (greaterOrEqualTo s) predf e
+    else generateR (lessOrEqualTo s) succf e
+  (**T
+    rangef 1. 3. = [1.; 2.; 3.]
+    rangef 1. 1. = [1.]
+    rangef 1. 0. = [1.; 0.]
+  **)
   let charRange s e =
     if s <= e
     then generateR (greaterOrEqualTo s) predChar e
@@ -1711,6 +1788,13 @@ struct
     charRange 'a' 'a' = ['a']
     charRange 'b' 'a' = ['b'; 'a']
   **)
+  let (--) = range
+  (**T
+    (1--3) = [1; 2; 3]
+    (1--1) = [1]
+    (1--0) = [1; 0]
+  **)
+
   let init f n =
     let rec aux f n res =
       if n < 0 then res
@@ -1731,12 +1815,6 @@ struct
     step 2 1 5 = [1; 3; 5]
     step (-2) 5 1 = [5; 3; 1]
     step (-2) 5 0 = [5; 3; 1]
-  **)
-  let (--) = range
-  (**T
-    (1--3) = [1; 2; 3]
-    (1--1) = [1]
-    (1--0) = [1; 0]
   **)
 
   let replicate n v = init (const v) n
@@ -1883,7 +1961,12 @@ end
 
 include PreList
 
-let (--) = range
+let (--.) = rangef
+(**T
+  (1.--.3.) = [1.; 2.; 3.]
+  (1.--.1.) = [1.]
+  (1.--.0.) = [1.; 0.]
+**)
 let (@*) l n = times n l
 (**T
   [1; 2; 3] @* 3 = [1; 2; 3; 1; 2; 3; 1; 2; 3]
