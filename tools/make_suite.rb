@@ -70,8 +70,8 @@ data = IO.read(file)
 data = data.gsub(/\(\*\*\T(.*?)\*\*\)/m){ |match|
   match[0,4] = "(***"
   lines = match.split(/\n/)
-  head = "List.iter (OUnit.assert_equal ~printer:string_of_bool true) [\n"
-  tail = "\n]"
+  head = "List.iter (OUnit.assert_equal ~printer:string_of_bool true) ["
+  tail = "]"
   lines[1..-1].each{|l|
     l << ";" if !l.strip.empty? and not l.strip =~ /^\(\*.*?\*\)$/
   }
