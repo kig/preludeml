@@ -1455,6 +1455,8 @@ struct
   (**T
     foldl (+) 0 (1--10) = 55
     foldl (fun s b -> s ^ (string_of_int b)) "--" (1--3) = "--123"
+    foldl (+) 1 [] = 1
+    foldl (+) 1 [1] = 2
   **)
   let foldl1 f l = foldl f (head l) (tail l)
   (**T
@@ -1468,48 +1470,128 @@ struct
   (**T
     foldr (+) 0 (1--10) = 55
     foldr (fun a s -> s ^ (string_of_int a)) "--" (1--3) = "--321"
+    foldr (+) 1 [] = 1
+    foldr (+) 1 [1] = 2
   **)
   let foldr1 f l = let l,i = pop l in foldr f i l
   (**T
     foldr1 (+) (1--10) = 55
     foldr1 (fun a s -> s ^ a) ["foo"; "bar"; "baz"] = "bazbarfoo"
+    optNF (foldr1 (+)) [] = None
+    foldr1 (+) [1] = 1
   **)
 
   let scanl f init lst = rev @@ snd @@
     foldl (fun (s,l) i -> let s' = f s i in (s', s'::l)) (init, [init]) lst
   (**T
     scanl multiply 1 (2--5) = [1; 2; 6; 24; 120]
+    scanl multiply 1 [] = [1]
+    scanl multiply 1 [2] = [1; 2]
   **)
   let scanl1 f l = scanl f (head l) (tail l)
   (**T
     scanl1 multiply (1--5) = [1; 2; 6; 24; 120]
+    scanl1 multiply [1] = [1]
+    optNF (scanl1 multiply) [] = None
   **)
 
   let scanr f init lst = snd @@
     foldr (fun i (s,l) -> let s' = f s i in (s', s'::l)) (init, [init]) lst
   (**T
-    scanr multiply 1 @@ [5;4;3;2] = [120; 24; 6; 2; 1]
+    scanr multiply 1 [5;4;3;2] = [120; 24; 6; 2; 1]
+    scanr multiply 1 [] = [1]
+    scanr multiply 1 [2] = [2; 1]
   **)
   let scanr1 f l = let l,i = pop l in scanr f i l
   (**T
-    scanr1 multiply @@ [5;4;3;2;1] = [120; 24; 6; 2; 1]
+    scanr1 multiply [5;4;3;2;1] = [120; 24; 6; 2; 1]
+    scanr1 multiply [1] = [1]
+    optNF (scanr1 multiply) [] = None
   **)
 
 
   let zipWith f a b =
     let rec aux f a b l = match a,b with
         | (x::xs), (y::ys) -> aux f xs ys ((f x y)::l)
-        | _ -> l in
-    rev @@ aux f a b []
+        | _ -> rev l in
+    aux f a b []
+  (**T
+    zipWith (+) (1--10) (1--10) = map (dup (+)) (1--10)
+    zipWith (-) (1--5) (3--1) = [-2; 0; 2]
+    zipWith (-) (1--3) (5--1) = [-4; -2; 0]
+    zipWith (+) [1] (1--10) = [2]
+    zipWith (+) (1--10) [1] = [2]
+    zipWith (+) [1] [1] = [2]
+    zipWith (+) [] (1--10) = []
+    zipWith (+) (1--10) [] = []
+    zipWith (+) [] [] = []
+  **)
   let zip a b = zipWith tuple a b
+  (**T
+    zip (1--3) (3--1) = [(1,3); (2,2); (3,1)]
+    zip (1--500) (3--1) = [(1,3); (2,2); (3,1)]
+    zip (1--3) (3--(-100)) = [(1,3); (2,2); (3,1)]
+    zip (1--4) (3--1) = [(1,3); (2,2); (3,1)]
+    zip (1--3) (3--0) = [(1,3); (2,2); (3,1)]
+    zip (1--3) [3] = [(1,3)]
+    zip [3] (1--3) = [(3,1)]
+    zip (1--3) [] = []
+    zip [] (1--3) = []
+    zip [] [] = []
+  **)
   let unzip = split
+  (**T
+    unzip (zip (1--3) (3--1)) = ((1--3), (3--1))
+    unzip (zip (3--1) (1--3)) = ((3--1), (1--3))
+    unzip [(1,2)] = ([1], [2])
+    unzip [] = ([], [])
+  **)
 
-  let rec zipWith3 f a b c = match a,b,c with
-    | (h1::t1), (h2::t2), (h3::t3) -> (f h1 h2 h3) :: (zipWith3 f t1 t2 t3)
-    | _ -> []
+  let zipWith3 f a b c =
+    let rec aux f a b c res =
+      match a,b,c with
+        | (h1::t1), (h2::t2), (h3::t3) -> aux f t1 t2 t3 ((f h1 h2 h3)::res)
+        | _ -> rev res in
+    aux f a b c []
+  (**T
+    zipWith3 (fun a b c -> a + b + c) (1--100000) (1--100000) (1--100000) = map (multiply 3) (1--100000)
+    zipWith3 (fun a b c -> a^b^c) ["a"] ["b"] ["c";"d"] = ["abc"]
+    zipWith3 (fun a b c -> a + b + c) [1] (1--10) (1--10) = [3]
+    zipWith3 (fun a b c -> a + b + c) (1--10) [1] (1--10) = [3]
+    zipWith3 (fun a b c -> a + b + c) (1--10) (1--10) [1] = [3]
+    zipWith3 (fun a b c -> a + b + c) [1] (1--10) [1] = [3]
+    zipWith3 (fun a b c -> a + b + c) [1] [1] (1--10) = [3]
+    zipWith3 (fun a b c -> a + b + c) (1--10) [] [1] = []
+    zipWith3 (fun a b c -> a + b + c) (1--10) [1] [] = []
+    zipWith3 (fun a b c -> a + b + c) (1--10) [] [] = []
+    zipWith3 (fun a b c -> a + b + c) [] [1] [1] = []
+    zipWith3 (fun a b c -> a + b + c) [] [] [1] = []
+    zipWith3 (fun a b c -> a + b + c) [] [1] [] = []
+    zipWith3 (fun a b c -> a + b + c) [1] [] [] = []
+    zipWith3 (fun a b c -> a + b + c) [] [] [] = []
+  **)
   let zip3 a b c = zipWith3 tuple3 a b c
+  (**T
+    zip3 (1--500) (3--1) (2--5) = [(1,3,2); (2,2,3); (3,1,4)]
+    zip3 (1--10) [2] [3] = [(1,2,3)]
+    zip3 [1] (2--10) [3] = [(1,2,3)]
+    zip3 [1] [2] (3--10) = [(1,2,3)]
+    zip3 [1] [2] [3] = [(1,2,3)]
+    zip3 [] [1] [1] = []
+    zip3 [1] [] [1] = []
+    zip3 [1] [1] [] = []
+    zip3 [1] [] [] = []
+    zip3 [] [1] [] = []
+    zip3 [] [] [1] = []
+    zip3 [] [] [] = []
+  **)
   let unzip3 l =
     foldr (fun (a,b,c) (t1,t2,t3) -> (a::t1, b::t2, c::t3)) ([],[],[]) l
+  (**T
+    unzip3 (zip3 (1--3) (3--1) (2--4)) = ((1--3), (3--1), (2--4))
+    unzip3 [(1,2,3)] = ([1], [2], [3])
+    unzip3 [] = ([], [], [])
+  **)
 
   let iterWithIndex f l = ignore (foldl (fun j i -> f i j; j+1) 0 l)
   let each = iter
