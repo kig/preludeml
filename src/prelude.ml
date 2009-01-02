@@ -689,6 +689,12 @@ let average2f a b = (a +. b) /. 2.0
   average2f 1.0 2.0 = 1.5
   average2f (-1.) 1. = 0.
 **)
+let squaref x = x *. x
+(**T
+  squaref 0. = 0.
+  squaref 2. = 4.
+  squaref (-2.) = 4.
+**)
 
 
 (* Integer operations *)
@@ -762,6 +768,12 @@ let negate v = (-v)
   negate 0 = 0
   negate 1 = -1
   negate (-1) = 1
+**)
+let square x = x * x
+(**T
+  square 0 = 0
+  square 2 = 4
+  square (-2) = 4
 **)
 
 (* Greatest common divisor *)
@@ -1346,8 +1358,22 @@ struct
   **)
 
   let sort ?(cmp=compare) l = List.sort cmp l
+  (**T
+    sort (10--1) = (1--10)
+    sort [] = []
+    sort ~cmp:subtract (1--10) = (10--1)
+    sort ~cmp:subtract [] = []
+  **)
   let sortBy ?(cmp=compare) f l =
     map (fupler f) l |> sort ~cmp:(fun (_,a) (_,b) -> cmp a b) |> map fst
+  (**T
+    sortBy square [-3; 2; 1] = [1; 2; -3]
+    sortBy square [] = []
+    sortBy square [1] = [1]
+    sortBy ~cmp:subtract square [-3; 2; 1] = [-3; 2; 1]
+    sortBy ~cmp:subtract square [] = []
+    sortBy ~cmp:subtract square [1] = [1]
+  **)
   let uniq ?cmp l = squeeze (sort ?cmp l)
   (**T
     uniq [3;1;2;2;2;3;3;1] = [1; 2; 3]
