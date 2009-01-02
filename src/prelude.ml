@@ -1593,11 +1593,31 @@ struct
     unzip3 [] = ([], [], [])
   **)
 
-  let iterWithIndex f l = ignore (foldl (fun j i -> f i j; j+1) 0 l)
+  let iterWithIndex f l =
+    let rec aux f l i = match l with
+      | [] -> ()
+      | (h::t) -> f h i; aux f t (succ i) in
+    aux f l 0
+  (**T
+    (let i = ref 0 and j = ref 0 in iterWithIndex (fun a b -> i:=a; j:=b) (20--30); !i = 30 && !j = 10)
+    iterWithIndex (ignore @.. add) [1] = ()
+    iterWithIndex (ignore @.. add) [] = ()
+  **)
   let each = iter
+  (**T
+    (let i = ref 0 in iter (fun a -> i:=a) (20--30); !i = 30)
+    iter (ignore @. succ) [1] = ()
+    iter (ignore @. succ) [] = ()
+  **)
   let eachWithIndex = iterWithIndex
   let mapWithIndex f l =
     rev (snd (foldl (fun (j,r) i -> (j+1, (f i j)::r)) (0, []) l))
+  (**T
+    mapWithIndex (+) (0--10) = map (multiply 2) (0--10)
+    mapWithIndex (-) (10--20) = replicate 11 10
+    mapWithIndex (+) [] = []
+    mapWithIndex (+) [1] = [1]
+  **)
 
   let diffSorted a b =
     let rec aux a b l =
@@ -1616,6 +1636,12 @@ struct
     diffSorted (1--10) (5--15) = [1; 2; 3; 4]
     diffSorted (5--15) (1--10) = [11; 12; 13; 14; 15]
     diffSorted [3;2;1] [1;0] = [3; 2; 1]
+    diffSorted [1;2] [] = [1;2]
+    diffSorted [] [1;2] = []
+    diffSorted [1] [1] = []
+    diffSorted [1] [] = [1]
+    diffSorted [] [1] = []
+    diffSorted [] [] = []
   **)
 
   let diff a b =
@@ -1638,6 +1664,12 @@ struct
     diff (1--10) (5--15) = [1; 2; 3; 4]
     diff (5--15) (1--10) = [11; 12; 13; 14; 15]
     diff [3;2;1] [1;0] = [3; 2]
+    diff [1;2] [] = [1;2]
+    diff [] [1;2] = []
+    diff [1] [1] = []
+    diff [1] [] = [1]
+    diff [] [1] = []
+    diff [] [] = []
   **)
 
   let product lst = foldl ( * ) 1 lst
