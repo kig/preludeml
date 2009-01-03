@@ -588,7 +588,7 @@ let invoke f x =
    a polling system would fare better with uneven job runtimes
 *)
 let par_iter ?process_count f l =
-  let process_count = process_count |? !global_process_count in
+  let process_count = max 1 (process_count |? !global_process_count) in
   let pop l =
     let rec aux l res =
       match l with
@@ -616,7 +616,7 @@ let par_iter ?process_count f l =
    a polling system would fare better with uneven job runtimes
 *)
 let par_map ?process_count f l =
-  let process_count = process_count |? !global_process_count in
+  let process_count = max 1 (process_count |? !global_process_count) in
   let pop l =
     let rec aux l res =
       match l with
@@ -646,7 +646,7 @@ let par_map ?process_count f l =
   executes each in its own process.
 *)
 let pforN ?process_count f n =
-  let process_count = process_count |? !global_process_count in
+  let process_count = max 1 (process_count |? !global_process_count) in
   let plen = int (ceil (float n /. float process_count)) in
   let process i =
     let start = plen * i in
@@ -2128,7 +2128,7 @@ struct
   (* Parallel iterators *)
 
   let par_mapReduce ?process_count ~combine ~process l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l |> par_map ~process_count process |> combine
   (**T
     par_mapReduce ~combine:concat ~process:(map succ) (1--10) = map succ (1--10)
@@ -2244,33 +2244,87 @@ struct
   let pfoldlSeqN ?process_count n r f init l =
     foldl (fun acc il -> r acc (pfoldl ?process_count r f init il))
           init (groupsOf n l)
-
-  let pfoldl1SeqN ?process_count n f l =
-    pfoldlSeqN ?process_count n f f (first l) (tail l)
+  (**T
+    pfoldlSeqN 3 (+) (+) 0 (1--10) = sum (1--10)
+    pfoldlSeqN ~process_count:2 3 (+) (+) 0 (1--10) = sum (1--10)
+    pfoldlSeqN ~process_count:2 3 (+) (+) 0 [1] = sum [1]
+    pfoldlSeqN ~process_count:1 3 (+) (+) 0 (1--10) = sum (1--10)
+    pfoldlSeqN ~process_count:1 3 (+) (+) 0 [1] = sum [1]
+    pfoldlSeqN ~process_count:0 3 (+) (+) 0 (1--10) = sum (1--10)
+    pfoldlSeqN ~process_count:0 3 (+) (+) 0 [1] = sum [1]
+    pfoldlSeqN ~process_count:3 3 (+) (+) 0 (1--10) = sum (1--10)
+    pfoldlSeqN ~process_count:3 3 (+) (+) 0 [1] = sum [1]
+    pfoldlSeqN ~process_count:2 3 (multiply) (multiply) 1 (1--10) = product (1--10)
+    pfoldlSeqN ~process_count:2 3 (multiply) (multiply) 1 [1] = product [1]
+    optNF (pfoldlSeqN ~process_count:2 3 (+) (+) 0) [] = Some 0
+  **)
 
   let piterSeqN ?process_count n r f l =
     iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
-
+  (**T
+    piterSeqN ~process_count:3 1 ignore succ (1--10) = ()
+    piterSeqN ~process_count:2 2 ignore succ (1--10) = ()
+    piterSeqN ~process_count:1 1 ignore succ (1--10) = ()
+    piterSeqN ~process_count:0 4 ignore succ (1--10) = ()
+    piterSeqN ~process_count:3 1 ignore succ [1] = ()
+    piterSeqN ~process_count:2 6 ignore succ [1] = ()
+    piterSeqN ~process_count:1 1 ignore succ [1] = ()
+    piterSeqN ~process_count:0 1 ignore succ [1] = ()
+    piterSeqN ~process_count:3 2 ignore succ [] = ()
+    piterSeqN ~process_count:2 1 ignore succ [] = ()
+    piterSeqN ~process_count:1 3 ignore succ [] = ()
+    piterSeqN ~process_count:0 1 ignore succ [] = ()
+    piterSeqN 0 ignore succ [] = ()
+    piterSeqN 1 ignore succ (1--10) = ()
+    piterSeqN 1 ignore succ [1] = ()
+  **)
 
   let pinit ?process_count f l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     let plen = int (ceil (float l /. float process_count)) in
     let process i =
       let start = plen * i in
       let len = min plen (l - start) in
       init (fun j -> f (start + j)) len in
     concat (par_map ~process_count process (0--(process_count-1)))
+  (**T
+    pinit succ 10 = (1--10)
+    pinit pred 10 = ((-1)--8)
+    pinit succ 0 = []
+    pinit succ 1 = [1]
+    pinit ~process_count:4 succ 10 = (1--10)
+    pinit ~process_count:3 pred 10 = ((-1)--8)
+    pinit ~process_count:2 succ 0 = []
+    pinit ~process_count:1 pred 10 = ((-1)--8)
+    pinit ~process_count:1 succ 1 = [1]
+    pinit ~process_count:0 succ 1 = [1]
+  **)
 
   let pzipWith ?process_count f a b =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     let len = min (len a) (len b) in
     let plen = int (ceil (float len /. float process_count)) in
     let aspl = groupsOf plen a in
     let bspl = groupsOf plen b in
     concat (par_map ~process_count (uncurry (zipWith f)) (zip aspl bspl))
+  (**T
+    pzipWith (+) (1--10) (1--10) = map (dup (+)) (1--10)
+    pzipWith (-) (1--5) (3--1) = [-2; 0; 2]
+    pzipWith (-) (1--3) (5--1) = [-4; -2; 0]
+    pzipWith (+) [1] (1--10) = [2]
+    pzipWith (+) (1--10) [1] = [2]
+    pzipWith (+) [1] [1] = [2]
+    pzipWith (+) [] (1--10) = []
+    pzipWith (+) (1--10) [] = []
+    pzipWith (+) [] [] = []
+    pzipWith (+) ~process_count:3 (1--10) (1--10) = map (dup (+)) (1--10)
+    pzipWith (-) ~process_count:2 (1--5) (3--1) = [-2; 0; 2]
+    pzipWith (-) ~process_count:1 (1--3) (5--1) = [-4; -2; 0]
+    pzipWith (+) ~process_count:0 [1] (1--10) = [2]
+  **)
 
   let par_mapReduceWithIndex ?process_count ~combine ~process l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l
       |> mapWithIndex tuple
       |> par_map  ~process_count process |> combine
@@ -2280,6 +2334,15 @@ struct
 
   let pmapWithInit init f =
     pmapReduceWithIndex concat (fun (sublist, idx) -> map f (init sublist idx))
+  (**T
+    pmapWithInit ~process_count:2 (fun l i -> if odd i then reverse l else l) succ (0--9) = (1--5) @ (10--6)
+    pmapWithInit ~process_count:2 (fun l i -> if odd i then reverse l else l) succ [0] = [1]
+    pmapWithInit ~process_count:2 (fun l i -> if odd i then reverse l else l) succ [] = []
+    pmapWithInit ~process_count:1 (fun l i -> if odd i then reverse l else l) succ [0] = [1]
+    pmapWithInit ~process_count:1 (fun l i -> if odd i then reverse l else l) succ [] = []
+    pmapWithInit ~process_count:(-1) (fun l i -> if odd i then reverse l else l) succ [0] = [1]
+    pmapWithInit ~process_count:0 (fun l i -> if odd i then reverse l else l) succ [] = []
+  **)
 end
 
 include PreList
@@ -2633,7 +2696,7 @@ struct
   (* Parallel operations *)
 
   let par_mapReduce ?process_count ~combine ~process l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l |> par_map ~process_count process |> combine
 
   let pmapReduce combine process = par_mapReduce ~combine ~process
@@ -2655,7 +2718,7 @@ struct
     PreList.iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
 
   let pinit ?process_count f l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     let plen = int (ceil (float l /. float process_count)) in
     let process i =
       let start = plen * i in
@@ -2664,14 +2727,14 @@ struct
     concat (par_map ~process_count process (0--(process_count-1)))
 
   let pzipWith ?process_count f a b =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     let len = min (length a) (length b) in
     pinit ~process_count (fun i ->
       f (unsafe_get a i) (unsafe_get b i)
     ) len
 
   let par_mapReduceWithIndex ?process_count ~combine ~process l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l
       |> PreList.mapWithIndex tuple
       |> par_map  ~process_count process |> combine
@@ -3116,7 +3179,7 @@ struct
   (* Parallel operations *)
 
   let par_mapReduce ?process_count ~combine ~process l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l |> par_map ~process_count process |> combine
 
   let pmapReduce combine process = par_mapReduce ~combine ~process
@@ -3138,7 +3201,7 @@ struct
     PreList.iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
 
   let pinit ?process_count f l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     let plen = int (ceil (float l /. float process_count)) in
     let process i =
       let start = plen * i in
@@ -3147,14 +3210,14 @@ struct
     concat "" (par_map ~process_count process (0--(process_count-1)))
 
   let pzipWith ?process_count f a b =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     let len = min (length a) (length b) in
     pinit ~process_count (fun i ->
       f (unsafe_get a i) (unsafe_get b i)
     ) len
 
   let par_mapReduceWithIndex ?process_count ~combine ~process l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l
       |> PreList.mapWithIndex tuple
       |> par_map  ~process_count process |> combine
@@ -3475,7 +3538,7 @@ struct
   (* Parallel combinators *)
 
   let par_mapReduce ?process_count ~combine ~process l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l |> par_map ~process_count process |> combine
 
   let pmapReduce combine process = par_mapReduce ~combine ~process
@@ -3497,7 +3560,7 @@ struct
     PreList.iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
 
   let pinit ?process_count f l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     let plen = int (ceil (float l /. float process_count)) in
     let process i =
       let start = plen * i in
@@ -3506,14 +3569,14 @@ struct
     concat (par_map ~process_count process (0--(process_count-1)))
 
   let pzipWith ?process_count f a b =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     let len = min (length a) (length b) in
     pinit ~process_count (fun i ->
       f (unsafe_get a i) (unsafe_get b i)
     ) len
 
   let par_mapReduceWithIndex ?process_count ~combine ~process l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l
       |> PreList.mapWithIndex tuple
       |> par_map  ~process_count process |> combine
@@ -3598,7 +3661,7 @@ struct
     groupsOf plen range
 
   let par_mapReduce ?process_count ~combine ~process l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l |> par_map ~process_count process |> combine
 
   let pmapReduce combine process = par_mapReduce ~combine ~process
@@ -3620,7 +3683,7 @@ struct
     PreList.iter (fun l -> PreList.iter r (pmap ?process_count f l)) (groupsOf n l)
 
   let pzipWith ?process_count f a b =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     let len = min (len a) (len b) in
     let plen = int (ceil (float len /. float process_count)) in
     let aspl = groupsOf plen a in
@@ -3628,7 +3691,7 @@ struct
     PreList.concat (par_map ~process_count (uncurry (zipWith f)) (PreList.zip aspl bspl))
 
   let par_mapReduceWithIndex ?process_count ~combine ~process l =
-    let process_count = process_count |? !global_process_count in
+    let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l
       |> PreList.mapWithIndex tuple
       |> par_map  ~process_count process |> combine
