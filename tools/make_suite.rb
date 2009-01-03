@@ -62,8 +62,8 @@ puts <<EOF
 open OUnit
 open #{mod}
 
-let __iteri f l = ignore (List.fold_left (fun i v -> f v i; i + 1) 0 l)
-let __T_list = __iteri (fun b i ->
+let _iteri f l = ignore (List.fold_left (fun i v -> f v i; i + 1) 0 l)
+let _TL = _iteri (fun b i ->
   OUnit.assert_bool ("Line " ^ string_of_int (i+1) ^ " of bool test") b)
 
 EOF
@@ -74,12 +74,12 @@ data = IO.read(file)
 data = data.gsub(/\(\*\*\T(.*?)\*\*\)/m){ |match|
   match[0,4] = "(***"
   lines = match.split(/\n/)
-  head = "__T_list ["
-  tail = "]"
+  head = "_TL [ "
+  tail = "] "
   lines[1..-1].each{|l|
     l << ";" if !l.strip.empty? and not l.strip =~ /^\(\*.*?\*\)$/
   }
-  [ lines[0], head + lines[1..-2].join("\n") + tail, lines[-1] ].join("\n")
+  [ lines[0], head + lines[1..-2].map{|l| l.strip}.join("\n      ") + tail, lines[-1] ].join("\n")
 }
 
 auto_name = "test_" + File.basename(file).downcase.
