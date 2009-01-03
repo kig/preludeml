@@ -196,26 +196,32 @@ let maybeExl exl v f o =
 (**T
   maybeExl [Not_found] 0 last [] = 0
   maybeExl [Not_found] 0 last [1] = 1
+  maybeExl [Exit; Not_found] 0 last [1] = 1
+  optE (fun _ -> maybeExl [Exit] 0 last []) 0 = None
 **)
 let maybeEOF v f o = maybeEx End_of_file v f o
-(*
-  unfoldlOpt (maybeEOF None (fun ic -> Some (readInt ic, ic)) ic) stdin;;
-*)
+(**T
+  maybeEOF 0 (fun _ -> raise End_of_file) [] = 0
+  maybeEOF 0 (fun _ -> 1) [] = 1
+  optE (fun _ -> maybeEOF 0 (fun _ -> raise Exit) []) 0 = None
+  (* unfoldlOpt (maybeEOF None (fun ic -> Some (readInt ic, ic)) ic) stdin;; *)
+**)
 let maybeNF v f o = maybeEx Not_found v f o
 (**T
   maybeNF 0 last [] = 0
   maybeNF 0 last [1;2;3] = 3
+  optE (fun _ -> maybeNF 0 (fun _ -> raise Exit) []) 0 = None
 **)
 
 
 (* Exceptions to options *)
 
-let optE f o = maybeE None (some @. f) o
+let optE f o = maybeE None (fun v -> Some (f v)) o
 (**T
   optE last [] = None
   optE last [1] = Some 1
 **)
-let optEx ex f o = maybeEx ex None (some @. f) o
+let optEx ex f o = maybeEx ex None (fun v -> Some (f v)) o
 (**T
   optEx Not_found last [] = None
   optEx Not_found last [1] = Some 1
@@ -223,7 +229,7 @@ let optEx ex f o = maybeEx ex None (some @. f) o
   optE (fun _ -> optEx (Failure "hi") (fun _ -> failwith "hi") 0) 0 = Some None
   optE (fun _ -> optEx (Failure "ho") (fun _ -> failwith "hi") 0) 0 = None
 **)
-let optExl exl f o = maybeExl exl None (some @. f) o
+let optExl exl f o = maybeExl exl None (fun v -> Some (f v)) o
 (**T
   optExl [Not_found] last [] = None
   optExl [Failure "hi"; Not_found] last [1] = Some 1
@@ -232,16 +238,17 @@ let optExl exl f o = maybeExl exl None (some @. f) o
   optE (fun _ -> optExl [Failure "hi"; Failure "ho"] (fun _ -> failwith "ho") 0) 0 = Some None
   optE (fun _ -> optExl [Failure "hi"; Failure "ho"] (fun _ -> failwith "ha") 0) 0 = None
 **)
-let optEOF f o = maybeEOF None (some @. f) o
+let optEOF f o = maybeEOF None (fun v -> Some (f v)) o
 (**T
   optEOF (fun i -> i) 0 = Some 0
   optEOF (fun i -> raise End_of_file) 0 = None
   optE (fun _ -> optEOF last []) 0 = None
 **)
-let optNF f o = maybeEx Not_found None (some @. f) o
+let optNF f o = maybeEx Not_found None (fun v -> Some (f v)) o
 (**T
   optNF last [] = None
   optNF last [1;2;3] = Some 3
+  optE (fun _ -> optNF (fun _ -> failwith "hi") []) 0 = None
 **)
 
 
@@ -332,13 +339,22 @@ let parseInt = int_of_string
 let parseFloat = float_of_string
 let showInt = string_of_int
 let showFloat f =
-  Pcre.replace ~rex:(Pcre.regexp "\\.$") ~templ:".0" (string_of_float f)
+  match string_of_float f with
+    | "inf" -> "infinity"
+    | "-inf" -> "-infinity"
+    | s -> Pcre.replace ~rex:(Pcre.regexp "\\.$") ~templ:".0" s
 (**T
   showFloat 1. = "1.0"
   showFloat 1.0048 = "1.0048"
   showFloat (-0.2) = "-0.2"
   showFloat 1e18 = "1e+18"
   showFloat 1e-18 = "1e-18"
+  showFloat infinity = "infinity"
+  showFloat neg_infinity = "-infinity"
+  showFloat 0.0 = "0.0"
+  showFloat (-0.0) = "-0.0"
+  showFloat (0.0 /. 0.0) = "nan"
+  showFloat 1e-320 <> "1e-320"
 **)
 let charCode = int_of_char
 let ord = int_of_char
@@ -346,6 +362,7 @@ let chr = char_of_int
 let string_of_char c = String.make 1 c
 (**T
   string_of_char 'c' = "c"
+  foldl (fun s i -> s ^ string_of_char i) "" ('\001'-~'\255') = ('\001'--^'\255')
 **)
 let char_of_string s =
   if String.length s <> 1 then None else Some (String.unsafe_get s 0)
@@ -359,9 +376,10 @@ let char_of_string s =
 (* Unfolds and recursion *)
 
 let rec loop f x = f x; loop f x
-(*
-  loop (print_endline @. input_line) stdin;;
-*)
+(**T
+  (let i = ref 0 in try loop (fun i -> if !i >= 10 then raise Exit else i := succ !i) i with Exit -> !i = 10)
+  (* loop (print_endline @. input_line) stdin;; *)
+**)
 let rec recurseOpt f i = match f i with None -> i | Some x -> recurseOpt f x
 (**T
   recurseOpt (optIf (greaterThan 0 @. fst) (fun (i,l) -> (pred i, if even i then i::l else l))) (10, []) = (0, [2;4;6;8;10])
@@ -448,11 +466,15 @@ let readN f n i =
   unfoldlWhile (fun (_,v) -> v > 0) (fun (s,c) -> (f s, (s, pred c))) (i, n)
 (**T
   readN (fun i -> i := !i+1; !i) 10 (ref 0) = (1--10)
+  readN (fun i -> i := !i+1; !i) 0 (ref 0) = []
+  readN (fun i -> i := !i+1; !i) (-1) (ref 0) = []
 **)
 
 let forN f n = for i=0 to (n-1) do f i done
 (**T
   (let i = ref 0 in forN (fun j -> i := !i + j) 10; !i = sum (0--9))
+  (let i = ref 0 in forN (fun j -> i := !i + j) 0; !i = 0)
+  (let i = ref 0 in forN (fun j -> i := !i + j) (-1); !i = 0)
 **)
 
 let generateOpt f init =
@@ -491,6 +513,8 @@ let iterate f n s =
 (**T
   iterate succ 10 1 = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10]
   iterate pred 4 1 = [1; 0; -1; -2]
+  iterate pred 0 1 = []
+  iterate pred (-1) 1 = []
 **)
 
 
@@ -533,6 +557,7 @@ let invoke f x =
         match v with `Res x -> x | `Exn e -> raise e
 (**T
   invoke average (1--10) () = average (1--10)
+  invoke sum [] () = sum []
   invoke aaveragef [|1.;2.;3.|] () = aaveragef [|1.;2.;3.|]
 **)
 
@@ -564,6 +589,11 @@ let par_iter ?process_count f l =
       | [] -> List.iter (fun f -> f ()) procs
       | (h::t) -> aux f (n+1) ((invoke f h) :: procs) t in
   aux f 0 [] l
+(**T
+  par_iter (ignore @. succ) (1--10) = ()
+  par_iter (ignore @. succ) [1] = ()
+  par_iter (ignore @. succ) [] = ()
+**)
 
 (* lockstep iteration, unshifting new job after popped job completes
    a polling system would fare better with uneven job runtimes
@@ -590,6 +620,8 @@ let par_map ?process_count f l =
   aux f 0 [] [] l
 (**T
   par_map succ (1--10) = map succ (1--10)
+  par_map succ [1] = map succ [1]
+  par_map succ [] = map succ []
 **)
 
 (*
@@ -606,6 +638,12 @@ let pforN ?process_count f n =
       f j
     done in
   par_iter ~process_count process (Array.to_list (Array.init process_count id))
+(**T
+  pforN (ignore @. succ) 10 = ()
+  pforN (ignore @. succ) 1 = ()
+  pforN (ignore @. succ) 0 = ()
+  pforN (ignore @. succ) (-1) = ()
+**)
 
 let mapReduce partition distribute process combine input =
   partition input |> distribute process |> combine
@@ -621,20 +659,30 @@ let round f = truncate (if f > 0.0 then f +. 0.5 else f -. 0.5)
   round (-0.5) = -1
 **)
 let ceiling = ceil
-let quot f i = (truncate f) / i
 (**T
-  quot 5.0 2 = 2
+  ceiling 0. = 0.
+  ceiling (-0.) = 0.
+  ceiling 0.5 = 1.0
+  ceiling 0.1 = 1.0
+  ceiling (-0.1) = 0.0
+  ceiling (-0.5) = 0.0
 **)
 let recip f = 1. /. f
 (**T
   recip 42. = 1. /. 42.
   recip 3. = 1. /. 3.
+  recip 0. = infinity
+  recip (-0.) = neg_infinity
+  recip (-1.) = -1.
 **)
 let signumf f = if f > 0. then 1. else if f < 0. then (-1.) else 0.
 (**T
   signumf 42. = 1.
   signumf (-42.) = -1.
   signumf 0. = 0.
+  signumf infinity = 1.
+  signumf neg_infinity = -1.
+  signumf nan = 0.
 **)
 let logBase base f = if base = 10. then log10 f else log f /. log base
 (**T
@@ -1749,16 +1797,16 @@ struct
 
   let cycle n l =
     let rec aux c lst res =
-      if c == 0 then res
+      if c == 0 then rev res
       else match lst with
             | [] -> aux c l res
             | (h::t) -> aux (c-1) t (h::res) in
-    match l with
-      | [] -> invalid_arg "cycle"
-      | _ -> reverse @@ aux n l []
+    if l = [] then [] else aux n l []
   (**T
     cycle 5 (1--3) = [1; 2; 3; 1; 2]
     cycle 3 (1--10) = [1; 2; 3]
+    cycle 3 [1] = [1;1;1]
+    cycle 3 [] = []
   **)
 
   let range s e =
