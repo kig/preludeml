@@ -299,6 +299,12 @@ let gte = greaterOrEqualTo
 
 let between a b x = (x >= a) && (x <= b)
 (**T
+  between 2 2 2 = true
+  between 1 2 3 = false
+  between 2 1 3 = false
+  between 1 3 2 = true
+  between 1 2 2 = true
+  between 1 2 1 = true
   filter (between 2 6) (1--10) = (2--6)
 **)
 
@@ -2035,7 +2041,7 @@ struct
     splitInto 0 (1--3) = [(1--3)]
     splitInto (-1) (1--3) = [(1--3)]
   **)
-  let groupBy p l =
+  let groupWith p l =
     let rec aux p v l rl res = match l with
       | [] -> (rev rl) :: res
       | (h::t) when p v h -> aux p v t (h::rl) res
@@ -2043,9 +2049,13 @@ struct
     match l with [] -> []
       | (h::t) -> rev (aux p h t [h] [])
   (**T
-    groupBy (fun x y -> x*x = y*y) [-1; 1; -2; 2; 2; 1] = [[-1;1]; [-2;2;2]; [1]]
+    groupWith (fun x y -> x*x = y*y) [-1; 1; -2; 2; 2; 1] = [[-1;1]; [-2;2;2]; [1]]
+    groupWith (=) (1--3) = [[1]; [2]; [3]]
+    groupWith (=) [1;1;2;2;2;3;3;1] = [[1;1]; [2;2;2]; [3;3]; [1]]
+    groupWith (=) [1] = [[1]]
+    groupWith (=) [] = []
   **)
-  let groupAs f l =
+  let groupBy f l =
     let rec aux f v l rl res = match l with
       | [] -> (rev rl) :: res
       | (h::t) when (f h) = v -> aux f v t (h::rl) res
@@ -2053,11 +2063,20 @@ struct
     match l with [] -> []
       | (h::t) -> rev @@ aux f (f h) t [h] []
   (**T
-    groupAs (fun x -> x*x) [-1; 1; -2; 2; 2; 1] = [[-1;1]; [-2;2;2]; [1]]
+    groupBy (fun x -> x*x) [-1; 1; -2; 2; 2; 1] = [[-1;1]; [-2;2;2]; [1]]
+    groupBy (fun x -> x) (1--3) = [[1]; [2]; [3]]
+    groupBy (fun x -> signum x) (-3--3) = [(-3--(-1)); [0]; (1--3)]
+    groupBy id [1] = [[1]]
+    groupBy id [] = []
   **)
-  let group l = groupAs id l
+  let group l = groupBy id l
   (**T
     group [1;1;2;2;3;1] = [[1;1]; [2;2]; [3]; [1]]
+    group [] = []
+    group [1] = [[1]]
+    group [1;2] = [[1]; [2]]
+    group [1;1;2] = [[1;1]; [2]]
+    group [1;2;2] = [[1]; [2;2]]
   **)
   let count p l =
     let rec aux c p l = match l with
@@ -2066,12 +2085,17 @@ struct
     aux 0 p l
   (**T
     count (gt 5) (0--10) = 5
+    count ((=) 1) (1--10) = 1
+    count ((=) 1) [] = 0
+    count ((=) 1) [1;2;3;1;2;3] = 2
   **)
   let rotate n l =
-    let len = length l in
-    let n = (-n) mod len in
-    let n = if n >= 0 then n else len + n in
-    uncurry (@) (reverseTuple (splitAt n l))
+    if l = [] then l
+    else
+      let len = length l in
+      let n = (-n) mod len in
+      let n = if n >= 0 then n else len + n in
+      uncurry (@) (reverseTuple (splitAt n l))
   (**T
     rotate 1 [1;2;3] = [3;1;2]
     rotate 2 [1;2;3] = [2;3;1]
@@ -2079,6 +2103,12 @@ struct
     rotate (-1) [1;2;3] = [2;3;1]
     rotate (-2) [1;2;3] = [3;1;2]
     rotate (-3) [1;2;3] = [1;2;3]
+    rotate 0 (1--10) = (1--10)
+    rotate 10 (1--10) = (1--10)
+    rotate (-10) (1--10) = (1--10)
+    rotate 0 [] = []
+    rotate 1 [] = []
+    rotate (-1) [] = []
   **)
 
 
