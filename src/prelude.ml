@@ -649,6 +649,115 @@ let mapReduce partition distribute process combine input =
   partition input |> distribute process |> combine
 
 
+(* Integer operations *)
+
+let average2 a b = (a + b) / 2
+(**T
+  average2 2 3 = 2
+  average2 0 2 = 1
+  average2 (-1) 1 = 0
+**)
+let quot_rem a b =
+  let q = a / b in
+  (q, a - (q*b))
+(**T
+  quot_rem 10 5 = (2, 0)
+  quot_rem 10 3 = (3, 1)
+  quot_rem (-10) 3 = (-3, -1)
+  quot_rem (-10) (-3) = (3, -1)
+**)
+let rem a b = a mod b
+(**T
+  rem 10 5 = 0
+  rem 10 3 = 1
+  rem (-10) 3 = -1
+  rem (-10) (-3) = -1
+**)
+let even x = x mod 2 == 0
+(**T
+  filter even (0--10) = map (multiply 2) (0--5)
+**)
+let odd x = x mod 2 == 1
+(**T
+  filter odd (0--10) = map (add 1 @. multiply 2) (0--4)
+**)
+let signum i = if i > 0 then 1 else if i < 0 then (-1) else 0
+(**T
+  signum 0 = 0
+  signum 41 = 1
+  signum (-41) = -1
+  signum max_int = 1
+  signum min_int = -1
+**)
+let succ x = x + 1
+(**T
+  succ 0 = 1
+  succ max_int = min_int
+**)
+let pred x = x - 1
+(**T
+  pred 0 = -1
+  pred min_int = max_int
+**)
+let add = (+)
+(**T
+  add 2 3 = 2 + 3
+**)
+let subtract a b = b - a
+(**T
+  map (subtract 10) (11--13) = [1; 2; 3]
+**)
+let multiply = ( * )
+(**T
+  multiply 2 3 = 2 * 3
+**)
+let divide a b = b / a
+(**T
+  map (divide 10) [10; 20; 30] = [1; 2; 3]
+**)
+let modulo a b = b mod a
+(**T
+  filter (modulo 2 |>. equals 0) (1--10) = [2; 4; 6; 8; 10]
+**)
+let negate v = (-v)
+(**T
+  negate 0 = 0
+  negate 1 = -1
+  negate (-1) = 1
+**)
+let square x = x * x
+(**T
+  square 0 = 0
+  square 2 = 4
+  square (-2) = 4
+**)
+
+(* Greatest common divisor *)
+let rec gcd x y = match (abs x), (abs y) with
+  | 0,0 -> invalid_arg "Prelude.gcd: gcd 0 0 is undefined"
+  | x,0 -> x
+  | x,y -> gcd y (rem x y)
+(**T
+  gcd 12 4 = 4
+  gcd 28 21 = 7
+  gcd 21 28 = 7
+  gcd 30 21 = 3
+  gcd 21 30 = 3
+**)
+
+(* Least common multiple *)
+let lcm x y = match x, y with
+  | _,0 | 0,_ -> 0
+  | x,y -> abs ((x / (gcd x y)) * y)
+(**T
+  lcm 12 4 = 12
+  lcm 3 4 = 12
+  lcm 8 70 = 280
+  gcd (lcm 8 70) 8 = 8
+  gcd (lcm 8 70) 70 = 70
+**)
+
+
 (* Float operations *)
 
 let round f = truncate (if f > 0.0 then f +. 0.5 else f -. 0.5)
@@ -689,10 +798,18 @@ let logBase base f = if base = 10. then log10 f else log f /. log base
   logBase 10. 1000. = log10 1000.
   absf (logBase 2. 64. -. 6.) < 0.0001
 **)
-let root rt f = f ** (recip rt)
+let root rt f =
+  if f < 0.0 then
+    let d, i = modf rt in
+    if d = 0.0 && odd (int i)
+    then -.((-.f) ** (recip rt))
+    else nan
+  else f ** (recip rt)
 (**T
   root 2. 4. = 2.
   root 4. 16. = 2.
+  root 3. (-8.) = -2.
+  isNaN (root 2. (-8.))
 **)
 let absf = abs_float
 (**T
@@ -700,6 +817,9 @@ let absf = abs_float
   absf (-0.1) = 0.1
   absf (-0.0) = 0.0
   absf (0.0) = 0.0
+  absf neg_infinity = infinity
+  absf infinity = infinity
+  isNaN @@ absf nan
 **)
 let pi = 4. *. atan 1.
 (**T
@@ -775,110 +895,8 @@ let isSubnormal f = classify_float f = FP_subnormal
 **)
 
 
-(* Integer operations *)
 
-let average2 a b = (a + b) / 2
-(**T
-  average2 2 3 = 2
-  average2 0 2 = 1
-  average2 (-1) 1 = 0
-**)
-let quot_rem a b =
-  let q = a / b in
-  (q, a - (q*b))
-(**T
-  quot_rem 10 5 = (2, 0)
-  quot_rem 10 3 = (3, 1)
-  quot_rem (-10) 3 = (-3, -1)
-  quot_rem (-10) (-3) = (3, -1)
-**)
-let rem a b = a mod b
-(**T
-  rem 10 5 = 0
-  rem 10 3 = 1
-  rem (-10) 3 = -1
-  rem (-10) (-3) = -1
-**)
-let even x = x mod 2 == 0
-(**T
-  filter even (0--10) = map (multiply 2) (0--5)
-**)
-let odd x = x mod 2 == 1
-(**T
-  filter odd (0--10) = map (add 1 @. multiply 2) (0--4)
-**)
-let signum i = if i > 0 then 1 else if i < 0 then (-1) else 0
-(**T
-  signum 0 = 0
-  signum 41 = 1
-  signum (-41) = -1
-**)
-let succ x = x + 1
-(**T
-  succ 0 = 1
-**)
-let pred x = x - 1
-(**T
-  pred 0 = -1
-**)
-let add = (+)
-(**T
-  add 2 3 = 2 + 3
-**)
-let subtract a b = b - a
-(**T
-  map (subtract 10) (11--13) = [1; 2; 3]
-**)
-let multiply = ( * )
-(**T
-  multiply 2 3 = 2 * 3
-**)
-let divide a b = b / a
-(**T
-  map (divide 10) [10; 20; 30] = [1; 2; 3]
-**)
-let modulo a b = b mod a
-(**T
-  filter (modulo 2 |>. equals 0) (1--10) = [2; 4; 6; 8; 10]
-**)
-let negate v = (-v)
-(**T
-  negate 0 = 0
-  negate 1 = -1
-  negate (-1) = 1
-**)
-let square x = x * x
-(**T
-  square 0 = 0
-  square 2 = 4
-  square (-2) = 4
-**)
-
-(* Greatest common divisor *)
-let rec gcd x y = match (abs x), (abs y) with
-  | 0,0 -> invalid_arg "Prelude.gcd: gcd 0 0 is undefined"
-  | x,0 -> x
-  | x,y -> gcd y (rem x y)
-(**T
-  gcd 12 4 = 4
-  gcd 28 21 = 7
-  gcd 21 28 = 7
-  gcd 30 21 = 3
-  gcd 21 30 = 3
-**)
-
-(* Least common multiple *)
-let lcm x y = match x, y with
-  | _,0 | 0,_ -> 0
-  | x,y -> abs ((x / (gcd x y)) * y)
-(**T
-  lcm 12 4 = 12
-  lcm 3 4 = 12
-  lcm 8 70 = 280
-  gcd (lcm 8 70) 8 = 8
-  gcd (lcm 8 70) 70 = 70
-**)
-
+(* Char operations *)
 
 let predChar c = chr (ord c - 1)
 (**T
