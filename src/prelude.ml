@@ -2328,9 +2328,25 @@ struct
     splitInto process_count l
       |> mapWithIndex tuple
       |> par_map  ~process_count process |> combine
+  (**T
+    par_mapReduceWithIndex ~process_count:5 ~combine:(reverse @. concat) ~process:(fun (l, idx) -> map succ (if odd idx then [] else l)) (0--8) = [9;6;5;2;1]
+    par_mapReduceWithIndex ~process_count:5 ~combine:(reverse @. concat) ~process:(fun (l, idx) -> map succ (if odd idx then [] else l)) [] = []
+    par_mapReduceWithIndex ~process_count:5 ~combine:(reverse @. concat) ~process:(fun (l, idx) -> map succ (if odd idx then [] else l)) [0] = [1]
+    par_mapReduceWithIndex ~process_count:0 ~combine:(reverse @. concat) ~process:(fun (l, idx) -> map succ (if odd idx then [] else l)) [0] = [1]
+    par_mapReduceWithIndex ~process_count:0 ~combine:(reverse @. concat) ~process:(fun (l, idx) -> map succ (if odd idx then [] else l)) [] = []
+    par_mapReduceWithIndex ~process_count:0 ~combine:(reverse @. concat) ~process:(fun (l, idx) -> map succ (if odd idx then [] else l)) (0--9) = (10--1)
+  **)
 
   let pmapReduceWithIndex combine process =
     par_mapReduceWithIndex ~combine ~process
+  (**T
+    pmapReduceWithIndex ~process_count:5 (reverse @. concat) (fun (l, idx) -> map succ (if odd idx then [] else l)) (0--8) = [9;6;5;2;1]
+    pmapReduceWithIndex ~process_count:5 (reverse @. concat) (fun (l, idx) -> map succ (if odd idx then [] else l)) [] = []
+    pmapReduceWithIndex ~process_count:5 (reverse @. concat) (fun (l, idx) -> map succ (if odd idx then [] else l)) [0] = [1]
+    pmapReduceWithIndex ~process_count:0 (reverse @. concat) (fun (l, idx) -> map succ (if odd idx then [] else l)) [0] = [1]
+    pmapReduceWithIndex ~process_count:0 (reverse @. concat) (fun (l, idx) -> map succ (if odd idx then [] else l)) [] = []
+    pmapReduceWithIndex ~process_count:0 (reverse @. concat) (fun (l, idx) -> map succ (if odd idx then [] else l)) (0--9) = (10--1)
+  **)
 
   let pmapWithInit init f =
     pmapReduceWithIndex concat (fun (sublist, idx) -> map f (init sublist idx))
