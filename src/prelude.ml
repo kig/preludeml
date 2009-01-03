@@ -302,6 +302,17 @@ let between a b x = (x >= a) && (x <= b)
   filter (between 2 6) (1--10) = (2--6)
 **)
 
+let maxBy f a b = if (f a) >= (f b) then a else b
+(**T
+  maxBy square 2 (-3) = -3
+  maxBy square 2 (-1) = 2
+**)
+let minBy f a b = if (f a) <= (f b) then a else b
+(**T
+  minBy square 2 (-3) = 2
+  minBy square 2 (-1) = -1
+**)
+
 
 (* Tuples *)
 
@@ -1449,6 +1460,9 @@ struct
   (**T
     sub 2 3 (explode "foobar") = ['o'; 'b'; 'a']
     sub (-3) 2 (explode "foobar") = ['b'; 'a']
+    sub 0 0 (1--10) = []
+    sub 0 1 (1--10) = [1]
+    sub 0 (-1) (1--10) = []
   **)
   let slice first last lst =
     let len = if first < 0 || last < 0 then length lst else 0 in
@@ -1458,6 +1472,10 @@ struct
   (**T
     slice 2 3 (explode "foobar") = ['o'; 'b']
     slice (-3) (-1) (explode "foobar") = ['b'; 'a'; 'r']
+    slice 0 0 (1--10) = [1]
+    slice 0 1 (1--10) = [1; 2]
+    slice 1 0 (1--10) = []
+    slice 0 (-1) (1--10) = (1--10)
   **)
 
   let interlace elem l =
@@ -1468,6 +1486,9 @@ struct
   (**T
     interlace 0 [1; 2; 3] = [1; 0; 2; 0; 3]
     implode @@ interlace '-' @@ explode "abcde" = "a-b-c-d-e"
+    interlace 0 [] = []
+    interlace 0 [1] = [1]
+    interlace 0 [1;2] = [1; 0; 2]
   **)
 
   let compact l = map (function Some x -> x | _ -> failwith "compact")
@@ -1475,6 +1496,10 @@ struct
   (**T
     compact [None; Some 10; Some 5; None; None; Some 8] = [10; 5; 8]
     compact @@ map (optIf (greaterThan 0) id) (-3--3) = [1; 2; 3]
+    compact [] = []
+    compact [None] = []
+    compact [Some 'a'] = ['a']
+    compact [Some 'a'; None] = ['a']
   **)
 
   let squeeze l =
@@ -1487,14 +1512,21 @@ struct
   (**T
     squeeze [1;2;2;2;3;3;1] = [1; 2; 3; 1]
     squeeze @@ sort [1;2;2;2;3;3;1] = [1; 2; 3]
+    squeeze [] = []
+    squeeze [1] = [1]
+    squeeze [1;1] = [1]
+    squeeze [1;1;2] = [1;2]
+    squeeze [2;1;1] = [2;1]
   **)
 
   let sort ?(cmp=compare) l = List.sort cmp l
   (**T
     sort (10--1) = (1--10)
     sort [] = []
+    sort [1] = [1]
     sort ~cmp:subtract (1--10) = (10--1)
     sort ~cmp:subtract [] = []
+    sort ['a'; 'c'; 'b'] = ('a'-~'c')
   **)
   let sortBy ?(cmp=compare) f l =
     map (fupler f) l |> sort ~cmp:(fun (_,a) (_,b) -> cmp a b) |> map fst
@@ -1513,6 +1545,8 @@ struct
     uniq [] = []
     uniq [1] = [1]
     uniq [1;1] = [1]
+    uniq [1;1;2] = [1;2]
+    uniq [2;1;1] = [1;2]
   **)
 
   let reject f l = filter (fun i -> not (f i)) l
@@ -1905,6 +1939,8 @@ struct
   (**T
     init succ 10 = (1--10)
     init pred 10 = ((-1)--8)
+    init succ 0 = []
+    init succ 1 = [1]
   **)
   let step d s e =
     if d == 0 then failwith "Prelude.step: zero step" else
@@ -1917,43 +1953,87 @@ struct
     step 2 1 5 = [1; 3; 5]
     step (-2) 5 1 = [5; 3; 1]
     step (-2) 5 0 = [5; 3; 1]
+    step 2 0 0 = [0]
+    step 2 0 (-1) = []
+    step 2 0 (-5) = []
+    step (-2) 0 0 = [0]
+    step (-2) 0 1 = []
+    step (-2) 0 (-1) = [0]
+    step (-2) 0 (-5) = [0; -2; -4]
   **)
 
   let replicate n v = init (const v) n
   (**T
     replicate 5 '-' = ['-'; '-'; '-'; '-'; '-']
+    replicate 1 '-' = ['-']
     replicate 0 '-' = []
     replicate (-1) '-' = []
   **)
   let times n l = concat (replicate n l)
   (**T
     times 3 [1; 2; 3] = [1; 2; 3; 1; 2; 3; 1; 2; 3]
+    times 0 (1--10) = []
+    times 1 (1--10) = (1--10)
+    times (-1) (1--10) = []
   **)
 
   let maximum lst = foldl1 max lst
   (**T
     maximum [1;2;3;0;1;4;3;1] = 4
+    maximum [1] = 1
+    optNF maximum [] = None
   **)
-  let maxBy f a b = if (f a) >= (f b) then a else b
   let maximumBy f lst = foldl1 (maxBy f) lst
+  (**T
+    maximumBy square (-3 -- 2) = -3
+    maximumBy square (-1 -- 2) = 2
+    optNF (maximumBy square) [] = None
+  **)
   let maximumByWith f lst = maximumBy snd (map (fupler f) lst)
+  (**T
+    maximumByWith square (-3 -- 2) = (-3, 9)
+    maximumByWith square (-1 -- 2) = (2, 4)
+    optNF (maximumByWith square) [] = None
+  **)
   let minimum lst = foldl1 min lst
   (**T
     minimum [1;2;3;0;1;4;3;1] = 0
+    minimum [1] = 1
+    optNF minimum [] = None
   **)
-  let minBy f a b = if (f a) <= (f b) then a else b
-  let minimumBy f lst = foldl1 (minBy f) lst
-  let minimumByWith f lst = minimumBy snd (map (fupler f) lst)
 
-  let groupsOf n l = if n <= 1 then [l]
-    else unfoldlUntil null (splitAt n) l
+  let minimumBy f lst = foldl1 (minBy f) lst
+  (**T
+    minimumBy square (-3 -- (-1)) = -1
+    minimumBy square (-1 -- 2) = 0
+    optNF (minimumBy square) [] = None
+  **)
+  let minimumByWith f lst = minimumBy snd (map (fupler f) lst)
+  (**T
+    minimumByWith square (-3 -- (-1)) = (-1, 1)
+    minimumByWith square (-1 -- 2) = (0, 0)
+    optNF (minimumByWith square) [] = None
+  **)
+
+  let groupsOf n l = unfoldlUntil null (splitAt (max 1 n)) l
   (**T
     groupsOf 3 (1--10) = [[1; 2; 3]; [4; 5; 6]; [7; 8; 9]; [10]]
+    groupsOf 3 [] = []
+    groupsOf 3 [1] = [[1]]
+    groupsOf 3 (1--3) = [(1--3)]
+    groupsOf 5 (1--3) = [(1--3)]
+    groupsOf 3 (1--4) = [(1--3); [4]]
+    groupsOf 1 (1--3) = [[1]; [2]; [3]]
+    groupsOf 0 (1--3) = [[1]; [2]; [3]]
+    groupsOf (-1) (1--3) = [[1]; [2]; [3]]
   **)
-  let splitInto n l = if n <= 1 then [l]
-    else groupsOf (int (ceil (float (len l) /. float n))) l
+  let splitInto n l = groupsOf (int (ceil (float (len l) /. float (max 1 n)))) l
   (**T
     splitInto 4 (1--10) = [[1; 2; 3]; [4; 5; 6]; [7; 8; 9]; [10]]
+    splitInto 3 (1--3) = [[1]; [2]; [3]]
+    splitInto 1 (1--3) = [(1--3)]
+    splitInto 0 (1--3) = [(1--3)]
+    splitInto (-1) (1--3) = [(1--3)]
   **)
   let groupBy p l =
     let rec aux p v l rl res = match l with
