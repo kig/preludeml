@@ -832,10 +832,14 @@ let pi = 4. *. atan 1.
 let succf x = x +. 1.
 (**T
   succf 0. = 1.
+  succf max_float = max_float
+  succf min_float = 1.
 **)
 let predf x = x -. 1.
 (**T
   predf 0. = -1.
+  predf (-.max_float) = (-.max_float)
+  predf min_float = -1.
 **)
 let addf = (+.)
 (**T
@@ -901,10 +905,16 @@ let isSubnormal f = classify_float f = FP_subnormal
 let predChar c = chr (ord c - 1)
 (**T
   predChar 'b' = 'a'
+  predChar '\255' = '\254'
+  predChar '\001' = '\000'
+  optEx (Invalid_argument "char_of_int") predChar '\000' = None
 **)
 let succChar c = chr (ord c + 1)
 (**T
   succChar 'b' = 'c'
+  succChar '\000' = '\001'
+  succChar '\254' = '\255'
+  optEx (Invalid_argument "char_of_int") succChar '\255' = None
 **)
 
 
@@ -929,6 +939,13 @@ let formatTime ?(zone=timeZone) fmt f = Netdate.format ~fmt (Netdate.create ~zon
 let showTime ?zone = formatTime ?zone "%Y-%m-%d %H:%M:%S%z"
 (**T
   showTime ~zone:0 0. = "1970-01-01 00:00:00+0000"
+  showTime ~zone:0 (-.max_float) = "0000-01-01 00:00:00+0000"
+  showTime ~zone:0 (max_float) = "0000-01-01 00:00:00+0000"
+  showTime ~zone:0 neg_infinity = "0000-01-01 00:00:00+0000"
+  showTime ~zone:0 infinity = "0000-01-01 00:00:00+0000"
+  showTime ~zone:0 nan = "0000-01-01 00:00:00+0000"
+  optEx (Invalid_argument "Netdate.format_to") (showTime ~zone:0) 1e20 = None
+  optEx (Invalid_argument "Netdate.format_to") (showTime ~zone:0) (-1e20) = None
 **)
 let showDate ?zone = formatTime ?zone "%Y-%m-%d"
 (**T
