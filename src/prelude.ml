@@ -1251,6 +1251,15 @@ struct
     indexOf 'a' (explode "foobar") = 4
   **)
 
+  (* let filter ... *)
+  (**T
+    filter even (1--10) = [2;4;6;8;10]
+    filter odd (1--10) = [1;3;5;7;9]
+    filter even [1] = []
+    filter odd [1] = [1]
+    filter even [] = []
+  **)
+
   let filterWithIndex f s =
     let rec aux f l i res =
       match l with
@@ -2021,10 +2030,11 @@ struct
     optNF (minimumByWith square) [] = None
   **)
 
-  let groupsOf n l = unfoldlUntil null (splitAt (max 1 n)) l
+  let groupsOf n l =
+    if l = [] then [l] else unfoldlUntil null (splitAt (max 1 n)) l
   (**T
     groupsOf 3 (1--10) = [[1; 2; 3]; [4; 5; 6]; [7; 8; 9]; [10]]
-    groupsOf 3 [] = []
+    groupsOf 3 [] = [[]]
     groupsOf 3 [1] = [[1]]
     groupsOf 3 (1--3) = [(1--3)]
     groupsOf 5 (1--3) = [(1--3)]
@@ -2040,6 +2050,8 @@ struct
     splitInto 1 (1--3) = [(1--3)]
     splitInto 0 (1--3) = [(1--3)]
     splitInto (-1) (1--3) = [(1--3)]
+    splitInto 2 [] = [[]]
+    splitInto 1 [] = [[]]
   **)
   let groupWith p l =
     let rec aux p v l rl res = match l with
@@ -2118,17 +2130,116 @@ struct
   let par_mapReduce ?process_count ~combine ~process l =
     let process_count = process_count |? !global_process_count in
     splitInto process_count l |> par_map ~process_count process |> combine
+  (**T
+    par_mapReduce ~combine:concat ~process:(map succ) (1--10) = map succ (1--10)
+    par_mapReduce ~process_count:2 ~combine:concat ~process:(map succ) (1--10) = map succ (1--10)
+    par_mapReduce ~process_count:2 ~combine:(concat @. reverse) ~process:(map succ) (1--10) = map succ ((6--10)@(1--5))
+    par_mapReduce ~process_count:2 ~combine:(concat @. reverse) ~process:(map succ) [] = []
+    par_mapReduce ~process_count:2 ~combine:(concat @. reverse) ~process:(map succ) [1] = [2]
+  **)
 
   let pmapReduce combine process = par_mapReduce ~combine ~process
+  (**T
+    pmapReduce concat (map succ) (1--10) = map succ (1--10)
+    pmapReduce ~process_count:2 concat (map succ) (1--10) = map succ (1--10)
+    pmapReduce ~process_count:2 (concat @. reverse) (map succ) (1--10) = map succ ((6--10)@(1--5))
+    pmapReduce ~process_count:2 (concat @. reverse) (map succ) [] = []
+    pmapReduce ~process_count:2 (concat @. reverse) (map succ) [1] = [2]
+  **)
 
   let pfoldl r f init = pmapReduce (foldl1 r) (foldl f init)
+  (**T
+    pfoldl (+) (+) 0 (1--10) = sum (1--10)
+    pfoldl ~process_count:2 (+) (+) 0 (1--10) = sum (1--10)
+    pfoldl ~process_count:2 (+) (+) 0 [1] = sum [1]
+    pfoldl ~process_count:1 (+) (+) 0 (1--10) = sum (1--10)
+    pfoldl ~process_count:1 (+) (+) 0 [1] = sum [1]
+    pfoldl ~process_count:0 (+) (+) 0 (1--10) = sum (1--10)
+    pfoldl ~process_count:0 (+) (+) 0 [1] = sum [1]
+    pfoldl ~process_count:3 (+) (+) 0 (1--10) = sum (1--10)
+    pfoldl ~process_count:3 (+) (+) 0 [1] = sum [1]
+    pfoldl ~process_count:2 (multiply) (multiply) 1 (1--10) = product (1--10)
+    pfoldl ~process_count:2 (multiply) (multiply) 1 [1] = product [1]
+    optNF (pfoldl ~process_count:2 (+) (+) 0) [] = Some 0
+  **)
   let pfoldl1 f = pmapReduce (foldl1 f) (foldl1 f)
+  (**T
+    pfoldl1 (+) (1--10) = sum (1--10)
+    pfoldl1 ~process_count:3 (+) (1--10) = sum (1--10)
+    pfoldl1 ~process_count:2 (+) [1] = sum [1]
+    pfoldl1 ~process_count:1 (multiply) (1--10) = product (1--10)
+    pfoldl1 ~process_count:0 (multiply) [1] = product [1]
+    optNF (pfoldl1 ~process_count:2 (+)) [] = None
+  **)
   let pfoldr r f init = pmapReduce (foldr1 r) (foldr f init)
+  (**T
+    pfoldr ~process_count:2 (+) (+) 0 (1--10) = sum (1--10)
+    pfoldr ~process_count:2 (+) (+) 0 [1] = sum [1]
+    pfoldr (+) (+) 0 [1] = sum [1]
+    pfoldr ~process_count:1 (+) (+) 0 (1--10) = sum (1--10)
+    pfoldr ~process_count:1 (+) (+) 0 [1] = sum [1]
+    pfoldr ~process_count:0 (+) (+) 0 (1--10) = sum (1--10)
+    pfoldr ~process_count:0 (+) (+) 0 [1] = sum [1]
+    pfoldr ~process_count:3 (+) (+) 0 (1--10) = sum (1--10)
+    pfoldr ~process_count:3 (+) (+) 0 [1] = sum [1]
+    pfoldr ~process_count:2 (multiply) (multiply) 1 (1--10) = product (1--10)
+    pfoldr ~process_count:2 (multiply) (multiply) 1 [1] = product [1]
+    optNF (pfoldr ~process_count:2 (+) (+) 0) [] = Some 0
+  **)
   let pfoldr1 f = pmapReduce (foldr1 f) (foldr1 f)
+  (**T
+    pfoldr1 ~process_count:3 (+) (1--10) = sum (1--10)
+    pfoldr1 (+) (1--10) = sum (1--10)
+    pfoldr1 ~process_count:2 (+) [1] = sum [1]
+    pfoldr1 ~process_count:1 (multiply) (1--10) = product (1--10)
+    pfoldr1 ~process_count:0 (multiply) [1] = product [1]
+    optNF (pfoldr1 ~process_count:2 (+)) [] = None
+  **)
 
   let piter f = pmapReduce ignore (iter f)
+  (**T
+    piter ~process_count:3 (ignore @. succ) (1--10) = ()
+    piter ~process_count:2 (ignore @. succ) (1--10) = ()
+    piter ~process_count:1 (ignore @. succ) (1--10) = ()
+    piter ~process_count:0 (ignore @. succ) (1--10) = ()
+    piter ~process_count:3 (ignore @. succ) [1] = ()
+    piter ~process_count:2 (ignore @. succ) [1] = ()
+    piter ~process_count:1 (ignore @. succ) [1] = ()
+    piter ~process_count:0 (ignore @. succ) [1] = ()
+    piter ~process_count:3 (ignore @. succ) [] = ()
+    piter ~process_count:2 (ignore @. succ) [] = ()
+    piter ~process_count:1 (ignore @. succ) [] = ()
+    piter ~process_count:0 (ignore @. succ) [] = ()
+    piter (ignore @. succ) [] = ()
+    piter (ignore @. succ) (1--10) = ()
+    piter (ignore @. succ) [1] = ()
+  **)
   let pmap f = pmapReduce concat (map f)
+  (**T
+    pmap ~process_count:3 succ (1--10) = map succ (1--10)
+    pmap ~process_count:2 succ (1--10) = map succ (1--10)
+    pmap ~process_count:1 succ (1--10) = map succ (1--10)
+    pmap ~process_count:0 succ (1--10) = map succ (1--10)
+    pmap ~process_count:3 succ [1] = map succ [1]
+    pmap ~process_count:2 succ [1] = map succ [1]
+    pmap ~process_count:1 succ [1] = map succ [1]
+    pmap ~process_count:0 succ [1] = map succ [1]
+    pmap ~process_count:3 succ [] = map succ []
+    pmap ~process_count:2 succ [] = map succ []
+    pmap ~process_count:1 succ [] = map succ []
+    pmap ~process_count:0 succ [] = map succ []
+    pmap succ (1--10) = map succ (1--10)
+    pmap succ [] = map succ []
+    pmap succ [1] = map succ [1]
+  **)
   let pfilter f = pmapReduce concat (filter f)
+  (**T
+    pfilter even (1--10) = [2;4;6;8;10]
+    pfilter odd (1--10) = [1;3;5;7;9]
+    pfilter even [1] = []
+    pfilter odd [1] = [1]
+    pfilter even [] = []
+  **)
 
   let pfoldlSeqN ?process_count n r f init l =
     foldl (fun acc il -> r acc (pfoldl ?process_count r f init il))

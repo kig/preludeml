@@ -62,6 +62,10 @@ puts <<EOF
 open OUnit
 open #{mod}
 
+let __iteri f l = ignore (List.fold_left (fun i v -> f v i; i + 1) 0 l)
+let __T_list = __iteri (fun b i ->
+  OUnit.assert_bool ("Line " ^ string_of_int (i+1) ^ " of bool test") b)
+
 EOF
 
 tests = []
@@ -70,7 +74,7 @@ data = IO.read(file)
 data = data.gsub(/\(\*\*\T(.*?)\*\*\)/m){ |match|
   match[0,4] = "(***"
   lines = match.split(/\n/)
-  head = "List.iter (OUnit.assert_equal ~printer:string_of_bool true) ["
+  head = "__T_list ["
   tail = "]"
   lines[1..-1].each{|l|
     l << ";" if !l.strip.empty? and not l.strip =~ /^\(\*.*?\*\)$/
