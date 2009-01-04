@@ -2885,18 +2885,63 @@ struct
     PreArray.interlace 0 [|1|] = [|1|]
     ainterlace 0 [|1;2|] = [|1; 0; 2|]
   **)
+
+  (* let filter = filter *)
+  (**T
+    PreArray.filter even (1--|10) = [|2;4;6;8;10|]
+    PreArray.filter odd (1--|10) = [|1;3;5;7;9|]
+    PreArray.filter even [|1|] = [||]
+    PreArray.filter odd [|1|] = [|1|]
+    afilter even [||] = [||]
+  **)
   let reject f s = filter (fun v -> not (f v)) s
+ (**T
+    PreArray.reject (gt 4) (1--|5) = (1--|4)
+    PreArray.reject (gt 4) [||] = [||]
+    PreArray.reject (gt 0) (1--|5) = [||]
+    PreArray.reject (gt 5) (1--|5) = (1--|5)
+    areject (gt 3) (5--|1) = (3--|1)
+  **)
   let without v s = filter ((<>) v) s
+  (**T
+    PreArray.without 4 [|1; 2; 4; 1; 2; 4|] = [|1; 2; 1; 2|]
+    PreArray.without 4 [||] = [||]
+    PreArray.without 4 [|4|] = [||]
+    awithout 4 [|1|] = [|1|]
+  **)
 
   let groupsOf n a =
-    let count, rem = quot_rem (len a) n in
-    unfoldrWhile (gte 0) (fun i -> sub (i*n) n a, i-1) (count-1) @
-    if rem = 0 then [] else [sub (-rem) rem a]
+    let l = len a in
+    let n = max 1 n in
+    if l = 0 then [a] else
+      let count, rem = quot_rem l n in
+      unfoldrWhile (gte 0) (fun i -> sub (i*n) n a, i-1) (count-1) @
+      if rem = 0 then [] else [sub (-rem) rem a]
+  (**T
+    PreArray.groupsOf 3 (1--|10) = [[|1; 2; 3|]; [|4; 5; 6|]; [|7; 8; 9|]; [|10|]]
+    PreArray.groupsOf 3 [||] = [[||]]
+    PreArray.groupsOf 3 [|1|] = [[|1|]]
+    PreArray.groupsOf 3 (1--|3) = [(1--|3)]
+    PreArray.groupsOf 5 (1--|3) = [(1--|3)]
+    PreArray.groupsOf 3 (1--|4) = [(1--|3); [|4|]]
+    PreArray.groupsOf 1 (1--|3) = [[|1|]; [|2|]; [|3|]]
+    PreArray.groupsOf 0 (1--|3) = [[|1|]; [|2|]; [|3|]]
+    agroupsOf (-1) (1--|3) = [[|1|]; [|2|]; [|3|]]
+  **)
 
   let splitInto n range =
     let len = len range in
-    let plen = int (ceil (float len /. float n)) in
+    let plen = int (ceil (float len /. float (max 1 n))) in
     groupsOf plen range
+  (**T
+    PreArray.splitInto 4 (1--|10) = [[|1; 2; 3|]; [|4; 5; 6|]; [|7; 8; 9|]; [|10|]]
+    PreArray.splitInto 3 (1--|3) = [[|1|]; [|2|]; [|3|]]
+    PreArray.splitInto 1 (1--|3) = [(1--|3)]
+    PreArray.splitInto 0 (1--|3) = [(1--|3)]
+    PreArray.splitInto (-1) (1--|3) = [(1--|3)]
+    PreArray.splitInto 2 [||] = [[||]]
+    asplitInto 1 [||] = [[||]]
+  **)
 
 
   (* Subsequence iterators *)
@@ -3259,14 +3304,37 @@ struct
   let without v s = filter ((<>) v) s
 
   let groupsOf n a =
-    let count, rem = quot_rem (len a) n in
-    unfoldrWhile (gte 0) (fun i -> sub (i*n) n a, i-1) (count-1) @
-    if rem = 0 then [] else [sub (-rem) rem a]
+    let l = len a in
+    let n = max 1 n in
+    if l = 0 then [a] else
+      let count, rem = quot_rem l n in
+      unfoldrWhile (gte 0) (fun i -> sub (i*n) n a, i-1) (count-1) @
+      if rem = 0 then [] else [sub (-rem) rem a]
+  (**T
+    PreArray.groupsOf 3 (1--|10) = [[|1; 2; 3|]; [|4; 5; 6|]; [|7; 8; 9|]; [|10|]]
+    PreArray.groupsOf 3 [||] = [[||]]
+    PreArray.groupsOf 3 [|1|] = [[|1|]]
+    PreArray.groupsOf 3 (1--|3) = [(1--|3)]
+    PreArray.groupsOf 5 (1--|3) = [(1--|3)]
+    PreArray.groupsOf 3 (1--|4) = [(1--|3); [|4|]]
+    PreArray.groupsOf 1 (1--|3) = [[|1|]; [|2|]; [|3|]]
+    PreArray.groupsOf 0 (1--|3) = [[|1|]; [|2|]; [|3|]]
+    agroupsOf (-1) (1--|3) = [[|1|]; [|2|]; [|3|]]
+  **)
 
   let splitInto n range =
     let len = len range in
-    let plen = int (ceil (float len /. float n)) in
+    let plen = int (ceil (float len /. float (max 1 n))) in
     groupsOf plen range
+  (**T
+    PreArray.splitInto 4 (1--|10) = [[|1; 2; 3|]; [|4; 5; 6|]; [|7; 8; 9|]; [|10|]]
+    PreArray.splitInto 3 (1--|3) = [[|1|]; [|2|]; [|3|]]
+    PreArray.splitInto 1 (1--|3) = [(1--|3)]
+    PreArray.splitInto 0 (1--|3) = [(1--|3)]
+    PreArray.splitInto (-1) (1--|3) = [(1--|3)]
+    PreArray.splitInto 2 [||] = [[||]]
+    asplitInto 1 [||] = [[||]]
+  **)
 
 
   (* Subsequence iterators *)
@@ -3728,14 +3796,37 @@ struct
   let without v s = filter ((<>) v) s
 
   let groupsOf n a =
-    let count, rem = quot_rem (len a) n in
-    unfoldrWhile (gte 0) (fun i -> sub (i*n) n a, i-1) (count-1) @
-    if rem = 0 then [] else [sub (-rem) rem a]
+    let l = len a in
+    let n = max 1 n in
+    if l = 0 then [a] else
+      let count, rem = quot_rem l n in
+      unfoldrWhile (gte 0) (fun i -> sub (i*n) n a, i-1) (count-1) @
+      if rem = 0 then [] else [sub (-rem) rem a]
+  (**T
+    PreArray.groupsOf 3 (1--|10) = [[|1; 2; 3|]; [|4; 5; 6|]; [|7; 8; 9|]; [|10|]]
+    PreArray.groupsOf 3 [||] = [[||]]
+    PreArray.groupsOf 3 [|1|] = [[|1|]]
+    PreArray.groupsOf 3 (1--|3) = [(1--|3)]
+    PreArray.groupsOf 5 (1--|3) = [(1--|3)]
+    PreArray.groupsOf 3 (1--|4) = [(1--|3); [|4|]]
+    PreArray.groupsOf 1 (1--|3) = [[|1|]; [|2|]; [|3|]]
+    PreArray.groupsOf 0 (1--|3) = [[|1|]; [|2|]; [|3|]]
+    agroupsOf (-1) (1--|3) = [[|1|]; [|2|]; [|3|]]
+  **)
 
   let splitInto n range =
     let len = len range in
-    let plen = int (ceil (float len /. float n)) in
+    let plen = int (ceil (float len /. float (max 1 n))) in
     groupsOf plen range
+  (**T
+    PreArray.splitInto 4 (1--|10) = [[|1; 2; 3|]; [|4; 5; 6|]; [|7; 8; 9|]; [|10|]]
+    PreArray.splitInto 3 (1--|3) = [[|1|]; [|2|]; [|3|]]
+    PreArray.splitInto 1 (1--|3) = [(1--|3)]
+    PreArray.splitInto 0 (1--|3) = [(1--|3)]
+    PreArray.splitInto (-1) (1--|3) = [(1--|3)]
+    PreArray.splitInto 2 [||] = [[||]]
+    asplitInto 1 [||] = [[||]]
+  **)
 
 
   (* Subsequence iterators *)
