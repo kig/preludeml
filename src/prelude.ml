@@ -1160,6 +1160,8 @@ struct
   let normalizeIndex i s = if i < 0 then (length s) + i else i
   (**T
     normalizeIndex 0 [] = 0
+    normalizeIndex 2 [] = 2
+    normalizeIndex (-2) [] = -2
     normalizeIndex 0 (1--10) = 0
     normalizeIndex 2 (1--10) = 2
     normalizeIndex (-1) (1--10) = 9
@@ -2549,6 +2551,8 @@ struct
   let normalizeIndex i s = if i < 0 then (len s) + i else i
   (**T
     PreArray.normalizeIndex 0 [||] = 0
+    PreArray.normalizeIndex 2 [||] = 2
+    PreArray.normalizeIndex (-2) [||] = -2
     PreArray.normalizeIndex 0 (1--|10) = 0
     PreArray.normalizeIndex 2 (1--|10) = 2
     PreArray.normalizeIndex (-1) (1--|10) = 9
@@ -2691,21 +2695,50 @@ struct
   (* Subsequences *)
 
   let sub i len s =
-    let i = normalizeIndex i s in
     let slen = length s in
-    let j = min (max 0 (i+len-1)) (slen-1) in
-    init (fun x -> unsafe_get s (i+x)) (j-i+1)
-
+    let ni = normalizeIndex i s in
+    let len = len + min 0 ni in
+    let len = len + min 0 (slen-1-ni) in
+    let i = max 0 (min (slen-1) ni) in
+    let j = max 0 (min slen (i + len)) - 1 in
+    init (fun x -> unsafe_get s (i+x)) (max 0 (j-i+1))
+  (**T
+    PreArray.sub 2 3 (aexplode "foobar") = [|'o'; 'b'; 'a'|]
+    PreArray.sub (-3) 2 (aexplode "foobar") = [|'b'; 'a'|]
+    PreArray.sub 0 0 (1--|10) = [||]
+    PreArray.sub 0 0 [||] = [||]
+    PreArray.sub 0 1 [||] = [||]
+    PreArray.sub 1 0 [||] = [||]
+    PreArray.sub 1 1 [||] = [||]
+    PreArray.sub 0 0 [|1|] = [||]
+    PreArray.sub 0 (-1) [|1|] = [||]
+    PreArray.sub (-10) (-1) [|1|] = [||]
+    PreArray.sub (-10) 1 [|1|] = [||]
+    PreArray.sub 0 1 [|1|] = [|1|]
+    PreArray.sub 1 1 [|1|] = [||]
+    PreArray.sub 1 0 [|1|] = [||]
+    PreArray.sub 80 1 [|1|] = [||]
+    PreArray.sub 15 (-5) (1--|10) = [||]
+    PreArray.sub 0 1 (1--|10) = [|1|]
+    asub 0 (-1) (1--|10) = [||]
+  **)
   let slice_to_sub i j s =
     let i = normalizeIndex i s
-    and j = normalizeIndex j s + (if j < 0 then 1 else 0) in
+    and j = normalizeIndex j s + 1 in
     let len = j - i in
     i, len
 
   let slice i j s =
     let i, len = slice_to_sub i j s in
     sub i len s
-
+  (**T
+    PreArray.slice 2 3 (aexplode "foobar") = [|'o'; 'b'|]
+    PreArray.slice (-3) (-1) (aexplode "foobar") = [|'b'; 'a'; 'r'|]
+    PreArray.slice 0 0 (1--|10) = [|1|]
+    PreArray.slice 0 1 (1--|10) = [|1; 2|]
+    PreArray.slice 1 0 (1--|10) = [||]
+    aslice 0 (-1) (1--|10) = (1--|10)
+  **)
   let subStride stride i len a =
     let i = normalizeIndex i a in
     if i + (len-1) * stride >= length a
@@ -2715,28 +2748,129 @@ struct
   (* List-like interface *)
 
   let first a = if len a = 0 then raise Not_found else unsafe_get a 0
+  (**T
+    afirst (2--|10) = 2
+  **)
   let head = first
-  let tail a = slice 1 (-1) a
-
+  (**T
+    optNF ahead [||] = None
+    optNF ahead [|1|] = Some 1
+    optNF ahead (1--|10) = Some 1
+  **)
+  let tail a = if len a = 0 then raise Not_found else slice 1 (-1) a
+  (**T
+    optNF atail [||] = None
+    optNF atail [|1|] = Some [||]
+    optNF atail (1--|10) = Some (2--|10)
+  **)
   let last a = if len a = 0 then raise Not_found else unsafe_get a (len a - 1)
-  let popped a = slice 0 (-2) a
-
+  (**T
+    alast [|1; 2; 3|] = 3
+    alast [|1|] = 1
+    optNF alast [||] = None
+  **)
+  let popped a = if len a = 0 then raise Not_found else slice 0 (-2) a
+  (**T
+    apopped [|1; 2; 3|] = [|1; 2|]
+    optNF apopped [||] = None
+    optNF apopped [|1|] = Some [||]
+  **)
   let pop a = (popped a, last a)
+  (**T
+    apop [|1;2;3|] = ([|1;2|], 3)
+    optNF apop [||] = None
+    optNF apop [|1|] = Some ([||], 1)
+    optNF apop [|1;2|] = Some ([|1|], 2)
+  **)
   let push v a = append a [|v|]
+  (**T
+    apush 10 (1--|9) = (1--|10)
+    apush 1 [|0|] = (0--|1)
+    apush 0 [||] = [|0|]
+  **)
 
-  let shift a = (tail a, first a)
+  let shift a = (tail a, head a)
+  (**T
+    ashift (1--|10) = ((2--|10), 1)
+    optNF ashift [||] = None
+    optNF ashift [|1|] = Some ([||], 1)
+  **)
   let unshift v a = append [|v|] a
+  (**T
+    aunshift 0 (1--|10) = (0--|10)
+    aunshift 0 [|1|] = (0--|1)
+    aunshift 0 [||] = [|0|]
+  **)
 
   let take n s = sub 0 n s
-  let takeWhile f s = sub 0 (findIndex (fun v -> not (f v)) s + 1) s
-
-  let drop n s = sub (-n) n s
-  let dropWhile f s = sub (findIndex (fun v -> not (f v)) s) (len s) s
-
+  (**T
+    PreArray.take 3 (1--|10) = (1--|3)
+    PreArray.take 0 (1--|10) = [||]
+    PreArray.take 15 (1--|10) = (1--|10)
+    PreArray.take 3 [||] = [||]
+    atake 0 [||] = [||]
+  **)
+  let takeWhile f s = take (maybeNF (len s) (findIndex (fun v -> not (f v))) s) s
+  (**T
+    PreArray.takeWhile (lt 5) (1--|10) = (1--|4)
+    PreArray.takeWhile (lt 5) (6--|10) = [||]
+    PreArray.takeWhile (lt 5) [||] = [||]
+    atakeWhile (lt 5) (1--|3) = (1--|3)
+  **)
+  let takeUntil f s = take (maybeNF (len s) (findIndex (fun v -> f v)) s) s
+  (**T
+    PreArray.takeUntil (gte 5) (1--|10) = (1--|4)
+    PreArray.takeUntil (gte 5) (6--|10) = [||]
+    PreArray.takeUntil (gte 5) [||] = [||]
+    atakeUntil (gte 5) (1--|3) = (1--|3)
+  **)
+  let drop n s = sub n (len s - n) s
+  (**T
+    PreArray.drop 3 (1--|10) = (4--|10)
+    PreArray.drop 0 (1--|10) = (1--|10)
+    PreArray.drop 15 (1--|10) = [||]
+    PreArray.drop 3 [||] = [||]
+    adrop 0 [||] = [||]
+  **)
+  let dropWhile f s = drop (maybeNF (len s) (findIndex (fun v -> not (f v))) s) s
+  (**T
+    PreArray.dropWhile (lt 5) (1--|10) = (5--|10)
+    PreArray.dropWhile (lt 5) (6--|10) = (6--|10)
+    PreArray.dropWhile (lt 5) [||] = [||]
+    adropWhile (lt 5) (1--|3) = [||]
+  **)
+  let dropUntil f s = drop (maybeNF (len s) (findIndex (fun v -> f v)) s) s
+  (**T
+    PreArray.dropUntil (gte 5) (1--|10) = (5--|10)
+    PreArray.dropUntil (gte 5) (6--|10) = (6--|10)
+    PreArray.dropUntil (gte 5) [||] = [||]
+    adropUntil (gte 5) (1--|3) = [||]
+  **)
   let splitAt n xs = (take n xs, drop n xs)
-
-  let break f s = splitAt (findIndex f s) s
+  (**T
+    PreArray.splitAt 3 (aexplode "foobar") = ([|'f'; 'o'; 'o'|], [|'b'; 'a'; 'r'|])
+    PreArray.splitAt 1 [|1|] = ([|1|], [||])
+    PreArray.splitAt 0 [|1|] = ([||], [|1|])
+    PreArray.splitAt 1 [||] = ([||], [||])
+    asplitAt 0 [||] = ([||], [||])
+  **)
+  let break f s = splitAt (maybeNF (len s) (findIndex f) s) s
+  (**T
+    PreArray.break id [|false; false; true; false|] = ([|false; false|], [|true; false|])
+    abreak (greaterThan 5) (1--|10) = ([|1; 2; 3; 4; 5|], [|6; 7; 8; 9; 10|])
+  **)
   let span f s = break (fun v -> not (f v)) s
+  (**T
+    PreArray.span id [|true; false; false; true|] = ([|true|], [|false; false; true|])
+    PreArray.span (lessOrEqualTo 5) (1--|10) = ([|1; 2; 3; 4; 5|], [|6; 7; 8; 9; 10|])
+    PreArray.span id [||] = ([||], [||])
+    PreArray.span id [|true|] = ([|true|], [||])
+    PreArray.span id [|false|] = ([||], [|false|])
+    PreArray.span id [|false;true|] = ([||], [|false;true|])
+    PreArray.span id [|true;false|] = ([|true|], [|false|])
+    PreArray.span id [|true;true|] = ([|true;true|], [||])
+    aspan id [|false;false|] = ([||], [|false;false|])
+  **)
 
   let interlace elem s =
     init (fun i -> if i mod 2 = 0 then unsafe_get s (i/2) else elem) (2 * len s - 1)
@@ -2768,7 +2902,7 @@ struct
   let mapSub i len f s =
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = min (max 0 (i+len-1)) (slen-1) in
+    let j = max 0 (min (i+len) slen) - 1 in
     init (fun j -> f (unsafe_get s (i+j))) (j-i)
 
   let mapSlice i j f s =
@@ -2780,7 +2914,7 @@ struct
       if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = min (max 0 (i+len-1)) (slen-1) in
+    let j = max 0 (min (i+len) slen) - 1 in
     aux f s init i j
 
   let foldl1Sub i len f s =
@@ -2793,7 +2927,7 @@ struct
       if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = min (max 0 (i+len-1)) (slen-1) in
+    let j = max 0 (min (i+len) slen) - 1 in
     aux f s init i j
 
   let foldr1Sub i len f s =
@@ -3057,14 +3191,17 @@ struct
   (* Subsequences *)
 
   let sub i len s =
-    let i = normalizeIndex i s in
     let slen = length s in
-    let j = min (max 0 (i+len-1)) (slen-1) in
-    init (fun x -> unsafe_get s (i+x)) (j-i+1)
+    let ni = normalizeIndex i s in
+    let len = len + min 0 ni in
+    let len = len + min 0 (slen-1-ni) in
+    let i = max 0 (min (slen-1) ni) in
+    let j = max 0 (min slen (i + len)) - 1 in
+    init (fun x -> unsafe_get s (i+x)) (max 0 (j-i+1))
 
   let slice_to_sub i j s =
     let i = normalizeIndex i s
-    and j = normalizeIndex j s + (if j < 0 then 1 else 0) in
+    and j = normalizeIndex j s + 1 in
     let len = j - i in
     i, len
 
@@ -3097,14 +3234,14 @@ struct
   let unshift v a = append (string_of_char v) a
 
   let take n s = sub 0 n s
-  let takeWhile f s = sub 0 (findIndex (fun v -> not (f v)) s + 1) s
+  let takeWhile f s = take (maybeNF (len s-1) (findIndex (fun v -> not (f v))) s + 1) s
 
-  let drop n s = sub (-n) n s
-  let dropWhile f s = sub (findIndex (fun v -> not (f v)) s) (len s) s
+  let drop n s = sub (-n) (len s - n) s
+  let dropWhile f s = drop (maybeNF (len s) (findIndex (fun v -> not (f v))) s) s
 
   let splitAt n xs = (take n xs, drop n xs)
 
-  let break f s = splitAt (findIndex f s) s
+  let break f s = splitAt (maybeNF (len s) (findIndex f) s) s
   let span f s = break (fun v -> not (f v)) s
 
   let interlace elem s =
@@ -3137,7 +3274,7 @@ struct
   let mapSub i len f s =
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = min (max 0 (i+len-1)) (slen-1) in
+    let j = max 0 (min (i+len) slen) - 1 in
     init (fun j -> f (unsafe_get s (i+j))) (j-i)
 
   let mapSlice i j f s =
@@ -3149,7 +3286,7 @@ struct
       if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = min (max 0 (i+len-1)) (slen-1) in
+    let j = max 0 (min (i+len) slen) - 1 in
     aux f s init i j
 
   let foldl1Sub i len f s =
@@ -3162,7 +3299,7 @@ struct
       if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = min (max 0 (i+len-1)) (slen-1) in
+    let j = max 0 (min (i+len) slen) - 1 in
     aux f s init i j
 
   let foldr1Sub i len f s =
@@ -3525,14 +3662,17 @@ struct
   (* Subsequences *)
 
   let sub i len s =
-    let i = normalizeIndex i s in
     let slen = length s in
-    let j = min (max 0 (i+len-1)) (slen-1) in
-    init (fun x -> unsafe_get s (i+x)) (j-i+1)
+    let ni = normalizeIndex i s in
+    let len = len + min 0 ni in
+    let len = len + min 0 (slen-1-ni) in
+    let i = max 0 (min (slen-1) ni) in
+    let j = max 0 (min slen (i + len)) - 1 in
+    init (fun x -> unsafe_get s (i+x)) (max 0 (j-i+1))
 
   let slice_to_sub i j s =
     let i = normalizeIndex i s
-    and j = normalizeIndex j s + (if j < 0 then 1 else 0) in
+    and j = normalizeIndex j s + 1 in
     let len = j - i in
     i, len
 
@@ -3563,14 +3703,14 @@ struct
   let unshift v a = append (string_of_char (chr v)) a
 
   let take n s = sub 0 n s
-  let takeWhile f s = sub 0 (findIndex (fun v -> not (f v)) s + 1) s
+  let takeWhile f s = take (maybeNF (len s-1) (findIndex (fun v -> not (f v))) s + 1) s
 
-  let drop n s = sub (-n) n s
-  let dropWhile f s = sub (findIndex (fun v -> not (f v)) s) (len s) s
+  let drop n s = sub (-n) (len s - n) s
+  let dropWhile f s = drop (maybeNF (len s) (findIndex (fun v -> not (f v))) s) s
 
   let splitAt n xs = (take n xs, drop n xs)
 
-  let break f s = splitAt (findIndex f s) s
+  let break f s = splitAt (maybeNF (len s) (findIndex f) s) s
   let span f s = break (fun v -> not (f v)) s
 
   let interlace elem s =
@@ -3603,7 +3743,7 @@ struct
   let mapSub i len f s =
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = min (max 0 (i+len-1)) (slen-1) in
+    let j = max 0 (min (i+len) slen) - 1 in
     init (fun j -> f (unsafe_get s (i+j))) (j-i)
 
   let mapSlice i j f s =
@@ -3615,7 +3755,7 @@ struct
       if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = min (max 0 (i+len-1)) (slen-1) in
+    let j = max 0 (min (i+len) slen) - 1 in
     aux f s init i j
 
   let foldl1Sub i len f s =
@@ -3628,7 +3768,7 @@ struct
       if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
     let i = normalizeIndex i s in
     let slen = length s in
-    let j = min (max 0 (i+len-1)) (slen-1) in
+    let j = max 0 (min (i+len) slen) - 1 in
     aux f s init i j
 
   let foldr1Sub i len f s =
@@ -3971,9 +4111,11 @@ let aunshift = PreArray.unshift
 
 let atake = PreArray.take
 let atakeWhile = PreArray.takeWhile
+let atakeUntil = PreArray.takeUntil
 
 let adrop = PreArray.drop
 let adropWhile = PreArray.dropWhile
+let adropUntil = PreArray.dropUntil
 
 let asplitAt = PreArray.splitAt
 
