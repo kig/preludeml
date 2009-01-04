@@ -1069,9 +1069,91 @@ module PreList =
 struct
   include List
 
+  let len = length
+  (**T
+    len (1--10) = 10
+    len [1] = 1
+    len [] = 0
+  **)
+
+  let init f n =
+    let rec aux f n res =
+      if n < 0 then res
+      else aux f (n-1) ((f n) :: res) in
+    aux f (n-1) []
+  (**T
+    init succ 10 = (1--10)
+    init pred 10 = ((-1)--8)
+    init succ 0 = []
+    init succ 1 = [1]
+  **)
+
+  (* Basic operations *)
+  let range s e =
+    if s > e
+    then init ((-) s) (s-e+1)
+    else init ((+) s) (e-s+1)
+  (**T
+    range 1 3 = [1; 2; 3]
+    range 1 1 = [1]
+    range 1 0 = [1; 0]
+    range (max_int - 1) max_int = [max_int - 1; max_int]
+    range max_int (max_int - 1) = [max_int; max_int - 1]
+    range (min_int + 1) min_int = [min_int + 1; min_int]
+    range min_int (min_int + 1) = [min_int; min_int + 1]
+  **)
+  let rangef s e =
+    if s > e
+    then init (fun i -> s -. (float i)) (int (ceil (s-.e+.1.)))
+    else init (fun i -> s +. (float i)) (int (ceil (e-.s+.1.)))
+  (**T
+    rangef 1. 3. = [1.; 2.; 3.]
+    rangef 1. 1. = [1.]
+    rangef 1. 0. = [1.; 0.]
+  **)
+  let charRange sc ec =
+    let s, e = ord sc, ord ec in
+    if s > e
+    then init (fun i -> chr (s - i)) (s-e+1)
+    else init (fun i -> chr (s + i)) (e-s+1)
+  (**T
+    charRange 'a' 'c' = ['a'; 'b'; 'c']
+    charRange 'a' 'a' = ['a']
+    charRange 'b' 'a' = ['b'; 'a']
+    charRange '\000' '\255' = explode ('\000'--^'\255')
+    charRange '\255' '\000' = explode ('\255'--^'\000')
+  **)
+  let (--) = range
+  (**T
+    (1--3) = [1; 2; 3]
+    (1--1) = [1]
+    (1--0) = [1; 0]
+  **)
+
+  let step d s e =
+    if d == 0 then failwith "Prelude.step: zero step" else
+    if s == e then [s] else
+    if s < e
+    then (if d < 0 then [] else generate (lte e) (add d) s)
+    else (if d > 0 then [] else generate (gte e) (add d) s)
+  (**T
+    step 2 0 5 = [0; 2; 4]
+    step 2 1 5 = [1; 3; 5]
+    step (-2) 5 1 = [5; 3; 1]
+    step (-2) 5 0 = [5; 3; 1]
+    step 2 0 0 = [0]
+    step 2 0 (-1) = []
+    step 2 0 (-5) = []
+    step (-2) 0 0 = [0]
+    step (-2) 0 1 = []
+    step (-2) 0 (-1) = [0]
+    step (-2) 0 (-5) = [0; -2; -4]
+  **)
+
   let reverse = rev
   (**T
     reverse (1--10) = (10--1)
+    reverse [1] = [1]
     reverse [] = []
   **)
 
@@ -1084,6 +1166,36 @@ struct
     normalizeIndex (-2) (1--10) = 8
     normalizeIndex (-1) (1--2) = 1
     normalizeIndex (-2) (1--2) = 0
+  **)
+
+  let replicate n v = init (const v) n
+  (**T
+    replicate 5 '-' = ['-'; '-'; '-'; '-'; '-']
+    replicate 1 '-' = ['-']
+    replicate 0 '-' = []
+    replicate (-1) '-' = []
+  **)
+
+  let times n l = concat (replicate n l)
+  (**T
+    times 3 [1; 2; 3] = [1; 2; 3; 1; 2; 3; 1; 2; 3]
+    times 0 (1--10) = []
+    times 1 (1--10) = (1--10)
+    times (-1) (1--10) = []
+  **)
+
+  let cycle n l =
+    let rec aux c lst res =
+      if c == 0 then rev res
+      else match lst with
+            | [] -> aux c l res
+            | (h::t) -> aux (c-1) t (h::res) in
+    if l = [] then [] else aux n l []
+  (**T
+    cycle 5 (1--3) = [1; 2; 3; 1; 2]
+    cycle 3 (1--10) = [1; 2; 3]
+    cycle 3 [1] = [1;1;1]
+    cycle 3 [] = []
   **)
 
   let nth i l = try List.nth l (normalizeIndex i l)
@@ -1160,6 +1272,56 @@ struct
     unshift 0 (1--10) = (0--10)
   **)
 
+
+
+  (* Folds *)
+
+  let foldl = fold_left
+  (**T
+    foldl (+) 0 (1--10) = 55
+    foldl (fun s b -> s ^ (string_of_int b)) "--" (1--3) = "--123"
+    foldl (+) 1 [] = 1
+    foldl (+) 1 [1] = 2
+  **)
+  let foldl1 f l = match l with
+    | (h::t) -> foldl f h t
+    | [] -> raise Not_found
+  (**T
+    foldl1 (+) (1--10) = 55
+    foldl1 (fun s i -> s ^ i) ["foo"; "bar"; "baz"] = "foobarbaz"
+    optNF (foldl1 (+)) [] = None
+    foldl1 (+) [1] = 1
+  **)
+
+  let foldr f s l = fold_right f l s
+  (**T
+    foldr (+) 0 (1--10) = 55
+    foldr (fun a s -> s ^ (string_of_int a)) "--" (1--3) = "--321"
+    foldr (+) 1 [] = 1
+    foldr (+) 1 [1] = 2
+  **)
+  let foldr1 f l = let l,i = pop l in foldr f i l
+  (**T
+    foldr1 (+) (1--10) = 55
+    foldr1 (fun a s -> s ^ a) ["foo"; "bar"; "baz"] = "bazbarfoo"
+    optNF (foldr1 (+)) [] = None
+    foldr1 (+) [1] = 1
+  **)
+
+
+
+  (* Iterators *)
+
+  let iterWithIndex f l =
+    let rec aux f l i = match l with
+      | [] -> ()
+      | (h::t) -> f h i; aux f t (succ i) in
+    aux f l 0
+  (**T
+    (let i = ref 0 and j = ref 0 in iterWithIndex (fun a b -> i:=a; j:=b) (20--30); !i = 30 && !j = 10)
+    iterWithIndex (ignore @.. add) [1] = ()
+    iterWithIndex (ignore @.. add) [] = ()
+  **)
   let map f l = rev (rev_map f l)
   (**T
     map succ (1--10) = (2--11)
@@ -1167,112 +1329,27 @@ struct
     map succ [1] = [2]
     (let i = ref 0 in ignore(map (fun j -> i := j; j) (1--10)); !i = 10)
   **)
-
-  let rec assocBy f l =
-    match l with
-      | [] -> raise Not_found
-      | (k,v)::t when f k -> v
-      | _::t -> assocBy f t
+  let mapWithIndex f l =
+    rev (snd (foldl (fun (j,r) i -> (j+1, (f i j)::r)) (0, []) l))
   (**T
-    assocBy (gt 5) (zip (1--10) ('a'-~'z')) = 'f'
-    optNF (assocBy (gt 10)) (zip (1--10) ('a'-~'z')) = None
+    mapWithIndex (+) (0--10) = map (multiply 2) (0--10)
+    mapWithIndex (-) (10--20) = replicate 11 10
+    mapWithIndex (+) [] = []
+    mapWithIndex (+) [1] = [1]
   **)
 
-  let lookup e l = optNF (assoc e) l
+  let concatMap f l = concat (map f l)
   (**T
-    lookup 4 (zip (1--10) ('a'-~'z')) = Some 'd'
-    lookup 11 (zip (1--10) ('a'-~'z')) = None
-  **)
-  let lookupBy f l = optNF (assocBy f) l
-  (**T
-    lookupBy (gt 5) (zip (1--10) ('a'-~'z')) = Some 'f'
-    lookupBy (gt 10) (zip (1--10) ('a'-~'z')) = None
+    concatMap ((--) 1) [1;2;3] = [1; 1; 2; 1; 2; 3]
+    concatMap ((--) 1) [2] = [1;2]
+    concatMap ((--) 1) [] = []
   **)
 
-  let len = length
-  (**T
-    len (1--10) = 10
-  **)
 
-  let all = for_all
-  (**T
-    all (gt 5) (1--10) = false
-    all (lt 11) (1--10) = true
-    all (gt 4) [] = true
-  **)
-  let any = exists
-  (**T
-    any (gt 5) (1--10) = true
-    any (gt 11) (1--10) = false
-    any (gt 4) [] = false
-  **)
 
-  let allEqual l = match l with
-    | [] -> true
-    | (h::t) -> all ((=) h) t
-  (**T
-    allEqual (1--10) = false
-    allEqual [] = true
-    allEqual (replicate 10 'a') = true
-  **)
+  (* Searching *)
 
-  let includes x = exists (fun y -> x = y)
-  (**T
-    includes 4 (1--10) = true
-    includes 0 (1--10) = false
-    includes 5 [] = false
-  **)
-  let has = includes
-  (**T
-    has 'a' ('a'-~'g') = true
-    has 0 (1--10) = false
-  **)
-  let elem = includes
-  (**T
-    elem 'b' ['a'; 'c'] = false
-    elem "foo" ["bar"; "baz"; "foo"] = true
-  **)
-  let notElem x lst = not @@ elem x lst
-  (**T
-    notElem 4 (1--10) = false
-    notElem 0 (1--10) = true
-    notElem 5 [] = true
-  **)
-
-  let indexOf x lst =
-    let rec aux x c l = match l with
-      | [] -> raise Not_found
-      | (h::t) when x = h -> c
-      | (h::t) -> aux x (c+1) t in
-    aux x 0 lst
-  (**T
-    indexOf 14 (10--20) = 4
-    optNF (indexOf 1) (10--20) = None
-    indexOf 'a' (explode "foobar") = 4
-  **)
-
-  (* let filter ... *)
-  (**T
-    filter even (1--10) = [2;4;6;8;10]
-    filter odd (1--10) = [1;3;5;7;9]
-    filter even [1] = []
-    filter odd [1] = [1]
-    filter even [] = []
-  **)
-
-  let filterWithIndex f s =
-    let rec aux f l i res =
-      match l with
-        | [] -> rev res
-        | (h::t) when f h i -> aux f t (succ i) (h::res)
-        | (h::t) -> aux f t (succ i) res in
-    aux f s 0 []
-  (**T
-    filterWithIndex (fun _ i -> i > 5) (1--9) = (7--9)
-    filterWithIndex (fun _ i -> i > 10) (1--9) = []
-    filterWithIndex (fun _ i -> i > 10) [] = []
-  **)
-
+  (* let find = find *)
   let findIndex p lst =
     let rec aux p c l = match l with
       | [] -> raise Not_found
@@ -1294,32 +1371,267 @@ struct
     optNF (findWithIndex (gt 4)) [] = None
   **)
 
-  let null = function [] -> true | _ -> false
+  let indexOf x lst =
+    let rec aux x c l = match l with
+      | [] -> raise Not_found
+      | (h::t) when x = h -> c
+      | (h::t) -> aux x (c+1) t in
+    aux x 0 lst
   (**T
-    null [] = true
-    null (1--10) = false
+    indexOf 14 (10--20) = 4
+    optNF (indexOf 1) (10--20) = None
+    indexOf 'a' (explode "foobar") = 4
   **)
 
-  let concatMap f l = concat (map f l)
+
+
+  (* Zipping *)
+
+  let zipWith f a b =
+    let rec aux f a b l = match a,b with
+        | (x::xs), (y::ys) -> aux f xs ys ((f x y)::l)
+        | _ -> rev l in
+    aux f a b []
   (**T
-    concatMap ((--) 1) [1;2;3] = [1; 1; 2; 1; 2; 3]
-    concatMap ((--) 1) [2] = [1;2]
-    concatMap ((--) 1) [] = []
+    zipWith (+) (1--10) (1--10) = map (dup (+)) (1--10)
+    zipWith (-) (1--5) (3--1) = [-2; 0; 2]
+    zipWith (-) (1--3) (5--1) = [-4; -2; 0]
+    zipWith (+) [1] (1--10) = [2]
+    zipWith (+) (1--10) [1] = [2]
+    zipWith (+) [1] [1] = [2]
+    zipWith (+) [] (1--10) = []
+    zipWith (+) (1--10) [] = []
+    zipWith (+) [] [] = []
+  **)
+  let zip a b = zipWith tuple a b
+  (**T
+    zip (1--3) (3--1) = [(1,3); (2,2); (3,1)]
+    zip (1--500) (3--1) = [(1,3); (2,2); (3,1)]
+    zip (1--3) (3--(-100)) = [(1,3); (2,2); (3,1)]
+    zip (1--4) (3--1) = [(1,3); (2,2); (3,1)]
+    zip (1--3) (3--0) = [(1,3); (2,2); (3,1)]
+    zip (1--3) [3] = [(1,3)]
+    zip [3] (1--3) = [(3,1)]
+    zip (1--3) [] = []
+    zip [] (1--3) = []
+    zip [] [] = []
+  **)
+  let unzip = split
+  (**T
+    unzip (zip (1--3) (3--1)) = ((1--3), (3--1))
+    unzip (zip (3--1) (1--3)) = ((3--1), (1--3))
+    unzip [(1,2)] = ([1], [2])
+    unzip [] = ([], [])
   **)
 
-  let pick indices l = map (flip nth l) indices
+  let zipWith3 f a b c =
+    let rec aux f a b c res =
+      match a,b,c with
+        | (h1::t1), (h2::t2), (h3::t3) -> aux f t1 t2 t3 ((f h1 h2 h3)::res)
+        | _ -> rev res in
+    aux f a b c []
   (**T
-    pick [2; 3] (explode "foobar") = ['o'; 'b']
-    pick [] [] = []
-    pick [] (1--10) = []
-    pick [0; -1] (1--10) = [1; 10]
-    optNF (pick [2;3]) [1;2;3] = None
-    optNF (pick [2;3]) [] = None
+    zipWith3 (fun a b c -> a + b + c) (1--100000) (1--100000) (1--100000) = map (multiply 3) (1--100000)
+    zipWith3 (fun a b c -> a^b^c) ["a"] ["b"] ["c";"d"] = ["abc"]
+    zipWith3 (fun a b c -> a + b + c) [1] (1--10) (1--10) = [3]
+    zipWith3 (fun a b c -> a + b + c) (1--10) [1] (1--10) = [3]
+    zipWith3 (fun a b c -> a + b + c) (1--10) (1--10) [1] = [3]
+    zipWith3 (fun a b c -> a + b + c) [1] (1--10) [1] = [3]
+    zipWith3 (fun a b c -> a + b + c) [1] [1] (1--10) = [3]
+    zipWith3 (fun a b c -> a + b + c) (1--10) [] [1] = []
+    zipWith3 (fun a b c -> a + b + c) (1--10) [1] [] = []
+    zipWith3 (fun a b c -> a + b + c) (1--10) [] [] = []
+    zipWith3 (fun a b c -> a + b + c) [] [1] [1] = []
+    zipWith3 (fun a b c -> a + b + c) [] [] [1] = []
+    zipWith3 (fun a b c -> a + b + c) [] [1] [] = []
+    zipWith3 (fun a b c -> a + b + c) [1] [] [] = []
+    zipWith3 (fun a b c -> a + b + c) [] [] [] = []
   **)
-  let pickWith funcs l = map ((|>) l) funcs
+  let zip3 a b c = zipWith3 tuple3 a b c
   (**T
-    pickWith [first; last] (explode "foobar") = ['f'; 'r']
+    zip3 (1--500) (3--1) (2--5) = [(1,3,2); (2,2,3); (3,1,4)]
+    zip3 (1--10) [2] [3] = [(1,2,3)]
+    zip3 [1] (2--10) [3] = [(1,2,3)]
+    zip3 [1] [2] (3--10) = [(1,2,3)]
+    zip3 [1] [2] [3] = [(1,2,3)]
+    zip3 [] [1] [1] = []
+    zip3 [1] [] [1] = []
+    zip3 [1] [1] [] = []
+    zip3 [1] [] [] = []
+    zip3 [] [1] [] = []
+    zip3 [] [] [1] = []
+    zip3 [] [] [] = []
   **)
+  let unzip3 l =
+    foldr (fun (a,b,c) (t1,t2,t3) -> (a::t1, b::t2, c::t3)) ([],[],[]) l
+  (**T
+    unzip3 (zip3 (1--3) (3--1) (2--4)) = ((1--3), (3--1), (2--4))
+    unzip3 [(1,2,3)] = ([1], [2], [3])
+    unzip3 [] = ([], [], [])
+  **)
+
+
+
+  (* Extra folds *)
+
+  let scanl f init lst = rev @@ snd @@
+    foldl (fun (s,l) i -> let s' = f s i in (s', s'::l)) (init, [init]) lst
+  (**T
+    scanl multiply 1 (2--5) = [1; 2; 6; 24; 120]
+    scanl multiply 1 [] = [1]
+    scanl multiply 1 [2] = [1; 2]
+  **)
+  let scanl1 f l = scanl f (head l) (tail l)
+  (**T
+    scanl1 multiply (1--5) = [1; 2; 6; 24; 120]
+    scanl1 multiply [1] = [1]
+    optNF (scanl1 multiply) [] = None
+  **)
+
+  let scanr f init lst = snd @@
+    foldr (fun i (s,l) -> let s' = f s i in (s', s'::l)) (init, [init]) lst
+  (**T
+    scanr multiply 1 [5;4;3;2] = [120; 24; 6; 2; 1]
+    scanr multiply 1 [] = [1]
+    scanr multiply 1 [2] = [2; 1]
+  **)
+  let scanr1 f l = let l,i = pop l in scanr f i l
+  (**T
+    scanr1 multiply [5;4;3;2;1] = [120; 24; 6; 2; 1]
+    scanr1 multiply [1] = [1]
+    optNF (scanr1 multiply) [] = None
+  **)
+
+  let maximum lst = foldl1 max lst
+  (**T
+    maximum [1;2;3;0;1;4;3;1] = 4
+    maximum [1] = 1
+    optNF maximum [] = None
+  **)
+  let maximumBy f lst = foldl1 (maxBy f) lst
+  (**T
+    maximumBy square (-3 -- 2) = -3
+    maximumBy square (-1 -- 2) = 2
+    optNF (maximumBy square) [] = None
+  **)
+  let maximumByWith f lst = maximumBy snd (map (fupler f) lst)
+  (**T
+    maximumByWith square (-3 -- 2) = (-3, 9)
+    maximumByWith square (-1 -- 2) = (2, 4)
+    optNF (maximumByWith square) [] = None
+  **)
+  let minimum lst = foldl1 min lst
+  (**T
+    minimum [1;2;3;0;1;4;3;1] = 0
+    minimum [1] = 1
+    optNF minimum [] = None
+  **)
+
+  let minimumBy f lst = foldl1 (minBy f) lst
+  (**T
+    minimumBy square (-3 -- (-1)) = -1
+    minimumBy square (-1 -- 2) = 0
+    optNF (minimumBy square) [] = None
+  **)
+  let minimumByWith f lst = minimumBy snd (map (fupler f) lst)
+  (**T
+    minimumByWith square (-3 -- (-1)) = (-1, 1)
+    minimumByWith square (-1 -- 2) = (0, 0)
+    optNF (minimumByWith square) [] = None
+  **)
+
+  let product lst = foldl ( * ) 1 lst
+  (**T
+    product (1--10) = 3628800
+    product [1;2] = 2
+    product [1] = 1
+    product [0] = 0
+    product [] = 1
+  **)
+  let productf lst = foldl ( *. ) 1. lst
+  (**T
+    productf (1.--.10.) = 3628800.
+    productf [1.;2.] = 2.
+    productf [1.] = 1.
+    productf [0.] = 0.
+    productf [] = 1.
+  **)
+  let sum lst = foldl (+) 0 lst
+  (**T
+    sum (1--10) = 55
+    sum [1;2] = 3
+    sum [1] = 1
+    sum [0] = 0
+    sum [] = 0
+  **)
+  let sumf lst = foldl (+.) 0. lst
+  (**T
+    sumf (1.--.10.) = 55.
+    sumf [1.;2.] = 3.
+    sumf [1.] = 1.
+    sumf [0.] = 0.
+    sumf [] = 0.
+  **)
+  let average lst = (sum lst) / (length lst)
+  (**T
+    average (1--10) = 5
+    average [1] = 1
+    optEx Division_by_zero average [] = None
+  **)
+  let averagef lst = (sumf lst) /. (float (length lst))
+  (**T
+    averagef (1.--.10.) = 5.5
+    averagef [1.] = 1.
+    isNaN (averagef [])
+  **)
+
+  let count p l =
+    let rec aux c p l = match l with
+      | [] -> c
+      | (h::t) -> aux (c + (if p h then 1 else 0)) p t in
+    aux 0 p l
+  (**T
+    count (gt 5) (0--10) = 5
+    count ((=) 1) (1--10) = 1
+    count ((=) 1) [] = 0
+    count ((=) 1) [1;2;3;1;2;3] = 2
+  **)
+
+
+  (* Subsequences *)
+
+  let sub first len lst =
+    let rec f l fst ln c res = match l with
+      | [] -> res
+      | h::t when c >= (fst + ln) -> res
+      | h::t when c >= fst -> f t fst ln (c+1) (h::res)
+      | h::t -> f t fst ln (c+1) res in
+    let first = if first < 0 then length lst + first else first in
+    List.rev (f lst first len 0 [])
+  (**T
+    sub 2 3 (explode "foobar") = ['o'; 'b'; 'a']
+    sub (-3) 2 (explode "foobar") = ['b'; 'a']
+    sub 0 0 (1--10) = []
+    sub 0 1 (1--10) = [1]
+    sub 0 (-1) (1--10) = []
+  **)
+  let slice first last lst =
+    let len = if first < 0 || last < 0 then length lst else 0 in
+    let first = if first < 0 then len + first else first in
+    let last = if last < 0 then len + last else last in
+    sub first (last-first+1) lst
+  (**T
+    slice 2 3 (explode "foobar") = ['o'; 'b']
+    slice (-3) (-1) (explode "foobar") = ['b'; 'a'; 'r']
+    slice 0 0 (1--10) = [1]
+    slice 0 1 (1--10) = [1; 2]
+    slice 1 0 (1--10) = []
+    slice 0 (-1) (1--10) = (1--10)
+  **)
+
+
+
+  (* Take and drop *)
 
   let span f lst =
     let rec aux f res l = match l with
@@ -1329,6 +1641,13 @@ struct
   (**T
     span id [true; false; false; true] = ([true], [false; false; true])
     span (lessOrEqualTo 5) (1--10) = ([1; 2; 3; 4; 5], [6; 7; 8; 9; 10])
+    span id [] = ([], [])
+    span id [true] = ([true], [])
+    span id [false] = ([], [false])
+    span id [false;true] = ([], [false;true])
+    span id [true;false] = ([true], [false])
+    span id [true;true] = ([true;true], [])
+    span id [false;false] = ([], [false;false])
   **)
   let break p = span (fun i -> not (p i))
   (**T
@@ -1464,34 +1783,32 @@ struct
     drop2 3 (1--6) (7--1) = ((4--6), (4--1))
   **)
 
-  let sub first len lst =
-    let rec f l fst ln c res = match l with
-      | [] -> res
-      | h::t when c >= (fst + ln) -> res
-      | h::t when c >= fst -> f t fst ln (c+1) (h::res)
-      | h::t -> f t fst ln (c+1) res in
-    let first = if first < 0 then length lst + first else first in
-    List.rev (f lst first len 0 [])
+
+
+  (* Map with window *)
+
+  let mapWindow f n l =
+    let rec aux f wnd lst res =
+      match lst with
+        | [] -> rev res
+        | (h::t) ->
+          let wnd = tail wnd @ [h] in
+          aux f wnd t ((f wnd) :: res) in
+    let wnd, t = splitAt n l in
+    if wnd = [] then []
+    else aux f wnd t [f wnd]
   (**T
-    sub 2 3 (explode "foobar") = ['o'; 'b'; 'a']
-    sub (-3) 2 (explode "foobar") = ['b'; 'a']
-    sub 0 0 (1--10) = []
-    sub 0 1 (1--10) = [1]
-    sub 0 (-1) (1--10) = []
+    mapWindow sum 1 (1--4) = (1--4)
+    mapWindow sum 2 (1--4) = [3; 5; 7]
+    mapWindow sum 3 (1--4) = [6; 9]
+    mapWindow sum 3 [] = []
+    mapWindow sum 3 [1] = [1]
+    mapWindow sum 3 (1--3) = [6]
   **)
-  let slice first last lst =
-    let len = if first < 0 || last < 0 then length lst else 0 in
-    let first = if first < 0 then len + first else first in
-    let last = if last < 0 then len + last else last in
-    sub first (last-first+1) lst
-  (**T
-    slice 2 3 (explode "foobar") = ['o'; 'b']
-    slice (-3) (-1) (explode "foobar") = ['b'; 'a'; 'r']
-    slice 0 0 (1--10) = [1]
-    slice 0 1 (1--10) = [1; 2]
-    slice 1 0 (1--10) = []
-    slice 0 (-1) (1--10) = (1--10)
-  **)
+
+
+
+  (* Interlace *)
 
   let interlace elem l =
     let rec aux l l2 = match l with
@@ -1504,6 +1821,153 @@ struct
     interlace 0 [] = []
     interlace 0 [1] = [1]
     interlace 0 [1;2] = [1; 0; 2]
+  **)
+
+
+
+  (* Predicates *)
+
+  let all = for_all
+  (**T
+    all (gt 5) (1--10) = false
+    all (lt 11) (1--10) = true
+    all (gt 4) [] = true
+  **)
+  let any = exists
+  (**T
+    any (gt 5) (1--10) = true
+    any (gt 11) (1--10) = false
+    any (gt 4) [] = false
+  **)
+
+  let allEqual l = match l with
+    | [] -> true
+    | (h::t) -> all ((=) h) t
+  (**T
+    allEqual (1--10) = false
+    allEqual [] = true
+    allEqual (replicate 10 'a') = true
+  **)
+
+  let includes x = exists (fun y -> x = y)
+  (**T
+    includes 4 (1--10) = true
+    includes 0 (1--10) = false
+    includes 5 [] = false
+  **)
+  let has = includes
+  (**T
+    has 'a' ('a'-~'g') = true
+    has 0 (1--10) = false
+  **)
+  let elem = includes
+  (**T
+    elem 'b' ['a'; 'c'] = false
+    elem "foo" ["bar"; "baz"; "foo"] = true
+  **)
+  let notElem x lst = not @@ elem x lst
+  (**T
+    notElem 4 (1--10) = false
+    notElem 0 (1--10) = true
+    notElem 5 [] = true
+  **)
+
+  let null = function [] -> true | _ -> false
+  (**T
+    null [] = true
+    null (1--10) = false
+  **)
+
+
+
+  (* Associations *)
+
+  let rec assocBy f l =
+    match l with
+      | [] -> raise Not_found
+      | (k,v)::t when f k -> v
+      | _::t -> assocBy f t
+  (**T
+    assocBy (gt 5) (zip (1--10) ('a'-~'z')) = 'f'
+    optNF (assocBy (gt 10)) (zip (1--10) ('a'-~'z')) = None
+  **)
+
+  let lookup e l = optNF (assoc e) l
+  (**T
+    lookup 4 (zip (1--10) ('a'-~'z')) = Some 'd'
+    lookup 11 (zip (1--10) ('a'-~'z')) = None
+  **)
+  let lookupBy f l = optNF (assocBy f) l
+  (**T
+    lookupBy (gt 5) (zip (1--10) ('a'-~'z')) = Some 'f'
+    lookupBy (gt 10) (zip (1--10) ('a'-~'z')) = None
+  **)
+
+
+
+  (* Sorting *)
+
+  let sort ?(cmp=compare) l = List.sort cmp l
+  (**T
+    sort (10--1) = (1--10)
+    sort [] = []
+    sort [1] = [1]
+    sort ~cmp:subtract (1--10) = (10--1)
+    sort ~cmp:subtract [] = []
+    sort ['a'; 'c'; 'b'] = ('a'-~'c')
+  **)
+  let sortBy ?(cmp=compare) f l =
+    map (fupler f) l |> sort ~cmp:(fun (_,a) (_,b) -> cmp a b) |> map fst
+  (**T
+    sortBy square [-3; 2; 1] = [1; 2; -3]
+    sortBy square [] = []
+    sortBy square [1] = [1]
+    sortBy ~cmp:subtract square [-3; 2; 1] = [-3; 2; 1]
+    sortBy ~cmp:subtract square [] = []
+    sortBy ~cmp:subtract square [1] = [1]
+  **)
+
+
+
+  (* Filtering *)
+
+  (* let filter = filter *)
+  (**T
+    filter even (1--10) = [2;4;6;8;10]
+    filter odd (1--10) = [1;3;5;7;9]
+    filter even [1] = []
+    filter odd [1] = [1]
+    filter even [] = []
+  **)
+
+  let filterWithIndex f s =
+    let rec aux f l i res =
+      match l with
+        | [] -> rev res
+        | (h::t) when f h i -> aux f t (succ i) (h::res)
+        | (h::t) -> aux f t (succ i) res in
+    aux f s 0 []
+  (**T
+    filterWithIndex (fun _ i -> i > 5) (1--9) = (7--9)
+    filterWithIndex (fun _ i -> i > 10) (1--9) = []
+    filterWithIndex (fun _ i -> i > 10) [] = []
+  **)
+
+  let reject f l = filter (fun i -> not (f i)) l
+  (**T
+    reject (gt 4) (1--5) = (1--4)
+    reject (gt 4) [] = []
+    reject (gt 0) (1--5) = []
+    reject (gt 5) (1--5) = (1--5)
+    reject (gt 3) (5--1) = (3--1)
+  **)
+
+  let without x l = filter ((<>) x) l
+  (**T
+    without 4 [1; 2; 4; 1; 2; 4] = [1; 2; 1; 2]
+    without 4 [] = []
+    without 4 [4] = []
+    without 4 [1] = [1]
   **)
 
   let compact l = map (function Some x -> x | _ -> failwith "compact")
@@ -1533,26 +1997,6 @@ struct
     squeeze [1;1;2] = [1;2]
     squeeze [2;1;1] = [2;1]
   **)
-
-  let sort ?(cmp=compare) l = List.sort cmp l
-  (**T
-    sort (10--1) = (1--10)
-    sort [] = []
-    sort [1] = [1]
-    sort ~cmp:subtract (1--10) = (10--1)
-    sort ~cmp:subtract [] = []
-    sort ['a'; 'c'; 'b'] = ('a'-~'c')
-  **)
-  let sortBy ?(cmp=compare) f l =
-    map (fupler f) l |> sort ~cmp:(fun (_,a) (_,b) -> cmp a b) |> map fst
-  (**T
-    sortBy square [-3; 2; 1] = [1; 2; -3]
-    sortBy square [] = []
-    sortBy square [1] = [1]
-    sortBy ~cmp:subtract square [-3; 2; 1] = [-3; 2; 1]
-    sortBy ~cmp:subtract square [] = []
-    sortBy ~cmp:subtract square [1] = [1]
-  **)
   let uniq ?cmp l = squeeze (sort ?cmp l)
   (**T
     uniq [3;1;2;2;2;3;3;1] = [1; 2; 3]
@@ -1564,22 +2008,23 @@ struct
     uniq [2;1;1] = [1;2]
   **)
 
-  let reject f l = filter (fun i -> not (f i)) l
+  let pick indices l = map (flip nth l) indices
   (**T
-    reject (gt 4) (1--5) = (1--4)
-    reject (gt 4) [] = []
-    reject (gt 0) (1--5) = []
-    reject (gt 5) (1--5) = (1--5)
-    reject (gt 3) (5--1) = (3--1)
+    pick [2; 3] (explode "foobar") = ['o'; 'b']
+    pick [] [] = []
+    pick [] (1--10) = []
+    pick [0; -1] (1--10) = [1; 10]
+    optNF (pick [2;3]) [1;2;3] = None
+    optNF (pick [2;3]) [] = None
+  **)
+  let pickWith funcs l = map ((|>) l) funcs
+  (**T
+    pickWith [first; last] (explode "foobar") = ['f'; 'r']
   **)
 
-  let without x l = filter ((<>) x) l
-  (**T
-    without 4 [1; 2; 4; 1; 2; 4] = [1; 2; 1; 2]
-    without 4 [] = []
-    without 4 [4] = []
-    without 4 [1] = [1]
-  **)
+
+
+  (* Neighbours *)
 
   let rec neighbours item items = match items with
     | (p::i::n::t) when i == item -> (Some p, Some n)
@@ -1613,192 +2058,8 @@ struct
     neighbourLists 7 3 [] = ([], [])
   **)
 
-  let mapWindow f n l =
-    let rec aux f wnd lst res =
-      match lst with
-        | [] -> rev res
-        | (h::t) ->
-          let wnd = tail wnd @ [h] in
-          aux f wnd t ((f wnd) :: res) in
-    let wnd, t = splitAt n l in
-    if wnd = [] then []
-    else aux f wnd t [f wnd]
-  (**T
-    mapWindow sum 1 (1--4) = (1--4)
-    mapWindow sum 2 (1--4) = [3; 5; 7]
-    mapWindow sum 3 (1--4) = [6; 9]
-    mapWindow sum 3 [] = []
-    mapWindow sum 3 [1] = [1]
-    mapWindow sum 3 (1--3) = [6]
-  **)
 
-  let foldl = fold_left
-  (**T
-    foldl (+) 0 (1--10) = 55
-    foldl (fun s b -> s ^ (string_of_int b)) "--" (1--3) = "--123"
-    foldl (+) 1 [] = 1
-    foldl (+) 1 [1] = 2
-  **)
-  let foldl1 f l = foldl f (head l) (tail l)
-  (**T
-    foldl1 (+) (1--10) = 55
-    foldl1 (fun s i -> s ^ i) ["foo"; "bar"; "baz"] = "foobarbaz"
-    optNF (foldl1 (+)) [] = None
-    foldl1 (+) [1] = 1
-  **)
-
-  let foldr f s l = fold_right f l s
-  (**T
-    foldr (+) 0 (1--10) = 55
-    foldr (fun a s -> s ^ (string_of_int a)) "--" (1--3) = "--321"
-    foldr (+) 1 [] = 1
-    foldr (+) 1 [1] = 2
-  **)
-  let foldr1 f l = let l,i = pop l in foldr f i l
-  (**T
-    foldr1 (+) (1--10) = 55
-    foldr1 (fun a s -> s ^ a) ["foo"; "bar"; "baz"] = "bazbarfoo"
-    optNF (foldr1 (+)) [] = None
-    foldr1 (+) [1] = 1
-  **)
-
-  let scanl f init lst = rev @@ snd @@
-    foldl (fun (s,l) i -> let s' = f s i in (s', s'::l)) (init, [init]) lst
-  (**T
-    scanl multiply 1 (2--5) = [1; 2; 6; 24; 120]
-    scanl multiply 1 [] = [1]
-    scanl multiply 1 [2] = [1; 2]
-  **)
-  let scanl1 f l = scanl f (head l) (tail l)
-  (**T
-    scanl1 multiply (1--5) = [1; 2; 6; 24; 120]
-    scanl1 multiply [1] = [1]
-    optNF (scanl1 multiply) [] = None
-  **)
-
-  let scanr f init lst = snd @@
-    foldr (fun i (s,l) -> let s' = f s i in (s', s'::l)) (init, [init]) lst
-  (**T
-    scanr multiply 1 [5;4;3;2] = [120; 24; 6; 2; 1]
-    scanr multiply 1 [] = [1]
-    scanr multiply 1 [2] = [2; 1]
-  **)
-  let scanr1 f l = let l,i = pop l in scanr f i l
-  (**T
-    scanr1 multiply [5;4;3;2;1] = [120; 24; 6; 2; 1]
-    scanr1 multiply [1] = [1]
-    optNF (scanr1 multiply) [] = None
-  **)
-
-
-  let zipWith f a b =
-    let rec aux f a b l = match a,b with
-        | (x::xs), (y::ys) -> aux f xs ys ((f x y)::l)
-        | _ -> rev l in
-    aux f a b []
-  (**T
-    zipWith (+) (1--10) (1--10) = map (dup (+)) (1--10)
-    zipWith (-) (1--5) (3--1) = [-2; 0; 2]
-    zipWith (-) (1--3) (5--1) = [-4; -2; 0]
-    zipWith (+) [1] (1--10) = [2]
-    zipWith (+) (1--10) [1] = [2]
-    zipWith (+) [1] [1] = [2]
-    zipWith (+) [] (1--10) = []
-    zipWith (+) (1--10) [] = []
-    zipWith (+) [] [] = []
-  **)
-  let zip a b = zipWith tuple a b
-  (**T
-    zip (1--3) (3--1) = [(1,3); (2,2); (3,1)]
-    zip (1--500) (3--1) = [(1,3); (2,2); (3,1)]
-    zip (1--3) (3--(-100)) = [(1,3); (2,2); (3,1)]
-    zip (1--4) (3--1) = [(1,3); (2,2); (3,1)]
-    zip (1--3) (3--0) = [(1,3); (2,2); (3,1)]
-    zip (1--3) [3] = [(1,3)]
-    zip [3] (1--3) = [(3,1)]
-    zip (1--3) [] = []
-    zip [] (1--3) = []
-    zip [] [] = []
-  **)
-  let unzip = split
-  (**T
-    unzip (zip (1--3) (3--1)) = ((1--3), (3--1))
-    unzip (zip (3--1) (1--3)) = ((3--1), (1--3))
-    unzip [(1,2)] = ([1], [2])
-    unzip [] = ([], [])
-  **)
-
-  let zipWith3 f a b c =
-    let rec aux f a b c res =
-      match a,b,c with
-        | (h1::t1), (h2::t2), (h3::t3) -> aux f t1 t2 t3 ((f h1 h2 h3)::res)
-        | _ -> rev res in
-    aux f a b c []
-  (**T
-    zipWith3 (fun a b c -> a + b + c) (1--100000) (1--100000) (1--100000) = map (multiply 3) (1--100000)
-    zipWith3 (fun a b c -> a^b^c) ["a"] ["b"] ["c";"d"] = ["abc"]
-    zipWith3 (fun a b c -> a + b + c) [1] (1--10) (1--10) = [3]
-    zipWith3 (fun a b c -> a + b + c) (1--10) [1] (1--10) = [3]
-    zipWith3 (fun a b c -> a + b + c) (1--10) (1--10) [1] = [3]
-    zipWith3 (fun a b c -> a + b + c) [1] (1--10) [1] = [3]
-    zipWith3 (fun a b c -> a + b + c) [1] [1] (1--10) = [3]
-    zipWith3 (fun a b c -> a + b + c) (1--10) [] [1] = []
-    zipWith3 (fun a b c -> a + b + c) (1--10) [1] [] = []
-    zipWith3 (fun a b c -> a + b + c) (1--10) [] [] = []
-    zipWith3 (fun a b c -> a + b + c) [] [1] [1] = []
-    zipWith3 (fun a b c -> a + b + c) [] [] [1] = []
-    zipWith3 (fun a b c -> a + b + c) [] [1] [] = []
-    zipWith3 (fun a b c -> a + b + c) [1] [] [] = []
-    zipWith3 (fun a b c -> a + b + c) [] [] [] = []
-  **)
-  let zip3 a b c = zipWith3 tuple3 a b c
-  (**T
-    zip3 (1--500) (3--1) (2--5) = [(1,3,2); (2,2,3); (3,1,4)]
-    zip3 (1--10) [2] [3] = [(1,2,3)]
-    zip3 [1] (2--10) [3] = [(1,2,3)]
-    zip3 [1] [2] (3--10) = [(1,2,3)]
-    zip3 [1] [2] [3] = [(1,2,3)]
-    zip3 [] [1] [1] = []
-    zip3 [1] [] [1] = []
-    zip3 [1] [1] [] = []
-    zip3 [1] [] [] = []
-    zip3 [] [1] [] = []
-    zip3 [] [] [1] = []
-    zip3 [] [] [] = []
-  **)
-  let unzip3 l =
-    foldr (fun (a,b,c) (t1,t2,t3) -> (a::t1, b::t2, c::t3)) ([],[],[]) l
-  (**T
-    unzip3 (zip3 (1--3) (3--1) (2--4)) = ((1--3), (3--1), (2--4))
-    unzip3 [(1,2,3)] = ([1], [2], [3])
-    unzip3 [] = ([], [], [])
-  **)
-
-  let iterWithIndex f l =
-    let rec aux f l i = match l with
-      | [] -> ()
-      | (h::t) -> f h i; aux f t (succ i) in
-    aux f l 0
-  (**T
-    (let i = ref 0 and j = ref 0 in iterWithIndex (fun a b -> i:=a; j:=b) (20--30); !i = 30 && !j = 10)
-    iterWithIndex (ignore @.. add) [1] = ()
-    iterWithIndex (ignore @.. add) [] = ()
-  **)
-  let each = iter
-  (**T
-    (let i = ref 0 in iter (fun a -> i:=a) (20--30); !i = 30)
-    iter (ignore @. succ) [1] = ()
-    iter (ignore @. succ) [] = ()
-  **)
-  let eachWithIndex = iterWithIndex
-  let mapWithIndex f l =
-    rev (snd (foldl (fun (j,r) i -> (j+1, (f i j)::r)) (0, []) l))
-  (**T
-    mapWithIndex (+) (0--10) = map (multiply 2) (0--10)
-    mapWithIndex (-) (10--20) = replicate 11 10
-    mapWithIndex (+) [] = []
-    mapWithIndex (+) [1] = [1]
-  **)
+  (* Set operations *)
 
   let diffSorted a b =
     let rec aux a b l =
@@ -1853,190 +2114,9 @@ struct
     diff [] [] = []
   **)
 
-  let product lst = foldl ( * ) 1 lst
-  (**T
-    product (1--10) = 3628800
-    product [1;2] = 2
-    product [1] = 1
-    product [0] = 0
-    product [] = 1
-  **)
-  let productf lst = foldl ( *. ) 1. lst
-  (**T
-    productf (1.--.10.) = 3628800.
-    productf [1.;2.] = 2.
-    productf [1.] = 1.
-    productf [0.] = 0.
-    productf [] = 1.
-  **)
-  let sum lst = foldl (+) 0 lst
-  (**T
-    sum (1--10) = 55
-    sum [1;2] = 3
-    sum [1] = 1
-    sum [0] = 0
-    sum [] = 0
-  **)
-  let sumf lst = foldl (+.) 0. lst
-  (**T
-    sumf (1.--.10.) = 55.
-    sumf [1.;2.] = 3.
-    sumf [1.] = 1.
-    sumf [0.] = 0.
-    sumf [] = 0.
-  **)
-  let average lst = (sum lst) / (length lst)
-  (**T
-    average (1--10) = 5
-    average [1] = 1
-    optEx Division_by_zero average [] = None
-  **)
-  let averagef lst = (sumf lst) /. (float (length lst))
-  (**T
-    averagef (1.--.10.) = 5.5
-    averagef [1.] = 1.
-    isNaN (averagef [])
-  **)
 
-  let cycle n l =
-    let rec aux c lst res =
-      if c == 0 then rev res
-      else match lst with
-            | [] -> aux c l res
-            | (h::t) -> aux (c-1) t (h::res) in
-    if l = [] then [] else aux n l []
-  (**T
-    cycle 5 (1--3) = [1; 2; 3; 1; 2]
-    cycle 3 (1--10) = [1; 2; 3]
-    cycle 3 [1] = [1;1;1]
-    cycle 3 [] = []
-  **)
 
-  let init f n =
-    let rec aux f n res =
-      if n < 0 then res
-      else aux f (n-1) ((f n) :: res) in
-    aux f (n-1) []
-  (**T
-    init succ 10 = (1--10)
-    init pred 10 = ((-1)--8)
-    init succ 0 = []
-    init succ 1 = [1]
-  **)
-
-  let range s e =
-    if s > e
-    then init ((-) s) (s-e+1)
-    else init ((+) s) (e-s+1)
-  (**T
-    range 1 3 = [1; 2; 3]
-    range 1 1 = [1]
-    range 1 0 = [1; 0]
-    range (max_int - 1) max_int = [max_int - 1; max_int]
-    range max_int (max_int - 1) = [max_int; max_int - 1]
-    range (min_int + 1) min_int = [min_int + 1; min_int]
-    range min_int (min_int + 1) = [min_int; min_int + 1]
-  **)
-  let rangef s e =
-    if s > e
-    then init (fun i -> s -. (float i)) (int (ceil (s-.e+.1.)))
-    else init (fun i -> s +. (float i)) (int (ceil (e-.s+.1.)))
-  (**T
-    rangef 1. 3. = [1.; 2.; 3.]
-    rangef 1. 1. = [1.]
-    rangef 1. 0. = [1.; 0.]
-  **)
-  let charRange sc ec =
-    let s, e = ord sc, ord ec in
-    if s > e
-    then init (fun i -> chr (s - i)) (s-e+1)
-    else init (fun i -> chr (s + i)) (e-s+1)
-  (**T
-    charRange 'a' 'c' = ['a'; 'b'; 'c']
-    charRange 'a' 'a' = ['a']
-    charRange 'b' 'a' = ['b'; 'a']
-    charRange '\000' '\255' = explode ('\000'--^'\255')
-    charRange '\255' '\000' = explode ('\255'--^'\000')
-  **)
-  let (--) = range
-  (**T
-    (1--3) = [1; 2; 3]
-    (1--1) = [1]
-    (1--0) = [1; 0]
-  **)
-
-  let step d s e =
-    if d == 0 then failwith "Prelude.step: zero step" else
-    if s == e then [s] else
-    if s < e
-    then (if d < 0 then [] else generate (lte e) (add d) s)
-    else (if d > 0 then [] else generate (gte e) (add d) s)
-  (**T
-    step 2 0 5 = [0; 2; 4]
-    step 2 1 5 = [1; 3; 5]
-    step (-2) 5 1 = [5; 3; 1]
-    step (-2) 5 0 = [5; 3; 1]
-    step 2 0 0 = [0]
-    step 2 0 (-1) = []
-    step 2 0 (-5) = []
-    step (-2) 0 0 = [0]
-    step (-2) 0 1 = []
-    step (-2) 0 (-1) = [0]
-    step (-2) 0 (-5) = [0; -2; -4]
-  **)
-
-  let replicate n v = init (const v) n
-  (**T
-    replicate 5 '-' = ['-'; '-'; '-'; '-'; '-']
-    replicate 1 '-' = ['-']
-    replicate 0 '-' = []
-    replicate (-1) '-' = []
-  **)
-  let times n l = concat (replicate n l)
-  (**T
-    times 3 [1; 2; 3] = [1; 2; 3; 1; 2; 3; 1; 2; 3]
-    times 0 (1--10) = []
-    times 1 (1--10) = (1--10)
-    times (-1) (1--10) = []
-  **)
-
-  let maximum lst = foldl1 max lst
-  (**T
-    maximum [1;2;3;0;1;4;3;1] = 4
-    maximum [1] = 1
-    optNF maximum [] = None
-  **)
-  let maximumBy f lst = foldl1 (maxBy f) lst
-  (**T
-    maximumBy square (-3 -- 2) = -3
-    maximumBy square (-1 -- 2) = 2
-    optNF (maximumBy square) [] = None
-  **)
-  let maximumByWith f lst = maximumBy snd (map (fupler f) lst)
-  (**T
-    maximumByWith square (-3 -- 2) = (-3, 9)
-    maximumByWith square (-1 -- 2) = (2, 4)
-    optNF (maximumByWith square) [] = None
-  **)
-  let minimum lst = foldl1 min lst
-  (**T
-    minimum [1;2;3;0;1;4;3;1] = 0
-    minimum [1] = 1
-    optNF minimum [] = None
-  **)
-
-  let minimumBy f lst = foldl1 (minBy f) lst
-  (**T
-    minimumBy square (-3 -- (-1)) = -1
-    minimumBy square (-1 -- 2) = 0
-    optNF (minimumBy square) [] = None
-  **)
-  let minimumByWith f lst = minimumBy snd (map (fupler f) lst)
-  (**T
-    minimumByWith square (-3 -- (-1)) = (-1, 1)
-    minimumByWith square (-1 -- 2) = (0, 0)
-    optNF (minimumByWith square) [] = None
-  **)
+  (* Grouping *)
 
   let groupsOf n l =
     if l = [] then [l] else unfoldlUntil null (splitAt (max 1 n)) l
@@ -2098,17 +2178,10 @@ struct
     group [1;1;2] = [[1;1]; [2]]
     group [1;2;2] = [[1]; [2;2]]
   **)
-  let count p l =
-    let rec aux c p l = match l with
-      | [] -> c
-      | (h::t) -> aux (c + (if p h then 1 else 0)) p t in
-    aux 0 p l
-  (**T
-    count (gt 5) (0--10) = 5
-    count ((=) 1) (1--10) = 1
-    count ((=) 1) [] = 0
-    count ((=) 1) [1;2;3;1;2;3] = 2
-  **)
+
+
+  (* Rotation *)
+
   let rotate n l =
     if l = [] then l
     else
