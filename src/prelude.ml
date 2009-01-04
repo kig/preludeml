@@ -2694,14 +2694,18 @@ struct
 
   (* Subsequences *)
 
-  let sub i len s =
+  let sub_start_and_length i len s =
     let slen = length s in
     let ni = normalizeIndex i s in
     let len = len + min 0 ni in
     let len = len + min 0 (slen-1-ni) in
     let i = max 0 (min (slen-1) ni) in
     let j = max 0 (min slen (i + len)) - 1 in
-    init (fun x -> unsafe_get s (i+x)) (max 0 (j-i+1))
+    (i, max 0 (j-i+1))
+
+  let sub i len s =
+    let first, sub_len = sub_start_and_length i len s in
+    init (fun x -> unsafe_get s (first+x)) sub_len
   (**T
     PreArray.sub 2 3 (aexplode "foobar") = [|'o'; 'b'; 'a'|]
     PreArray.sub (-3) 2 (aexplode "foobar") = [|'b'; 'a'|]
@@ -2873,8 +2877,14 @@ struct
   **)
 
   let interlace elem s =
-    init (fun i -> if i mod 2 = 0 then unsafe_get s (i/2) else elem) (2 * len s - 1)
-
+    init (fun i -> if i mod 2 = 0 then unsafe_get s (i/2) else elem) (max 0 (2 * len s - 1))
+  (**T
+    PreArray.interlace 0 [|1; 2; 3|] = [|1; 0; 2; 0; 3|]
+    aimplode @@ PreArray.interlace '-' @@ aexplode "abcde" = "a-b-c-d-e"
+    PreArray.interlace 0 [||] = [||]
+    PreArray.interlace 0 [|1|] = [|1|]
+    ainterlace 0 [|1;2|] = [|1; 0; 2|]
+  **)
   let reject f s = filter (fun v -> not (f v)) s
   let without v s = filter ((<>) v) s
 
@@ -2892,18 +2902,16 @@ struct
   (* Subsequence iterators *)
 
   let iterSub i len f s =
-    let i = normalizeIndex i s in
-    for j=i to i+len-1 do f (unsafe_get s j) done
+    let first, sub_len = sub_start_and_length i len s in
+    for j=first to first+sub_len-1 do f (unsafe_get s j) done
 
   let iterSlice i j f s =
     let i, len = slice_to_sub i j s in
     iterSub i len f s
 
   let mapSub i len f s =
-    let i = normalizeIndex i s in
-    let slen = length s in
-    let j = max 0 (min (i+len) slen) - 1 in
-    init (fun j -> f (unsafe_get s (i+j))) (j-i)
+    let first, sub_len = sub_start_and_length i len s in
+    init (fun j -> f (unsafe_get s (first+j))) sub_len
 
   let mapSlice i j f s =
     let i, len = slice_to_sub i j s in
@@ -2912,10 +2920,8 @@ struct
   let foldlSub i len f init s =
     let rec aux f s v i j =
       if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
-    let i = normalizeIndex i s in
-    let slen = length s in
-    let j = max 0 (min (i+len) slen) - 1 in
-    aux f s init i j
+    let first, sub_len = sub_start_and_length i len s in
+    aux f s init first (first+sub_len-1)
 
   let foldl1Sub i len f s =
     let i = normalizeIndex i s in
@@ -2925,10 +2931,8 @@ struct
   let foldrSub i len f init s =
     let rec aux f s v i j =
       if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
-    let i = normalizeIndex i s in
-    let slen = length s in
-    let j = max 0 (min (i+len) slen) - 1 in
-    aux f s init i j
+    let first, sub_len = sub_start_and_length i len s in
+    aux f s init first (first+sub_len-1)
 
   let foldr1Sub i len f s =
     let i = normalizeIndex i s in
@@ -3190,14 +3194,18 @@ struct
 
   (* Subsequences *)
 
-  let sub i len s =
+  let sub_start_and_length i len s =
     let slen = length s in
     let ni = normalizeIndex i s in
     let len = len + min 0 ni in
     let len = len + min 0 (slen-1-ni) in
     let i = max 0 (min (slen-1) ni) in
     let j = max 0 (min slen (i + len)) - 1 in
-    init (fun x -> unsafe_get s (i+x)) (max 0 (j-i+1))
+    (i, max 0 (j-i+1))
+
+  let sub i len s =
+    let first, sub_len = sub_start_and_length i len s in
+    init (fun x -> unsafe_get s (first+x)) sub_len
 
   let slice_to_sub i j s =
     let i = normalizeIndex i s
@@ -3263,19 +3271,19 @@ struct
 
   (* Subsequence iterators *)
 
+  (* Subsequence iterators *)
+
   let iterSub i len f s =
-    let i = normalizeIndex i s in
-    for j=i to i+len-1 do f (unsafe_get s j) done
+    let first, sub_len = sub_start_and_length i len s in
+    for j=first to first+sub_len-1 do f (unsafe_get s j) done
 
   let iterSlice i j f s =
     let i, len = slice_to_sub i j s in
     iterSub i len f s
 
   let mapSub i len f s =
-    let i = normalizeIndex i s in
-    let slen = length s in
-    let j = max 0 (min (i+len) slen) - 1 in
-    init (fun j -> f (unsafe_get s (i+j))) (j-i)
+    let first, sub_len = sub_start_and_length i len s in
+    init (fun j -> f (unsafe_get s (first+j))) sub_len
 
   let mapSlice i j f s =
     let i, len = slice_to_sub i j s in
@@ -3284,10 +3292,8 @@ struct
   let foldlSub i len f init s =
     let rec aux f s v i j =
       if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
-    let i = normalizeIndex i s in
-    let slen = length s in
-    let j = max 0 (min (i+len) slen) - 1 in
-    aux f s init i j
+    let first, sub_len = sub_start_and_length i len s in
+    aux f s init first (first+sub_len-1)
 
   let foldl1Sub i len f s =
     let i = normalizeIndex i s in
@@ -3297,10 +3303,8 @@ struct
   let foldrSub i len f init s =
     let rec aux f s v i j =
       if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
-    let i = normalizeIndex i s in
-    let slen = length s in
-    let j = max 0 (min (i+len) slen) - 1 in
-    aux f s init i j
+    let first, sub_len = sub_start_and_length i len s in
+    aux f s init first (first+sub_len-1)
 
   let foldr1Sub i len f s =
     let i = normalizeIndex i s in
@@ -3661,14 +3665,18 @@ struct
 
   (* Subsequences *)
 
-  let sub i len s =
+  let sub_start_and_length i len s =
     let slen = length s in
     let ni = normalizeIndex i s in
     let len = len + min 0 ni in
     let len = len + min 0 (slen-1-ni) in
     let i = max 0 (min (slen-1) ni) in
     let j = max 0 (min slen (i + len)) - 1 in
-    init (fun x -> unsafe_get s (i+x)) (max 0 (j-i+1))
+    (i, max 0 (j-i+1))
+
+  let sub i len s =
+    let first, sub_len = sub_start_and_length i len s in
+    init (fun x -> unsafe_get s (first+x)) sub_len
 
   let slice_to_sub i j s =
     let i = normalizeIndex i s
@@ -3732,19 +3740,19 @@ struct
 
   (* Subsequence iterators *)
 
+  (* Subsequence iterators *)
+
   let iterSub i len f s =
-    let i = normalizeIndex i s in
-    for j=i to i+len-1 do f (unsafe_get s j) done
+    let first, sub_len = sub_start_and_length i len s in
+    for j=first to first+sub_len-1 do f (unsafe_get s j) done
 
   let iterSlice i j f s =
     let i, len = slice_to_sub i j s in
     iterSub i len f s
 
   let mapSub i len f s =
-    let i = normalizeIndex i s in
-    let slen = length s in
-    let j = max 0 (min (i+len) slen) - 1 in
-    init (fun j -> f (unsafe_get s (i+j))) (j-i)
+    let first, sub_len = sub_start_and_length i len s in
+    init (fun j -> f (unsafe_get s (first+j))) sub_len
 
   let mapSlice i j f s =
     let i, len = slice_to_sub i j s in
@@ -3753,10 +3761,8 @@ struct
   let foldlSub i len f init s =
     let rec aux f s v i j =
       if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
-    let i = normalizeIndex i s in
-    let slen = length s in
-    let j = max 0 (min (i+len) slen) - 1 in
-    aux f s init i j
+    let first, sub_len = sub_start_and_length i len s in
+    aux f s init first (first+sub_len-1)
 
   let foldl1Sub i len f s =
     let i = normalizeIndex i s in
@@ -3766,10 +3772,8 @@ struct
   let foldrSub i len f init s =
     let rec aux f s v i j =
       if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
-    let i = normalizeIndex i s in
-    let slen = length s in
-    let j = max 0 (min (i+len) slen) - 1 in
-    aux f s init i j
+    let first, sub_len = sub_start_and_length i len s in
+    aux f s init first (first+sub_len-1)
 
   let foldr1Sub i len f s =
     let i = normalizeIndex i s in
