@@ -1912,40 +1912,6 @@ struct
     cycle 3 [] = []
   **)
 
-  let range s e =
-    if s <= e
-    then generateR (greaterOrEqualTo s) pred e
-    else generateR (lessOrEqualTo s) succ e
-  (**T
-    range 1 3 = [1; 2; 3]
-    range 1 1 = [1]
-    range 1 0 = [1; 0]
-  **)
-  let rangef s e =
-    if s <= e
-    then generateR (greaterOrEqualTo s) predf e
-    else generateR (lessOrEqualTo s) succf e
-  (**T
-    rangef 1. 3. = [1.; 2.; 3.]
-    rangef 1. 1. = [1.]
-    rangef 1. 0. = [1.; 0.]
-  **)
-  let charRange s e =
-    if s <= e
-    then generateR (greaterOrEqualTo s) predChar e
-    else generateR (lessOrEqualTo s) succChar e
-  (**T
-    charRange 'a' 'c' = ['a'; 'b'; 'c']
-    charRange 'a' 'a' = ['a']
-    charRange 'b' 'a' = ['b'; 'a']
-  **)
-  let (--) = range
-  (**T
-    (1--3) = [1; 2; 3]
-    (1--1) = [1]
-    (1--0) = [1; 0]
-  **)
-
   let init f n =
     let rec aux f n res =
       if n < 0 then res
@@ -1957,6 +1923,48 @@ struct
     init succ 0 = []
     init succ 1 = [1]
   **)
+
+  let range s e =
+    if s > e
+    then init ((-) s) (s-e+1)
+    else init ((+) s) (e-s+1)
+  (**T
+    range 1 3 = [1; 2; 3]
+    range 1 1 = [1]
+    range 1 0 = [1; 0]
+    range (max_int - 1) max_int = [max_int - 1; max_int]
+    range max_int (max_int - 1) = [max_int; max_int - 1]
+    range (min_int + 1) min_int = [min_int + 1; min_int]
+    range min_int (min_int + 1) = [min_int; min_int + 1]
+  **)
+  let rangef s e =
+    if s > e
+    then init (fun i -> s -. (float i)) (int (ceil (s-.e+.1.)))
+    else init (fun i -> s +. (float i)) (int (ceil (e-.s+.1.)))
+  (**T
+    rangef 1. 3. = [1.; 2.; 3.]
+    rangef 1. 1. = [1.]
+    rangef 1. 0. = [1.; 0.]
+  **)
+  let charRange sc ec =
+    let s, e = ord sc, ord ec in
+    if s > e
+    then init (fun i -> chr (s - i)) (s-e+1)
+    else init (fun i -> chr (s + i)) (e-s+1)
+  (**T
+    charRange 'a' 'c' = ['a'; 'b'; 'c']
+    charRange 'a' 'a' = ['a']
+    charRange 'b' 'a' = ['b'; 'a']
+    charRange '\000' '\255' = explode ('\000'--^'\255')
+    charRange '\255' '\000' = explode ('\255'--^'\000')
+  **)
+  let (--) = range
+  (**T
+    (1--3) = [1; 2; 3]
+    (1--1) = [1]
+    (1--0) = [1; 0]
+  **)
+
   let step d s e =
     if d == 0 then failwith "Prelude.step: zero step" else
     if s == e then [s] else
@@ -2372,9 +2380,19 @@ let (--.) = rangef
 let (@*) l n = times n l
 (**T
   [1; 2; 3] @* 3 = [1; 2; 3; 1; 2; 3; 1; 2; 3]
+  [1; 2; 3] @* 1 = [1;2;3]
+  [1; 2; 3] @* 0 = []
+  [1; 2; 3] @* (-1) = []
 **)
 
 let (-~) = charRange
+(**T
+  ('a'-~'c') = ['a'; 'b'; 'c']
+  ('a'-~'a') = ['a']
+  ('c'-~'a') = ['c'; 'b'; 'a']
+  implode ('\000'-~'\255') = ('\000'--^'\255')
+  implode ('\255'-~'\000') = ('\255'--^'\000')
+**)
 
 
 
