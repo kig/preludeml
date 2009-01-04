@@ -1186,7 +1186,7 @@ struct
 
   let cycle n l =
     let rec aux c lst res =
-      if c == 0 then rev res
+      if c <= 0 then rev res
       else match lst with
             | [] -> aux c l res
             | (h::t) -> aux (c-1) t (h::res) in
@@ -1196,6 +1196,9 @@ struct
     cycle 3 (1--10) = [1; 2; 3]
     cycle 3 [1] = [1;1;1]
     cycle 3 [] = []
+    cycle 0 [1] = []
+    cycle 1 [1] = [1]
+    cycle (-1) [1] = []
   **)
 
   let nth i l = try List.nth l (normalizeIndex i l)
@@ -2505,7 +2508,27 @@ struct
     arange (min_int + 1) min_int = [|min_int + 1; min_int|]
     arange min_int (min_int + 1) = [|min_int; min_int + 1|]
   **)
-
+  let rangef s e =
+    if s > e
+    then init (fun i -> s -. (float i)) (int (ceil (s-.e+.1.)))
+    else init (fun i -> s +. (float i)) (int (ceil (e-.s+.1.)))
+  (**T
+    arangef 1. 3. = [|1.; 2.; 3.|]
+    arangef 1. 1. = [|1.|]
+    arangef 1. 0. = [|1.; 0.|]
+  **)
+  let charRange sc ec =
+    let s, e = ord sc, ord ec in
+    if s > e
+    then init (fun i -> chr (s - i)) (s-e+1)
+    else init (fun i -> chr (s + i)) (e-s+1)
+  (**T
+    acharRange 'a' 'c' = [|'a'; 'b'; 'c'|]
+    acharRange 'a' 'a' = [|'a'|]
+    acharRange 'b' 'a' = [|'b'; 'a'|]
+    acharRange '\000' '\255' = aexplode ('\000'--^'\255')
+    acharRange '\255' '\000' = aexplode ('\255'--^'\000')
+  **)
 
   let reverse (s : 'a array) =
     let len = length s in
@@ -2530,8 +2553,16 @@ struct
     PreArray.normalizeIndex 2 (1--|10) = 2
     PreArray.normalizeIndex (-1) (1--|10) = 9
     PreArray.normalizeIndex (-2) (1--|10) = 8
-    PreArray.normalizeIndex (-1) (1--|2) = 1
+    anormalizeIndex (-1) (1--|2) = 1
     PreArray.normalizeIndex (-2) (1--|2) = 0
+  **)
+
+  let replicate n v = make (max 0 n) v
+  (**T
+    PreArray.replicate 5 '-' = [|'-'; '-'; '-'; '-'; '-'|]
+    PreArray.replicate 1 '-' = [|'-'|]
+    areplicate 0 '-' = [||]
+    PreArray.replicate (-1) '-' = [||]
   **)
 
   let times n a = PreList.replicate n a |> concat
@@ -2539,6 +2570,30 @@ struct
     atimes 3 (1--|3) = [|1;2;3;1;2;3;1;2;3|]
     atimes 0 (1--|3) = [||]
     atimes 1 (1--|3) = (1--|3)
+    atimes (-1) (1--|3) = [||]
+    atimes 4 [||] = [||]
+    atimes 3 [|1|] = [|1;1;1|]
+  **)
+
+  let cycle n a =
+    let l = len a in
+    if l = 0 || n <= 0 then [||]
+    else
+      let i = ref 0 in
+      init (fun _ ->
+        if !i >= l then i := 0;
+        let v = unsafe_get a !i in
+        i := !i + 1;
+        v
+      ) n
+  (**T
+    acycle 5 (1--|3) = [|1; 2; 3; 1; 2|]
+    acycle 3 (1--|10) = [|1; 2; 3|]
+    acycle 3 [|1|] = [|1;1;1|]
+    acycle 3 [||] = [||]
+    acycle 0 [|1|] = [||]
+    acycle 1 [|1|] = [|1|]
+    acycle (-1) [|1|] = [||]
   **)
 
   (* Iterators *)
@@ -3831,6 +3886,9 @@ let alen = PreArray.length
 let aconcat = PreArray.concat
 let areverse = PreArray.reverse
 let arev = areverse
+let areplicate = PreArray.replicate
+let anormalizeIndex = PreArray.normalizeIndex
+let acycle = PreArray.cycle
 
 let amap = PreArray.map
 let amapSub = PreArray.mapSub
@@ -3885,6 +3943,8 @@ let aaverageSubf = PreArray.averageSubf
 let aaverageSlicef = PreArray.averageSlicef
 
 let arange = PreArray.range
+let arangef = PreArray.rangef
+let acharRange = PreArray.charRange
 let azipWith = PreArray.zipWith
 let amap2 = PreArray.zipWith
 let azipWith3 = PreArray.zipWith3
@@ -3956,6 +4016,10 @@ let (--|) = PreArray.range
   (1--|10) = array (1--10)
   (10--|1) = array (10--1)
 **)
+let (-~|) = PreArray.charRange
+(**T
+  ('a'-~|'c') = [|'a';'b';'c'|]
+**)
 
 (* String operation shortcuts *)
 
@@ -3969,7 +4033,8 @@ let srange = PreString.range
 let slen = PreString.length
 let sconcat = PreString.concat
 let sreverse = PreString.reverse
-let srev = areverse
+let srev = sreverse
+let snormalizeIndex = PreString.normalizeIndex
 
 let smap = PreString.map
 let smapSub = PreString.mapSub
@@ -4177,7 +4242,8 @@ let brange = Bytestring.range
 let blen = Bytestring.length
 let bconcat = Bytestring.concat
 let breverse = Bytestring.reverse
-let brev = areverse
+let brev = breverse
+let bnormalizeIndex = Bytestring.normalizeIndex
 
 let bmap = Bytestring.map
 let bmapSub = Bytestring.mapSub
