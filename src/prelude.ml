@@ -379,7 +379,7 @@ let chr = char_of_int
 let string_of_char c = String.make 1 c
 (**T
   string_of_char 'c' = "c"
-  foldl (fun s i -> s ^ string_of_char i) "" ('\001'-~'\255') = ('\001'--^'\255')
+  foldl (fun s i -> s ^ string_of_char i) "" ('\000'-~'\255') = ('\000'--^'\255')
 **)
 let char_of_string s =
   if String.length s <> 1 then None else Some (String.unsafe_get s 0)
