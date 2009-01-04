@@ -2477,6 +2477,7 @@ struct
   let len = length
   (**T
     alen (1--|10) = 10
+    alen [|1|] = 1
     alen [||] = 0
   **)
 
@@ -2486,6 +2487,8 @@ struct
   (**T
     ainit succ 10 = (1--|10)
     ainit pred 10 = (-1--|8)
+    ainit succ 0 = [||]
+    ainit succ 1 = [|1|]
   **)
 
   let range s e =
@@ -2494,14 +2497,15 @@ struct
     else init ((+) s) (e-s+1)
   (**T
     arange 0 1 = [|0; 1|]
+    arange 0 0 = [|0|]
     arange 2 4 = [|2; 3; 4|]
     arange 2 0 = [|2; 1; 0|]
+    arange (max_int - 1) max_int = [|max_int - 1; max_int|]
+    arange max_int (max_int - 1) = [|max_int; max_int - 1|]
+    arange (min_int + 1) min_int = [|min_int + 1; min_int|]
+    arange min_int (min_int + 1) = [|min_int; min_int + 1|]
   **)
 
-  (**T
-    (1--|10) = array (1--10)
-    (10--|1) = array (10--1)
-  **)
 
   let reverse (s : 'a array) =
     let len = length s in
@@ -3940,9 +3944,18 @@ let apmapReduceWithIndex = PreArray.pmapReduceWithIndex
 let apmapWithInit = PreArray.pmapWithInit
 
 let (@|) = PreArray.append
-let (@|*) = PreArray.times
+(**T
+  (1--|3) @| (4--|6) = (1--|6)
+**)
+let (@|*) n a = PreArray.times a n
+(**T
+  (1--|3) @|* 2 = [|1;2;3;1;2;3|]
+**)
 let (--|) = PreArray.range
-
+(**T
+  (1--|10) = array (1--10)
+  (10--|1) = array (10--1)
+**)
 
 (* String operation shortcuts *)
 
@@ -4069,8 +4082,14 @@ let spiterSeqN = PreString.piterSeqN
 let spmapReduceWithIndex = PreString.pmapReduceWithIndex
 let spmapWithInit = PreString.pmapWithInit
 
-let (^*) = PreString.times
+let (^*) n a = PreString.times a n
+(**T
+  "foo" ^* 3 = "foofoofoo"
+**)
 let (--^) = PreString.range
+(**T
+  ('a'--^'d') = "abcd"
+**)
 
 (* String specific shortcuts *)
 
