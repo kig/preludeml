@@ -47,7 +47,7 @@ they're good eta/beta-reduction tests for the compiler.
 
 Latest news
 -----------
-  - 30% done with writing a more complete set of tests for src/prelude.ml
+  - 50% done with writing a more complete set of tests for src/prelude.ml
   - added the unit testing framework
   - merged all the files in src/ into a single src/prelude.ml
 
