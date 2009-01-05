@@ -1350,6 +1350,20 @@ struct
     concatMap ((--) 1) [] = []
   **)
 
+  let mapWith ite f l =
+    let lr = ref [] in
+    let () = ignore (ite (fun i -> let v = f i in lr := v :: !lr) l) in
+    rev !lr
+  (**T
+    mapWith iter succ (1--10) = (2--11)
+    mapWith aiter succ (1--|10) = (2--11)
+    mapWith map succ (1--10) = (2--11)
+    mapWith (fun f l -> rev (map f (rev l))) succ (1--10) = (11--2)
+    mapWith iter id [] = []
+    mapWith iter id [1] = [1]
+    mapWith map id [] = []
+    mapWith map id [1] = [1]
+  **)
 
 
   (* Searching *)
@@ -2949,6 +2963,18 @@ struct
   let iterSub i len f s =
     let first, sub_len = sub_start_and_length i len s in
     for j=first to first+sub_len-1 do f (unsafe_get s j) done
+  (**T
+    mapWith (aiterSub 0 10) id (1--|10) = (1--10)
+    mapWith (aiterSub 2 6) id (1--|10) = (3--8)
+    mapWith (aiterSub (-2) 10) id (1--|10) = (9--10)
+    mapWith (aiterSub (-18) 10) id (1--|10) = [1; 2]
+    mapWith (aiterSub (-10) 10) id (1--|10) = (1--10)
+    mapWith (aiterSub (-12) 1) id (1--|10) = []
+    mapWith (aiterSub 9 10) id (1--|10) = [10]
+    mapWith (aiterSub (-19) 10) id (1--|10) = [1]
+    mapWith (aiterSub (-20) 10) id (1--|10) = []
+    mapWith (aiterSub (-20) 20) id (1--|10) = (1--10)
+  **)
 
   let iterSlice i j f s =
     let i, len = slice_to_sub i j s in
