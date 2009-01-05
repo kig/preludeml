@@ -2984,6 +2984,11 @@ struct
   (**T
     mapWith (aiterSlice 0 9) id (1--|10) = (1--10)
     mapWith (aiterSlice 2 6) id (1--|10) = (3--7)
+    mapWith (aiterSlice 6 2) id (1--|10) = []
+    mapWith (aiterSlice 0 0) id (1--|10) = [1]
+    mapWith (aiterSlice 1 0) id (1--|10) = []
+    mapWith (aiterSlice 9 9) id (1--|10) = [10]
+    mapWith (aiterSlice 9 8) id (1--|10) = []
     mapWith (aiterSlice (-2) (-1)) id (1--|10) = [9;10]
     mapWith (aiterSlice (-12) 0) id (1--|10) = [1]
     mapWith (aiterSlice (-12) (-1)) id (1--|10) = (1--10)
