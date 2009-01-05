@@ -2741,9 +2741,9 @@ struct
     asub 0 (-1) (1--|10) = [||]
   **)
   let slice_to_sub i j s =
-    let i = normalizeIndex i s
-    and j = normalizeIndex j s + 1 in
-    let len = j - i in
+    let si = normalizeIndex i s
+    and sj = normalizeIndex j s + 1 in
+    let len = sj - si in
     i, len
 
   let slice i j s =
@@ -2974,11 +2974,23 @@ struct
     mapWith (aiterSub (-19) 10) id (1--|10) = [1]
     mapWith (aiterSub (-20) 10) id (1--|10) = []
     mapWith (aiterSub (-20) 20) id (1--|10) = (1--10)
+    mapWith (aiterSub (-20) 50) id [||] = []
+    mapWith (aiterSub (-20) 50) id [|1|] = [1]
   **)
 
   let iterSlice i j f s =
     let i, len = slice_to_sub i j s in
     iterSub i len f s
+  (**T
+    mapWith (aiterSlice 0 9) id (1--|10) = (1--10)
+    mapWith (aiterSlice 2 6) id (1--|10) = (3--7)
+    mapWith (aiterSlice (-2) (-1)) id (1--|10) = [9;10]
+    mapWith (aiterSlice (-12) 0) id (1--|10) = [1]
+    mapWith (aiterSlice (-12) (-1)) id (1--|10) = (1--10)
+    mapWith (aiterSlice (-12) (-11)) id (1--|10) = []
+    mapWith (aiterSlice (-5) (-1)) id (1--|10) = (6--10)
+    mapWith (aiterSlice (-20) 20) id (1--|10) = (1--10)
+  **)
 
   let mapSub i len f s =
     let first, sub_len = sub_start_and_length i len s in
@@ -3279,9 +3291,9 @@ struct
     init (fun x -> unsafe_get s (first+x)) sub_len
 
   let slice_to_sub i j s =
-    let i = normalizeIndex i s
-    and j = normalizeIndex j s + 1 in
-    let len = j - i in
+    let si = normalizeIndex i s
+    and sj = normalizeIndex j s + 1 in
+    let len = sj - si in
     i, len
 
   let slice i j s =
@@ -3773,9 +3785,9 @@ struct
     init (fun x -> unsafe_get s (first+x)) sub_len
 
   let slice_to_sub i j s =
-    let i = normalizeIndex i s
-    and j = normalizeIndex j s + 1 in
-    let len = j - i in
+    let si = normalizeIndex i s
+    and sj = normalizeIndex j s + 1 in
+    let len = sj - si in
     i, len
 
   let slice i j s =
