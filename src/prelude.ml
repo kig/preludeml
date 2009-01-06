@@ -2995,15 +2995,50 @@ struct
     mapWith (aiterSlice (-12) (-11)) id (1--|10) = []
     mapWith (aiterSlice (-5) (-1)) id (1--|10) = (6--10)
     mapWith (aiterSlice (-20) 20) id (1--|10) = (1--10)
+    mapWith (aiterSlice (-20) 50) id [||] = []
+    mapWith (aiterSlice (-20) 50) id [|1|] = [1]
   **)
 
   let mapSub i len f s =
     let first, sub_len = sub_start_and_length i len s in
     init (fun j -> f (unsafe_get s (first+j))) sub_len
+  (**T
+    mapWith (amapSub 0 10) id (1--|10) = (1--10)
+    amapSub 0 10 succ (1--|10) = (2--|11)
+    amapSub 2 6 id (1--|10) = (3--|8)
+    amapSub (-2) 10 id (1--|10) = (9--|10)
+    amapSub (-18) 10 id (1--|10) = [|1; 2|]
+    amapSub (-10) 10 id (1--|10) = (1--|10)
+    amapSub (-12) 1 id (1--|10) = [||]
+    amapSub 9 10 id (1--|10) = [|10|]
+    amapSub (-19) 10 id (1--|10) = [|1|]
+    amapSub (-20) 10 id (1--|10) = [||]
+    amapSub (-20) 20 id (1--|10) = (1--|10)
+    amapSub (-20) 50 id [||] = [||]
+    amapSub (-20) 50 id [|1|] = [|1|]
+  **)
 
   let mapSlice i j f s =
     let i, len = slice_to_sub i j s in
     mapSub i len f s
+  (**T
+    mapWith (amapSlice 0 9) id (1--|10) = (1--10)
+    amapSlice 0 9 id (1--|10) = (1--|10)
+    amapSlice 2 6 id (1--|10) = (3--|7)
+    amapSlice 6 2 id (1--|10) = [||]
+    amapSlice 0 0 id (1--|10) = [|1|]
+    amapSlice 1 0 id (1--|10) = [||]
+    amapSlice 9 9 id (1--|10) = [|10|]
+    amapSlice 9 8 id (1--|10) = [||]
+    amapSlice (-2) (-1) id (1--|10) = [|9;10|]
+    amapSlice (-12) 0 id (1--|10) = [|1|]
+    amapSlice (-12) (-1) id (1--|10) = (1--|10)
+    amapSlice (-12) (-11) id (1--|10) = [||]
+    amapSlice (-5) (-1) id (1--|10) = (6--|10)
+    amapSlice (-20) 20 id (1--|10) = (1--|10)
+    amapSlice (-20) 50 id [||] = [||]
+    amapSlice (-20) 50 id [|1|] = [|1|]
+  **)
 
   let foldlSub i len f init s =
     let rec aux f s v i j =
