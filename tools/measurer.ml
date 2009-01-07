@@ -217,6 +217,8 @@ type bm_stat = {
   time : float;
   minor_collections : int;
   major_collections : int;
+(*   gc_stat_before : Gc.stat; *)
+(*   gc_stat_after : Gc.stat; *)
   allocated_bytes : float;
 }
 type 'a exn_result = Result of 'a | Error of exn
@@ -233,7 +235,6 @@ let alloc_diff =
   b1 -. b0
 
 let bm f = ex (fun v ->
-    Gc.full_major ();
     Gc.compact ();
     let s0 = Gc.stat () in
     let b0 = Gc.allocated_bytes () in
@@ -247,6 +248,9 @@ let bm f = ex (fun v ->
       time = t1 -. t0;
       minor_collections = s1.Gc.minor_collections - s0.Gc.minor_collections;
       major_collections = s1.Gc.major_collections - s0.Gc.major_collections;
+(*       gc_stat_before = s0; *)
+(*       gc_stat_after = s1; *)
+      (* accurate in bytecode, approximate in native code (see Gc.stat.minor_words) *)
       allocated_bytes = b1 -. b0 -. alloc_diff;
     }
   )
