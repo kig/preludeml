@@ -1,6 +1,7 @@
 type ('a, 'b) types =
   | Int of int
   | Float of float
+  | Char of char
   | String of string
   | Option of 'a option
   | Array of 'a array
@@ -14,6 +15,7 @@ sig
   val name : string
 
   val normal : t
+  val negative : t
   val zero : t
   val one : t
   val minus_one : t
@@ -27,6 +29,7 @@ sig
 
 end
 
+
 module IntGen : (GENERATOR with type t = int) =
 struct
 
@@ -35,6 +38,7 @@ struct
   let name = "int"
 
   let normal = 10
+  let negative = -10
   let zero = 0
   let one = 1
   let minus_one = -1
@@ -51,6 +55,112 @@ struct
 
 end
 
+
+module FloatGen : (GENERATOR with type t = float) =
+struct
+
+  type t = float
+
+  let name = "float"
+
+  let normal = 10.
+  let negative = 10.
+  let zero = 0.
+  let one = 1.
+  let minus_one = -1.
+  let even = 2.
+  let odd = 3.
+  let min_val = -.max_float
+  let max_val = max_float
+
+  let value_limit = 20
+  let get_value = function
+    | 0 -> (0, 0.0)
+    | 1 -> (1, 0.0625)
+    | i -> (1 lsl (i-1), 0.0625 *. float (1 lsl (i-1)))
+
+end
+
+
+module CharGen : (GENERATOR with type t = char) =
+struct
+
+  type t = char
+
+  let name = "char"
+
+  let normal = 'a'
+  let negative = 'A'
+  let zero = '\000'
+  let one = '\001'
+  let minus_one = '\n'
+  let even = 'B'
+  let odd = 'C'
+  let min_val = '\000'
+  let max_val = '\255'
+
+  let value_limit = 255
+  let get_value = function
+    | 0 -> (0, '\000')
+    | i -> (1, char_of_int i)
+
+end
+
+
+module StringGen : (GENERATOR with type t = string) =
+struct
+
+  type t = string
+
+  let name = "string"
+
+  let normal = "Foobar"
+  let negative = "barFoo"
+  let zero = ""
+  let one = "a"
+  let minus_one = "A"
+  let even = "aB"
+  let odd = "Abc"
+  let min_val = "-25.0"
+  let max_val =
+    let s = String.create 256 in
+    for i=0 to 255 do s.[i] <- char_of_int i done;
+    s
+
+
+  let value_limit = 20
+  let get_value = function
+    | 0 -> (0, "")
+    | 1 -> (1, "a")
+    | i -> (1 lsl (i-1), String.make (1 lsl (i-1)) 'a')
+
+end
+
+
+module OptionGen (G : GENERATOR) : (GENERATOR with type t = G.t option) =
+struct
+
+  type t = G.t option
+
+  let name = "(" ^ G.name ^ " option)"
+
+  let normal = Some G.normal
+  let negative = Some G.negative
+  let zero = Some G.zero
+  let one = Some G.one
+  let minus_one = Some G.minus_one
+  let even = Some G.even
+  let odd = Some G.odd
+  let min_val = None
+  let max_val = Some G.max_val
+
+  let value_limit = 15
+  let get_value = function
+    | 0 -> (0, None)
+    | i -> let n,v = G.get_value i in (n, Some v)
+end
+
+
 module ArrayGen (G : GENERATOR) : (GENERATOR with type t = G.t array) =
 struct
 
@@ -58,7 +168,10 @@ struct
 
   let name = "(" ^ G.name ^ " array)"
 
-  let normal = [|G.zero; G.one; G.minus_one; G.even; G.odd; G.normal|]
+  let normal = [|G.zero; G.negative; G.one; G.minus_one; G.even; G.odd; G.normal|]
+  let negative =
+    let l = Array.length normal in
+    Array.init l (fun i -> normal.(l-1-i))
   let zero = [||]
   let one = [|G.one|]
   let minus_one = [|G.minus_one|]
@@ -67,12 +180,38 @@ struct
   let min_val = [|G.min_val|]
   let max_val = [|G.max_val|]
 
-  let value_limit = 16
+  let value_limit = 15
   let get_value = function
     | 0 -> (0, [||])
     | 1 -> (1, one)
     | i -> (1 lsl (i-1), Array.make (1 lsl (i-1)) G.one)
 end
+
+
+module ListGen (G : GENERATOR) : (GENERATOR with type t = G.t list) =
+struct
+
+  type t = G.t list
+
+  let name = "(" ^ G.name ^ " list)"
+
+  let normal = [G.zero; G.negative; G.one; G.minus_one; G.even; G.odd; G.normal]
+  let negative = List.rev normal
+  let zero = []
+  let one = [G.one]
+  let minus_one = [G.minus_one]
+  let even = [G.one; G.even]
+  let odd = [G.minus_one; G.zero; G.one]
+  let min_val = [G.min_val]
+  let max_val = [G.max_val]
+
+  let value_limit = 15
+  let get_value = function
+     | 0 -> (0, [])
+     | 1 -> (1, one)
+     | i -> (1 lsl (i-1), Array.to_list (Array.make (1 lsl (i-1)) G.one))
+end
+
 
 type bm_stat = {
   time : float;
@@ -101,7 +240,7 @@ module type MEASURER =
   sig
     type t
 
-    val measure : (t -> 'a) -> (string * 'a) list
+    val measure : (t -> 'a) -> (string * t * 'a) list
     val benchmark : (t -> 'a) -> (int * int * bm_result) list
   end;;
 
@@ -110,15 +249,16 @@ struct
   type t = G.t
 
   let measure f =
-    List.map (fun (n,v) -> (G.name^"."^n, v)) [
-      "normal", f G.normal;
-      "zero", f G.zero;
-      "one", f G.one;
-      "minus_one", f G.minus_one;
-      "even", f G.even;
-      "odd", f G.odd;
-      "min_val", f G.min_val;
-      "max_val", f G.max_val
+    List.map (fun (n,v,r) -> (G.name^" "^n, v, r)) [
+      "normal", G.normal, f G.normal;
+      "negative", G.negative, f G.negative;
+      "zero", G.zero, f G.zero;
+      "one", G.one, f G.one;
+      "minus_one", G.minus_one, f G.minus_one;
+      "even", G.even, f G.even;
+      "odd", G.odd, f G.odd;
+      "min_val", G.min_val, f G.min_val;
+      "max_val", G.max_val, f G.max_val
     ]
 
   let benchmark f =
