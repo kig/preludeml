@@ -37,8 +37,8 @@ struct
 
   let name = "int"
 
-  let normal = 10
-  let negative = -10
+  let normal = 5
+  let negative = -5
   let zero = 0
   let one = 1
   let minus_one = -1
@@ -63,8 +63,8 @@ struct
 
   let name = "float"
 
-  let normal = 10.
-  let negative = 10.
+  let normal = 5.
+  let negative = 5.
   let zero = 0.
   let one = 1.
   let minus_one = -1.
@@ -218,10 +218,12 @@ type bm_stat = {
   minor_collections : int;
   major_collections : int
 }
-type bm_result = Result of bm_stat | Error of exn
+type 'a exn_result = Result of 'a | Error of exn
 
-let bm f v =
-  try
+let ex f v = try Result (f v) with e -> Error e
+let ex_map f v = match v with Result x -> Result (f x) | Error e -> Error e
+
+let bm f = ex (fun v ->
     Gc.full_major ();
     Gc.compact ();
     let s0 = Gc.stat () in
@@ -229,19 +231,19 @@ let bm f v =
     let () = ignore (f v) in
     let t1 = Unix.gettimeofday () in
     let s1 = Gc.stat () in
-    Result {
+    {
       time = t1 -. t0;
       minor_collections = s1.Gc.minor_collections - s0.Gc.minor_collections;
       major_collections = s1.Gc.major_collections - s0.Gc.major_collections;
     }
-  with e -> Error e
+  )
 
 module type MEASURER =
   sig
     type t
 
-    val measure : (t -> 'a) -> (string * t * 'a) list
-    val benchmark : (t -> 'a) -> (int * int * bm_result) list
+    val measure : (t -> 'a) -> (string * t * 'a exn_result) list
+    val benchmark : (t -> 'a) -> (int * int * bm_stat exn_result) list
   end;;
 
 module Measurer (G : GENERATOR) : (MEASURER with type t = G.t) =
@@ -250,15 +252,15 @@ struct
 
   let measure f =
     List.map (fun (n,v,r) -> (G.name^" "^n, v, r)) [
-      "normal", G.normal, f G.normal;
-      "negative", G.negative, f G.negative;
-      "zero", G.zero, f G.zero;
-      "one", G.one, f G.one;
-      "minus_one", G.minus_one, f G.minus_one;
-      "even", G.even, f G.even;
-      "odd", G.odd, f G.odd;
-      "min_val", G.min_val, f G.min_val;
-      "max_val", G.max_val, f G.max_val
+      "normal", G.normal, ex f G.normal;
+      "negative", G.negative, ex f G.negative;
+      "zero", G.zero, ex f G.zero;
+      "one", G.one, ex f G.one;
+      "minus_one", G.minus_one, ex f G.minus_one;
+      "even", G.even, ex f G.even;
+      "odd", G.odd, ex f G.odd;
+      "min_val", G.min_val, ex f G.min_val;
+      "max_val", G.max_val, ex f G.max_val
     ]
 
   let benchmark f =
