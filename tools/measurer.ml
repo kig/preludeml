@@ -216,25 +216,38 @@ end
 type bm_stat = {
   time : float;
   minor_collections : int;
-  major_collections : int
+  major_collections : int;
+  allocated_bytes : float;
 }
 type 'a exn_result = Result of 'a | Error of exn
 
 let ex f v = try Result (f v) with e -> Error e
 let ex_map f v = match v with Result x -> Result (f x) | Error e -> Error e
 
+let alloc_diff =
+  let b0 = Gc.allocated_bytes () in
+  let t0 = Unix.gettimeofday () in
+  let t1 = Unix.gettimeofday () in
+  let b1 = Gc.allocated_bytes () in
+  ignore (t1 -. t0);
+  b1 -. b0
+
 let bm f = ex (fun v ->
     Gc.full_major ();
     Gc.compact ();
     let s0 = Gc.stat () in
+    let b0 = Gc.allocated_bytes () in
     let t0 = Unix.gettimeofday () in
-    let () = ignore (f v) in
+    let r = f v in
     let t1 = Unix.gettimeofday () in
+    let b1 = Gc.allocated_bytes () in
     let s1 = Gc.stat () in
+    ignore r;
     {
       time = t1 -. t0;
       minor_collections = s1.Gc.minor_collections - s0.Gc.minor_collections;
       major_collections = s1.Gc.major_collections - s0.Gc.major_collections;
+      allocated_bytes = b1 -. b0 -. alloc_diff;
     }
   )
 
