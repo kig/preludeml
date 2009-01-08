@@ -668,11 +668,41 @@ let mapReduce partition distribute process combine input =
 
 (* Integer operations *)
 
-let average2 a b = (a + b) / 2
+let even x = x land 1 == 0
 (**T
+  filter even ((-10)--10) = map (multiply 2) ((-5)--5)
+**)
+let odd x = x land 1 == 1
+(**T
+  filter odd ((-10)--10) = [-9;-7;-5;-3;-1;1;3;5;7;9]
+**)
+
+let average2 a b =
+  if a >= 0 && b >= 0
+  then ((a lxor b) lsr 1) + (a land b)
+  else if a < 0 && b < 0
+  then ((a lxor b) lsr 1) + (a land b) + ((a land 1) lxor (b land 1))
+  else (a + b) / 2
+(**T
+  average2 2 4 = 3
+  average2 4 2 = 3
   average2 2 3 = 2
+  average2 1 3 = 2
   average2 0 2 = 1
+  average2 (-2) (-4) = (-3)
+  average2 (-1) (-3) = (-2)
+  average2 (-2) (-3) = (-2)
   average2 (-1) 1 = 0
+  average2 (-2) 2 = 0
+  average2 (-4) 2 = -1
+  average2 (-5) 2 = -1
+  average2 (-5) 1 = -2
+  average2 5 (-1) = 2
+  average2 (-6) 2 = -2
+  average2 max_int max_int = max_int
+  average2 min_int min_int = min_int
+  average2 max_int 0 = max_int / 2
+  average2 min_int 0 = min_int / 2
 **)
 let quot_rem a b =
   let q = a / b in
@@ -689,14 +719,6 @@ let rem a b = a mod b
   rem 10 3 = 1
   rem (-10) 3 = -1
   rem (-10) (-3) = -1
-**)
-let even x = x mod 2 == 0
-(**T
-  filter even (0--10) = map (multiply 2) (0--5)
-**)
-let odd x = x mod 2 == 1
-(**T
-  filter odd (0--10) = map (add 1 @. multiply 2) (0--4)
 **)
 let signum i = if i > 0 then 1 else if i < 0 then (-1) else 0
 (**T
