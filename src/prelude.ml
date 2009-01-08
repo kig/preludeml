@@ -701,6 +701,7 @@ let average2 a b =
   average2 (-6) 2 = -2
   average2 max_int max_int = max_int
   average2 min_int min_int = min_int
+  average2 max_int min_int = 0
   average2 max_int 0 = max_int / 2
   average2 min_int 0 = min_int / 2
 **)
