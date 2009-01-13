@@ -2783,6 +2783,12 @@ struct
     let rec aux f s len v i =
       if i >= len then v else aux f s len (f v (unsafe_get s i)) (i+1) in
     aux f s (len s) init 0
+  (**T
+    afoldl (+) 0 (1--|10) = 55
+    afoldl (fun s b -> s ^ (string_of_int b)) "--" (1--|3) = "--123"
+    afoldl (+) 1 [||] = 1
+    afoldl (+) 1 [|1|] = 2
+  **)
 
   let foldl1 f a =
     let rec aux f i acc len a =
@@ -2791,11 +2797,23 @@ struct
     let len = len a in
     if len < 1 then raise Not_found;
     aux f 1 (unsafe_get a 0) len a
+  (**T
+    afoldl1 (+) (1--|10) = 55
+    afoldl1 (fun s i -> s ^ i) [|"foo"; "bar"; "baz"|] = "foobarbaz"
+    optNF (afoldl1 (+)) [||] = None
+    afoldl1 (+) [|1|] = 1
+  **)
 
   let foldr f init s =
     let rec aux f s v i =
       if i < 0 then v else aux f s (f (unsafe_get s i) v) (i-1) in
     aux f s init (len s - 1)
+  (**T
+    afoldr (+) 0 (1--|10) = 55
+    afoldr (fun a s -> s ^ (string_of_int a)) "--|" (1--|3) = "--|321"
+    afoldr (+) 1 [||] = 1
+    afoldr (+) 1 [|1|] = 2
+  **)
 
   let foldr1 f a =
     let rec aux f i acc a =
@@ -2804,6 +2822,12 @@ struct
     let len = len a in
     if len < 1 then raise Not_found;
     aux f (len-2) (unsafe_get a (len-1)) a
+  (**T
+    afoldr1 (+) (1--|10) = 55
+    afoldr1 (fun a s -> s ^ a) [|"foo"; "bar"; "baz"|] = "bazbarfoo"
+    optNF (afoldr1 (+)) [||] = None
+    afoldr1 (+) [|1|] = 1
+  **)
 
   let maximum a = foldl1 max a
   let minimum a = foldl1 min a
