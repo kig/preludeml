@@ -9,25 +9,25 @@ type ('a, 'b) types =
   | Function of ('a -> 'b)
 
 module type GENERATOR =
-sig
-  type t
+  sig
+    type t
 
-  val name : string
+    val name : string
 
-  val normal : t
-  val negative : t
-  val zero : t
-  val one : t
-  val minus_one : t
-  val even : t
-  val odd : t
-  val min_val : t
-  val max_val : t
-  val value_limit : int
+    val normal : t
+    val negative : t
+    val zero : t
+    val one : t
+    val minus_one : t
+    val even : t
+    val odd : t
+    val min_val : t
+    val max_val : t
+    val value_limit : int
 
-  val get_value : int -> (int * t)
+    val get_value : int -> (int * t)
 
-end
+  end
 
 
 module IntGen : (GENERATOR with type t = int) =
@@ -261,7 +261,7 @@ module type MEASURER =
 
     val measure : (t -> 'a) -> (string * t * 'a exn_result) list
     val benchmark : (t -> 'a) -> (int * int * bm_stat exn_result) list
-  end;;
+  end
 
 module Measurer (G : GENERATOR) : (MEASURER with type t = G.t) =
 struct
