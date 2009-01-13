@@ -1405,12 +1405,13 @@ struct
   let findWithIndex p lst =
     let rec aux p c l = match l with
       | [] -> raise Not_found
-      | (h::t) -> if p h then (h,c) else aux p (c+1) t in
+      | (h::t) -> if p h c then (h,c) else aux p (c+1) t in
     aux p 0 lst
   (**T
-    findWithIndex (gt 4) (2--9) = (5,3)
-    optNF (findWithIndex (gt 4)) (0--3) = None
-    optNF (findWithIndex (gt 4)) [] = None
+    findWithIndex (fun v _ -> v > 4) (2--9) = (5,3)
+    findWithIndex (fun _ i -> i > 4) (2--9) = (7,5)
+    optNF (findWithIndex (const (gt 4))) (0--3) = None
+    optNF (findWithIndex (const (gt 4))) [] = None
   **)
 
   let indexOf x lst =
@@ -2679,6 +2680,13 @@ struct
         let res = if f c then c::res else res in
         aux f s (i-1) res in
     aux f s (len s - 1) []
+  (**T
+    afilter even (1--|10) = [|2;4;6;8;10|]
+    afilter odd (1--|10) = [|1;3;5;7;9|]
+    afilter even [|1|] = [||]
+    afilter odd [|1|] = [|1|]
+    afilter even [||] = [||]
+  **)
 
   let filterWithIndex f s =
     let rec aux f s i res =
@@ -2688,6 +2696,11 @@ struct
         let res = if f c i then c::res else res in
         aux f s (i-1) res in
     aux f s (len s - 1) []
+  (**T
+    afilterWithIndex (fun _ i -> i > 5) (1--|9) = (7--|9)
+    afilterWithIndex (fun _ i -> i > 10) (1--|9) = [||]
+    afilterWithIndex (fun _ i -> i > 10) [||] = [||]
+  **)
 
   let findWithIndex f s =
     let rec aux f s i len =
@@ -2697,9 +2710,25 @@ struct
         if f v i then (v, i)
         else aux f s (i+1) len in
     aux f s 0 (len s)
+  (**T
+    afindWithIndex (fun v _ -> v > 4) (2--|9) = (5,3)
+    afindWithIndex (fun _ i -> i > 4) (2--|9) = (7,5)
+    optNF (afindWithIndex (const (gt 4))) (0--|3) = None
+    optNF (afindWithIndex (const (gt 4))) [||] = None
+  **)
 
   let find f s = fst (findWithIndex (fun v _ -> f v) s)
+  (**T
+    afind (gt 5) (1--|9) = 6
+    optNF (afind (gt 4)) (0--|3) = None
+    optNF (afind (gt 4)) [||] = None
+  **)
   let findIndex f s = snd (findWithIndex (fun v _ -> f v) s)
+  (**T
+    afindIndex (gt 5) (1--|9) = 5
+    optNF (afindIndex (gt 4)) (0--|3) = None
+    optNF (afindIndex (gt 4)) [||] = None
+  **)
 
   let indexOf v s = findIndex ((=) v) s
 
