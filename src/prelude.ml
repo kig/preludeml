@@ -2831,49 +2831,44 @@ struct
 
 
   let maximum a = foldl1 max a
-  let minimum a = foldl1 min a
-
-  let maximumBy f = foldl1 (fun s i -> if (f s) < (f i) then i else s)
-  let minimumBy f = foldl1 (fun s i -> if (f s) > (f i) then i else s)
-
-  let maximumByWith f lst = maximumBy snd (map (fupler f) lst)
-  let minimumByWith f lst = minimumBy snd (map (fupler f) lst)
-
   (**T
     amaximum [|1;2;3;0;1;4;3;1|] = 4
     amaximum [|1|] = 1
     optNF amaximum [||] = None
   **)
-
-  (**T
-    amaximumBy square (-3 --| 2) = -3
-    amaximumBy square (-1 --| 2) = 2
-    optNF (amaximumBy square) [||] = None
-  **)
-
-  (**T
-    amaximumByWith square (-3 --| 2) = (-3, 9)
-    amaximumByWith square (-1 --| 2) = (2, 4)
-    optNF (amaximumByWith square) [||] = None
-  **)
-
+  let minimum a = foldl1 min a
   (**T
     aminimum [|1;2;3;0;1;4;3;1|] = 0
     aminimum [|1|] = 1
     optNF aminimum [||] = None
   **)
 
+  let maximumBy f = foldl1 (fun s i -> if (f s) < (f i) then i else s)
+  (**T
+    amaximumBy square (-3 --| 2) = -3
+    amaximumBy square (-1 --| 2) = 2
+    optNF (amaximumBy square) [||] = None
+  **)
+  let minimumBy f = foldl1 (fun s i -> if (f s) > (f i) then i else s)
   (**T
     aminimumBy square (-3 --| (-1)) = -1
     aminimumBy square (-1 --| 2) = 0
     optNF (aminimumBy square) [||] = None
   **)
 
+  let maximumByWith f lst = maximumBy snd (map (fupler f) lst)
+  (**T
+    amaximumByWith square (-3 --| 2) = (-3, 9)
+    amaximumByWith square (-1 --| 2) = (2, 4)
+    optNF (amaximumByWith square) [||] = None
+  **)
+  let minimumByWith f lst = minimumBy snd (map (fupler f) lst)
   (**T
     aminimumByWith square (-3 --| (-1)) = (-1, 1)
     aminimumByWith square (-1 --| 2) = (0, 0)
     optNF (aminimumByWith square) [||] = None
   **)
+
 
 
   (* Subsequences *)
@@ -3251,11 +3246,49 @@ struct
     foldr1Sub i len f s
 
   let sum a = foldl (+) 0 a
+  (**T
+    asum (1--|10) = 55
+    asum [|1;2|] = 3
+    asum [|1|] = 1
+    asum [|0|] = 0
+    asum [||] = 0
+  **)
   let sumf a = foldl (+.) 0. a
+  (**T
+    asumf (1.--.|10.) = 55.
+    asumf [|1.;2.|] = 3.
+    asumf [|1.|] = 1.
+    asumf [|0.|] = 0.
+    asumf [||] = 0.
+  **)
   let product a = foldl ( * ) 1 a
+  (**T
+    aproduct (1--|10) = 3628800
+    aproduct [|1;2|] = 2
+    aproduct [|1|] = 1
+    aproduct [|0|] = 0
+    aproduct [||] = 1
+  **)
   let productf a = foldl ( *. ) 1. a
+  (**T
+    aproductf (1.--.|10.) = 3628800.
+    aproductf [|1.;2.|] = 2.
+    aproductf [|1.|] = 1.
+    aproductf [|0.|] = 0.
+    aproductf [||] = 1.
+  **)
   let average a = sum a / len a
+  (**T
+    aaverage (1--|10) = 5
+    aaverage [|1|] = 1
+    optEx Division_by_zero aaverage [||] = None
+  **)
   let averagef a = sumf a /. float (len a)
+  (**T
+    aaveragef (1.--.|10.) = 5.5
+    aaveragef [|1.|] = 1.
+    isNaN (aaveragef [||])
+  **)
 
   let sumSub i len a = foldlSub i len (+) 0 a
   let sumSubf i len a = foldlSub i len (+.) 0. a
@@ -4509,6 +4542,11 @@ let (--|) = PreArray.range
 (**T
   (1--|10) = array (1--10)
   (10--|1) = array (10--1)
+**)
+let (--.|) = PreArray.rangef
+(**T
+  (1.--.|10.) = array (1.--.10.)
+  (10.--.|1.) = array (10.--.1.)
 **)
 let (-~|) = PreArray.charRange
 (**T
