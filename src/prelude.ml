@@ -2642,12 +2642,32 @@ struct
   let iter f s =
     let l = len s in
     for i = 0 to l - 1 do f (unsafe_get s i) done
+
   let iterWithIndex f s =
     let l = len s in
     for i = 0 to l - 1 do f (unsafe_get s i) i done
+  (**T
+    mapWith (fun f -> aiterWithIndex (fun s i -> f (s,i))) (uncurry (+)) (0--|10) = map (multiply 2) (0--10)
+    (let i = ref 0 and j = ref 0 in aiterWithIndex (fun a b -> i:=a; j:=b) (20--|30); !i = 30 && !j = 10)
+    aiterWithIndex (ignore @.. add) [|1|] = ()
+    aiterWithIndex (ignore @.. add) [||] = ()
+  **)
 
   let map f s = init (fun i -> f (unsafe_get s i)) (len s)
+  (**T
+    amap succ (1--|10) = (2--|11)
+    amap succ [||] = [||]
+    amap succ [|1|] = [|2|]
+    mapWith amap id (1--|10) = (1--10)
+  **)
+
   let mapWithIndex f s = init (fun i -> f (unsafe_get s i) i) (len s)
+  (**T
+    amapWithIndex (+) (0--|10) = amap (multiply 2) (0--|10)
+    amapWithIndex (-) (10--|20) = areplicate 11 10
+    amapWithIndex (+) [||] = [||]
+    amapWithIndex (+) [|1|] = [|1|]
+  **)
 
   (* Searching *)
 
