@@ -2829,11 +2829,52 @@ struct
     afoldr1 (+) [|1|] = 1
   **)
 
+
   let maximum a = foldl1 max a
   let minimum a = foldl1 min a
 
   let maximumBy f = foldl1 (fun s i -> if (f s) < (f i) then i else s)
   let minimumBy f = foldl1 (fun s i -> if (f s) > (f i) then i else s)
+
+  let maximumByWith f lst = maximumBy snd (map (fupler f) lst)
+  let minimumByWith f lst = minimumBy snd (map (fupler f) lst)
+
+  (**T
+    amaximum [|1;2;3;0;1;4;3;1|] = 4
+    amaximum [|1|] = 1
+    optNF amaximum [||] = None
+  **)
+
+  (**T
+    amaximumBy square (-3 --| 2) = -3
+    amaximumBy square (-1 --| 2) = 2
+    optNF (amaximumBy square) [||] = None
+  **)
+
+  (**T
+    amaximumByWith square (-3 --| 2) = (-3, 9)
+    amaximumByWith square (-1 --| 2) = (2, 4)
+    optNF (amaximumByWith square) [||] = None
+  **)
+
+  (**T
+    aminimum [|1;2;3;0;1;4;3;1|] = 0
+    aminimum [|1|] = 1
+    optNF aminimum [||] = None
+  **)
+
+  (**T
+    aminimumBy square (-3 --| (-1)) = -1
+    aminimumBy square (-1 --| 2) = 0
+    optNF (aminimumBy square) [||] = None
+  **)
+
+  (**T
+    aminimumByWith square (-3 --| (-1)) = (-1, 1)
+    aminimumByWith square (-1 --| 2) = (0, 0)
+    optNF (aminimumByWith square) [||] = None
+  **)
+
 
   (* Subsequences *)
 
@@ -4375,6 +4416,14 @@ let aproductSlice = PreArray.productSlice
 let aproductf = PreArray.productf
 let aproductSubf = PreArray.productSubf
 let aproductSlicef = PreArray.productSlicef
+
+let amaximum = PreArray.maximum
+let amaximumBy = PreArray.maximumBy
+let amaximumByWith = PreArray.maximumByWith
+
+let aminimum = PreArray.minimum
+let aminimumBy = PreArray.minimumBy
+let aminimumByWith = PreArray.minimumByWith
 
 let aaverage = PreArray.average
 let aaverageSub = PreArray.averageSub
