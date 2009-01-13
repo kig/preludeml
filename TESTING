@@ -11,3 +11,4 @@ When writing tests, try to write the following cases:
 
 7. in-order checks for iterators where possible and sensible
    e.g. (let i = ref 0 in ignore (map (fun j -> i:=j;j) (1--10)); !i = 10)
+        mapWith iter id (1--10) = (1--10)
