@@ -2731,6 +2731,11 @@ struct
   **)
 
   let indexOf v s = findIndex ((=) v) s
+  (**T
+    aindexOf 14 (10--|20) = 4
+    optNF (aindexOf 1) (10--|20) = None
+    aindexOf 'a' (aexplode "foobar") = 4
+  **)
 
   (* Zipping *)
 
@@ -2738,11 +2743,39 @@ struct
     let len = min (len a) (len b) in
     init (fun i -> f (unsafe_get a i) (unsafe_get b i) ) len
   let map2 = zipWith
+  (**T
+    azipWith (+) (1--|10) (1--|10) = amap (dup (+)) (1--|10)
+    azipWith (-) (1--|5) (3--|1) = [|-2; 0; 2|]
+    azipWith (-) (1--|3) (5--|1) = [|-4; -2; 0|]
+    azipWith (+) [|1|] (1--|10) = [|2|]
+    azipWith (+) (1--|10) [|1|] = [|2|]
+    azipWith (+) [|1|] [|1|] = [|2|]
+    azipWith (+) [||] (1--|10) = [||]
+    azipWith (+) (1--|10) [||] = [||]
+    azipWith (+) [||] [||] = [||]
+  **)
 
   let zipWith3 f a b c =
     let len = min (min (len a) (len b)) (len c) in
     init (fun i -> f (unsafe_get a i) (unsafe_get b i) (unsafe_get c i) ) len
   let map3 = zipWith3
+  (**T
+    azipWith3 (fun a b c -> a + b + c) (1--|100000) (1--|100000) (1--|100000) = amap (multiply 3) (1--|100000)
+    azipWith3 (fun a b c -> a^b^c) [|"a"|] [|"b"|] [|"c";"d"|] = [|"abc"|]
+    azipWith3 (fun a b c -> a + b + c) [|1|] (1--|10) (1--|10) = [|3|]
+    azipWith3 (fun a b c -> a + b + c) (1--|10) [|1|] (1--|10) = [|3|]
+    azipWith3 (fun a b c -> a + b + c) (1--|10) (1--|10) [|1|] = [|3|]
+    azipWith3 (fun a b c -> a + b + c) [|1|] (1--|10) [|1|] = [|3|]
+    azipWith3 (fun a b c -> a + b + c) [|1|] [|1|] (1--|10) = [|3|]
+    azipWith3 (fun a b c -> a + b + c) (1--|10) [||] [|1|] = [||]
+    azipWith3 (fun a b c -> a + b + c) (1--|10) [|1|] [||] = [||]
+    azipWith3 (fun a b c -> a + b + c) (1--|10) [||] [||] = [||]
+    azipWith3 (fun a b c -> a + b + c) [||] [|1|] [|1|] = [||]
+    azipWith3 (fun a b c -> a + b + c) [||] [||] [|1|] = [||]
+    azipWith3 (fun a b c -> a + b + c) [||] [|1|] [||] = [||]
+    azipWith3 (fun a b c -> a + b + c) [|1|] [||] [||] = [||]
+    azipWith3 (fun a b c -> a + b + c) [||] [||] [||] = [||]
+  **)
 
   (* Folds *)
 
@@ -4331,6 +4364,7 @@ let arange = PreArray.range
 let arangef = PreArray.rangef
 let acharRange = PreArray.charRange
 let azipWith = PreArray.zipWith
+let aindexOf = PreArray.indexOf
 let amap2 = PreArray.zipWith
 let azipWith3 = PreArray.zipWith3
 let amap3 = PreArray.zipWith3
