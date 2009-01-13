@@ -51,6 +51,8 @@ Latest news
 Examples
 --------
 
+open Prelude
+
 (* my last modified file in /tmp *)
 lsFull "/tmp" |> filter (eq (currentUid ()) @. fileUid) |> maximumBy mtime
 
