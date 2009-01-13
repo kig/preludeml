@@ -32,10 +32,6 @@ hashes, maps, unfolds, folds, scans, spans, slices and subs.
 Everything in a single module for a very scripting language -like experience.
 
 
-There are two versions here, a (currently) more fully tested prelude.ml in this
-directory, and a rewritten src/prelude.ml which has more stuff and a lower
-tests/functions-ratio.
-
 I have aimed to keep the list functions tail-recursive, the trade-off between a
 speed loss from reversing lists and having support for arbitrary length lists
 weighing towards the latter in my scales.
