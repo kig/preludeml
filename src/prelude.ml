@@ -3476,6 +3476,25 @@ struct
   **)
 
   let sumSlice i j a = foldlSlice i j (+) 0 a
+  (**T
+    asumSlice 0 10 (1--|10) = asum (1--|10)
+    asumSlice 0 9 (1--|10) = asum (1--|10)
+    asumSlice 0 (-1) (1--|10) = asum (1--|10)
+    asumSlice (-10) 10 (1--|10) = asum (1--|10)
+    asumSlice (-20) 20 (1--|10) = asum (1--|10)
+    asumSlice (-20) 10 (1--|10) = asum (1--|10)
+    asumSlice 0 3 (1--|10) = asum (1--|4)
+    asumSlice 3 (-1) (1--|10) = asum (4--|10)
+    asumSlice 3 3 (1--|10) = asum (4--|4)
+    asumSlice (-1) (-1) (1--|10) = asum (10--|10)
+    asumSlice (-3) 3 (1--|10) = asum [||]
+    asumSlice (-3) 1 (1--|10) = asum [||]
+    asumSlice 20 (-20) (1--|10) = asum [||]
+    asumSlice 10 0 (1--|10) = asum [||]
+
+    asumSlice 0 1 (1--|1) = asum (1--|1)
+    asumSlice 0 1 [||] = asum [||]
+  **)
   let sumSlicef i j a = foldlSlice i j (+.) 0. a
 
   let productSub i len a = foldlSub i len ( * ) 1 a
@@ -3516,6 +3535,25 @@ struct
   **)
 
   let productSlice i j a = foldlSlice i j ( * ) 1 a
+  (**T
+    aproductSlice 0 10 (1--|10) = aproduct (1--|10)
+    aproductSlice 0 9 (1--|10) = aproduct (1--|10)
+    aproductSlice 0 (-1) (1--|10) = aproduct (1--|10)
+    aproductSlice (-10) 10 (1--|10) = aproduct (1--|10)
+    aproductSlice (-20) 20 (1--|10) = aproduct (1--|10)
+    aproductSlice (-20) 10 (1--|10) = aproduct (1--|10)
+    aproductSlice 0 3 (1--|10) = aproduct (1--|4)
+    aproductSlice 3 (-1) (1--|10) = aproduct (4--|10)
+    aproductSlice 3 3 (1--|10) = aproduct (4--|4)
+    aproductSlice (-1) (-1) (1--|10) = aproduct (10--|10)
+    aproductSlice (-3) 3 (1--|10) = aproduct [||]
+    aproductSlice (-3) 1 (1--|10) = aproduct [||]
+    aproductSlice 20 (-20) (1--|10) = aproduct [||]
+    aproductSlice 10 0 (1--|10) = aproduct [||]
+
+    aproductSlice 0 1 (1--|1) = aproduct (1--|1)
+    aproductSlice 0 1 [||] = aproduct [||]
+  **)
   let productSlicef i j a = foldlSlice i j ( *. ) 1. a
 
   let averageSub i len a =
@@ -3573,6 +3611,25 @@ struct
   let averageSlice i j s =
     let i, len = slice_to_sub i j s in
     averageSub i len s
+  (**T
+    aaverageSlice 0 10 (1--|10) = aaverage (1--|10)
+    aaverageSlice 0 9 (1--|10) = aaverage (1--|10)
+    aaverageSlice 0 (-1) (1--|10) = aaverage (1--|10)
+    aaverageSlice (-10) 10 (1--|10) = aaverage (1--|10)
+    aaverageSlice (-20) 20 (1--|10) = aaverage (1--|10)
+    aaverageSlice (-20) 10 (1--|10) = aaverage (1--|10)
+    aaverageSlice 0 3 (1--|10) = aaverage (1--|4)
+    aaverageSlice 3 (-1) (1--|10) = aaverage (4--|10)
+    aaverageSlice 3 3 (1--|10) = aaverage (4--|4)
+    aaverageSlice (-1) (-1) (1--|10) = aaverage (10--|10)
+    optEx Division_by_zero (aaverageSlice (-3) 3) (1--|10) = None
+    optEx Division_by_zero (aaverageSlice (-3) 1) (1--|10) = None
+    optEx Division_by_zero (aaverageSlice 20 (-20)) (1--|10) = None
+    optEx Division_by_zero (aaverageSlice 10 0) (1--|10) = None
+
+    aaverageSlice 0 1 (1--|1) = aaverage (1--|1)
+    optEx Division_by_zero (aaverageSlice 0 1) [||] = None
+  **)
 
   let averageSlicef i j s =
     let i, len = slice_to_sub i j s in
