@@ -3504,6 +3504,14 @@ struct
     aaverageSub 0 1 (1--|1) = aaverage (1--|1)
     optEx Division_by_zero (aaverageSub 0 1) [||] = None
   **)
+
+  (**T aaverageSub_overflows
+    aaverageSub 0 1 [|max_int; max_int|] = max_int
+    aaverageSub 0 1 [|max_int; max_int; max_int|] = max_int
+    aaverageSub 0 1 [|min_int; min_int|] = min_int
+    aaverageSub 0 1 [|min_int; min_int; min_int|] = min_int
+    aaverageSub 0 1 [|max_int; min_int|] = 0
+  **)
   let averageSubf i len a = sumSubf i len a /. float len
 
   let averageSlice i j s =

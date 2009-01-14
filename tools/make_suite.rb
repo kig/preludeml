@@ -82,21 +82,19 @@ data = data.gsub(/\(\*\*\T(.*?)\*\*\)/m){ |match|
   [ lines[0], head + lines[1..-2].map{|l| l.strip}.join("\n      ") + tail, lines[-1] ].join("\n")
 }
 
-auto_name = "test_" + File.basename(file).downcase.
-                           gsub(/^\d+|\.mli?$/,'').
-                           gsub(/[^a-z0-9]/, '_')
+auto_name = File.basename(file).downcase.
+                 gsub(/^\d+|\.mli?$/,'').
+                 gsub(/[^a-z0-9]/, '_')
 data_lines = data.split(/\n/)
 current_line_num = 0
 data.scan(/\(\*\*\*(.*?)\*\*\)/m).each do |a|
   lines = a[0].split(/\n/)
   name, desc = lines.shift.strip.split(/\s+/)
-  if !name || name.empty?
-    s = data_lines[current_line_num..-1].join("\n")
-    index = s.index(a[0])
-    line_num = current_line_num + s[0...index].split(/\n/).size
-    current_line_num = line_num + lines.size + 1
-    name = "#{auto_name}_line_#{line_num}"
-  end
+  s = data_lines[current_line_num..-1].join("\n")
+  index = s.index(a[0])
+  line_num = current_line_num + s[0...index].split(/\n/).size
+  current_line_num = line_num + lines.size + 1
+  name = "#{name ? name : "test"}_#{auto_name}_line_#{line_num}"
   desc ||= name
   tests << [name, desc]
 
