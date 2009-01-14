@@ -3226,12 +3226,32 @@ struct
 
     afoldlSub 0 1 (+) 0 (1--|1) = asum (1--|1)
     afoldlSub 0 1 (+) 0 [||] = asum [||]
-**)
+  **)
 
   let foldl1Sub i len f s =
-    let i = normalizeIndex i s in
-    if i < 0 || i >= length s then raise Not_found;
-    foldlSub (i+1) (len-1) f (unsafe_get s i) s
+    let rec aux f s v i j =
+      if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
+    let first, sub_len = sub_start_and_length i len s in
+    if sub_len <= 0 || first < 0 || first >= length s
+    then raise Not_found
+    else aux f s (unsafe_get s first) (first+1) (first+sub_len-1)
+  (**T
+    afoldl1Sub 0 10 (+) (1--|10) = asum (1--|10)
+    afoldl1Sub (-10) 10 (+) (1--|10) = asum (1--|10)
+    afoldl1Sub (-20) 20 (+) (1--|10) = asum (1--|10)
+    afoldl1Sub 0 3 (+) (1--|10) = asum (1--|3)
+    afoldl1Sub 3 3 (+) (1--|10) = asum (4--|6)
+    afoldl1Sub (-3) 3 (+) (1--|10) = asum (8--|10)
+    afoldl1Sub (-1) 3 (+) (1--|10) = asum (10--|10)
+    afoldl1Sub (-3) 1 (+) (1--|10) = asum (8--|8)
+    optNF (afoldl1Sub 20 (-20) (+)) (1--|10) = None
+    optNF (afoldl1Sub (-20) 10 (+)) (1--|10) = None
+    optNF (afoldl1Sub 10 0 (+)) (1--|10) = None
+    optNF (afoldl1Sub 3 (-1) (+)) (1--|10) = None
+
+    afoldl1Sub 0 1 (+) (1--|1) = asum (1--|1)
+    optNF (afoldl1Sub 0 1 (+)) [||] = None
+  **)
 
   let foldrSub i len f init s =
     let rec aux f s v i j =
