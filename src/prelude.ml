@@ -3696,10 +3696,21 @@ struct
 
   let pick indices s =
     let l = len s in
-    if PreList.exists (gte l) indices then invalid_arg "pick: Index out of bounds";
+    if PreList.exists (gte l) indices then raise Not_found;
     PreList.map (fun i -> unsafe_get s i) indices
+  (**T
+    apick [2; 3] (aexplode "foobar") = ['o'; 'b']
+    apick [] [||] = []
+    apick [] (1--|10) = []
+    apick [0; 9] (1--|10) = [1; 10]
+    optNF (apick [2;3]) [|1;2;3|] = None
+    optNF (apick [2;3]) [||] = None
+  **)
 
   let pickWith funcs s = PreList.map (fun f -> f s) funcs
+  (**T
+    apickWith [afirst; alast] (aexplode "foobar") = ['f'; 'r']
+  **)
 
 
   (* Parallel operations *)
