@@ -3457,6 +3457,23 @@ struct
     asumSub 0 1 [||] = asum [||]
   **)
   let sumSubf i len a = foldlSub i len (+.) 0. a
+  (**T
+    asumSubf 0 10 (1.0--.|10.0) = asumf (1.0--.|10.0)
+    asumSubf (-10) 10 (1.0--.|10.0) = asumf (1.0--.|10.0)
+    asumSubf (-20) 20 (1.0--.|10.0) = asumf (1.0--.|10.0)
+    asumSubf 0 3 (1.0--.|10.0) = asumf (1.--.|3.)
+    asumSubf 3 3 (1.0--.|10.0) = asumf (4.--.|6.)
+    asumSubf (-3) 3 (1.0--.|10.0) = asumf (8.--.|10.)
+    asumSubf (-1) 3 (1.0--.|10.0) = asumf (10.--.|10.)
+    asumSubf (-3) 1 (1.0--.|10.0) = asumf (8.--.|8.)
+    asumSubf 20 (-20) (1.0--.|10.0) = asumf [||]
+    asumSubf (-20) 10 (1.0--.|10.0) = asumf [||]
+    asumSubf 10 0 (1.0--.|10.0) = asumf [||]
+    asumSubf 3 (-1) (1.0--.|10.0) = asumf [||]
+
+    asumSubf 0 1 (1.--.|1.) = asumf (1.--.|1.)
+    asumSubf 0 1 [||] = asumf [||]
+  **)
 
   let sumSlice i j a = foldlSlice i j (+) 0 a
   let sumSlicef i j a = foldlSlice i j (+.) 0. a
@@ -3480,6 +3497,23 @@ struct
     aproductSub 0 1 [||] = aproduct [||]
   **)
   let productSubf i len a = foldlSub i len ( *. ) 1. a
+  (**T
+    aproductSubf 0 10 (1.0--.|10.0) = aproductf (1.0--.|10.0)
+    aproductSubf (-10) 10 (1.0--.|10.0) = aproductf (1.0--.|10.0)
+    aproductSubf (-20) 20 (1.0--.|10.0) = aproductf (1.0--.|10.0)
+    aproductSubf 0 3 (1.0--.|10.0) = aproductf (1.0--.|3.0)
+    aproductSubf 3 3 (1.0--.|10.0) = aproductf (4.0--.|6.0)
+    aproductSubf (-3) 3 (1.0--.|10.0) = aproductf (8.0--.|10.0)
+    aproductSubf (-1) 3 (1.0--.|10.0) = aproductf (10.0--.|10.0)
+    aproductSubf (-3) 1 (1.0--.|10.0) = aproductf (8.0--.|8.0)
+    aproductSubf 20 (-20) (1.0--.|10.0) = aproductf [||]
+    aproductSubf (-20) 10 (1.0--.|10.0) = aproductf [||]
+    aproductSubf 10 0 (1.0--.|10.0) = aproductf [||]
+    aproductSubf 3 (-1) (1.0--.|10.0) = aproductf [||]
+
+    aproductSubf 0 1 (1.0--.|1.0) = aproductf (1.0--.|1.0)
+    aproductSubf 0 1 [||] = aproductf [||]
+  **)
 
   let productSlice i j a = foldlSlice i j ( * ) 1 a
   let productSlicef i j a = foldlSlice i j ( *. ) 1. a
@@ -3515,7 +3549,26 @@ struct
     aaverageSub 0 10 [|min_int; min_int|] <> min_int
     aaverageSub 0 10 [|max_int; min_int|] = 0
   **)
-  let averageSubf i len a = sumSubf i len a /. float len
+  let averageSubf i len a =
+    let first, sub_len = sub_start_and_length i len a in
+    sumSubf i len a /. float sub_len
+  (**T
+    aaverageSubf 0 10 (1.0--.|10.0) = aaveragef (1.0--.|10.0)
+    aaverageSubf (-10) 10 (1.0--.|10.0) = aaveragef (1.0--.|10.0)
+    aaverageSubf (-20) 20 (1.0--.|10.0) = aaveragef (1.0--.|10.0)
+    aaverageSubf 0 3 (1.0--.|10.0) = aaveragef (1.0--.|3.0)
+    aaverageSubf 3 3 (1.0--.|10.0) = aaveragef (4.0--.|6.0)
+    aaverageSubf (-3) 3 (1.0--.|10.0) = aaveragef (8.0--.|10.0)
+    aaverageSubf (-1) 3 (1.0--.|10.0) = aaveragef (10.0--.|10.0)
+    aaverageSubf (-3) 1 (1.0--.|10.0) = aaveragef (8.0--.|8.0)
+    isNaN (aaverageSubf 20 (-20) (1.0--.|10.0))
+    isNaN  (aaverageSubf (-20) 10 (1.0--.|10.0))
+    isNaN  (aaverageSubf 10 0 (1.0--.|10.0))
+    isNaN  (aaverageSubf 3 (-1) (1.0--.|10.0))
+
+    aaverageSubf 0 1 (1.0--.|1.0) = aaveragef (1.0--.|1.0)
+    isNaN  (aaverageSubf 0 1 [||])
+  **)
 
   let averageSlice i j s =
     let i, len = slice_to_sub i j s in
