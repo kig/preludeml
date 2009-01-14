@@ -3304,6 +3304,25 @@ struct
   let foldlSlice i j f init s =
     let i, len = slice_to_sub i j s in
     foldlSub i len f init s
+  (**T
+    afoldlSlice 0 10 (+) 0 (1--|10) = asum (1--|10)
+    afoldlSlice 0 9 (+) 0 (1--|10) = asum (1--|10)
+    afoldlSlice 0 (-1) (+) 0 (1--|10) = asum (1--|10)
+    afoldlSlice (-10) 10 (+) 0 (1--|10) = asum (1--|10)
+    afoldlSlice (-20) 20 (+) 0 (1--|10) = asum (1--|10)
+    afoldlSlice (-20) 10 (+) 0 (1--|10) = asum (1--|10)
+    afoldlSlice 0 3 (+) 0 (1--|10) = asum (1--|4)
+    afoldlSlice 3 (-1) (+) 0 (1--|10) = asum (4--|10)
+    afoldlSlice 3 3 (+) 0 (1--|10) = asum (4--|4)
+    afoldlSlice (-1) (-1) (+) 0 (1--|10) = asum (10--|10)
+    afoldlSlice (-3) 3 (+) 0 (1--|10) = asum [||]
+    afoldlSlice (-3) 1 (+) 0 (1--|10) = asum [||]
+    afoldlSlice 20 (-20) (+) 0 (1--|10) = asum [||]
+    afoldlSlice 10 0 (+) 0 (1--|10) = asum [||]
+
+    afoldlSlice 0 1 (+) 0 (1--|1) = asum (1--|1)
+    afoldlSlice 0 1 (+) 0 [||] = asum [||]
+  **)
 
   let foldl1Slice i j f s =
     let i, len = slice_to_sub i j s in
