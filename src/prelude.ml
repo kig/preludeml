@@ -3210,6 +3210,23 @@ struct
       if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
     let first, sub_len = sub_start_and_length i len s in
     aux f s init first (first+sub_len-1)
+  (**T
+    afoldlSub 0 10 (+) 0 (1--|10) = asum (1--|10)
+    afoldlSub (-10) 10 (+) 0 (1--|10) = asum (1--|10)
+    afoldlSub (-20) 20 (+) 0 (1--|10) = asum (1--|10)
+    afoldlSub 0 3 (+) 0 (1--|10) = asum (1--|3)
+    afoldlSub 3 3 (+) 0 (1--|10) = asum (4--|6)
+    afoldlSub (-3) 3 (+) 0 (1--|10) = asum (8--|10)
+    afoldlSub (-1) 3 (+) 0 (1--|10) = asum (10--|10)
+    afoldlSub (-3) 1 (+) 0 (1--|10) = asum (8--|8)
+    afoldlSub 20 (-20) (+) 0 (1--|10) = asum [||]
+    afoldlSub (-20) 10 (+) 0 (1--|10) = asum [||]
+    afoldlSub 10 0 (+) 0 (1--|10) = asum [||]
+    afoldlSub 3 (-1) (+) 0 (1--|10) = asum [||]
+
+    afoldlSub 0 1 (+) 0 (1--|1) = asum (1--|1)
+    afoldlSub 0 1 (+) 0 [||] = asum [||]
+**)
 
   let foldl1Sub i len f s =
     let i = normalizeIndex i s in
