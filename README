@@ -11,7 +11,10 @@ Compile:
 Run tests:
   omake test
 
-Licensed under the MIT license.
+Run tests, printing out the test name before running it:
+  omake test_verbose
+
+Released under the MIT license.
 
 
 Features
