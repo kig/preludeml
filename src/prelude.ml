@@ -3327,14 +3327,71 @@ struct
   let foldl1Slice i j f s =
     let i, len = slice_to_sub i j s in
     foldl1Sub i len f s
+  (**T
+    afoldl1Slice 0 10 (+) (1--|10) = asum (1--|10)
+    afoldl1Slice 0 9 (+) (1--|10) = asum (1--|10)
+    afoldl1Slice 0 (-1) (+) (1--|10) = asum (1--|10)
+    afoldl1Slice (-10) 10 (+) (1--|10) = asum (1--|10)
+    afoldl1Slice (-20) 20 (+) (1--|10) = asum (1--|10)
+    afoldl1Slice (-20) 10 (+) (1--|10) = asum (1--|10)
+    afoldl1Slice 0 3 (+) (1--|10) = asum (1--|4)
+    afoldl1Slice 3 (-1) (+) (1--|10) = asum (4--|10)
+    afoldl1Slice 3 3 (+) (1--|10) = asum (4--|4)
+    afoldl1Slice (-1) (-1) (+) (1--|10) = asum (10--|10)
+    optNF (afoldl1Slice (-3) 3 (+)) (1--|10) = None
+    optNF (afoldl1Slice (-3) 1 (+)) (1--|10) = None
+    optNF (afoldl1Slice 20 (-20) (+)) (1--|10) = None
+    optNF (afoldl1Slice 10 0 (+)) (1--|10) = None
+
+    afoldl1Slice 0 1 (+) (1--|1) = asum (1--|1)
+    optNF (afoldl1Slice 0 1 (+)) [||] = None
+  **)
 
   let foldrSlice i j f init s =
     let i, len = slice_to_sub i j s in
     foldrSub i len f init s
+  (**T
+    afoldrSlice 0 10 (+) 0 (1--|10) = asum (1--|10)
+    afoldrSlice 0 9 (+) 0 (1--|10) = asum (1--|10)
+    afoldrSlice 0 (-1) (+) 0 (1--|10) = asum (1--|10)
+    afoldrSlice (-10) 10 (+) 0 (1--|10) = asum (1--|10)
+    afoldrSlice (-20) 20 (+) 0 (1--|10) = asum (1--|10)
+    afoldrSlice (-20) 10 (+) 0 (1--|10) = asum (1--|10)
+    afoldrSlice 0 3 (+) 0 (1--|10) = asum (1--|4)
+    afoldrSlice 3 (-1) (+) 0 (1--|10) = asum (4--|10)
+    afoldrSlice 3 3 (+) 0 (1--|10) = asum (4--|4)
+    afoldrSlice (-1) (-1) (+) 0 (1--|10) = asum (10--|10)
+    afoldrSlice (-3) 3 (+) 0 (1--|10) = asum [||]
+    afoldrSlice (-3) 1 (+) 0 (1--|10) = asum [||]
+    afoldrSlice 20 (-20) (+) 0 (1--|10) = asum [||]
+    afoldrSlice 10 0 (+) 0 (1--|10) = asum [||]
+
+    afoldrSlice 0 1 (+) 0 (1--|1) = asum (1--|1)
+    afoldrSlice 0 1 (+) 0 [||] = asum [||]
+  **)
 
   let foldr1Slice i j f s =
     let i, len = slice_to_sub i j s in
     foldr1Sub i len f s
+  (**T
+    afoldr1Slice 0 10 (+) (1--|10) = asum (1--|10)
+    afoldr1Slice 0 9 (+) (1--|10) = asum (1--|10)
+    afoldr1Slice 0 (-1) (+) (1--|10) = asum (1--|10)
+    afoldr1Slice (-10) 10 (+) (1--|10) = asum (1--|10)
+    afoldr1Slice (-20) 20 (+) (1--|10) = asum (1--|10)
+    afoldr1Slice (-20) 10 (+) (1--|10) = asum (1--|10)
+    afoldr1Slice 0 3 (+) (1--|10) = asum (1--|4)
+    afoldr1Slice 3 (-1) (+) (1--|10) = asum (4--|10)
+    afoldr1Slice 3 3 (+) (1--|10) = asum (4--|4)
+    afoldr1Slice (-1) (-1) (+) (1--|10) = asum (10--|10)
+    optNF (afoldr1Slice (-3) 3 (+)) (1--|10) = None
+    optNF (afoldr1Slice (-3) 1 (+)) (1--|10) = None
+    optNF (afoldr1Slice 20 (-20) (+)) (1--|10) = None
+    optNF (afoldr1Slice 10 0 (+)) (1--|10) = None
+
+    afoldr1Slice 0 1 (+) (1--|1) = asum (1--|1)
+    optNF (afoldr1Slice 0 1 (+)) [||] = None
+  **)
 
   let sum a = foldl (+) 0 a
   (**T
