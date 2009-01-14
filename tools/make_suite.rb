@@ -49,8 +49,10 @@ where filename.ml contains comments like
 
 =end
 
+verbose = ARGV.delete("-v") != nil
+
 if ARGV.size != 1
-  puts "Usage: make_suite <file.ml>"
+  puts "Usage: make_suite [-v] <file.ml>"
   exit 1
 end
 
@@ -99,7 +101,7 @@ data.scan(/\(\*\*\*(.*?)\*\*\)/m).each do |a|
   tests << [name, desc]
 
   puts <<-EOF
-let #{name} () =
+let #{name} () = #{verbose ? "print_endline #{name.dump};" : ""}
 #{lines.join("\n")}
 
   EOF

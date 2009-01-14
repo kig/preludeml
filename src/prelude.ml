@@ -3505,6 +3505,7 @@ struct
     optEx Division_by_zero (aaverageSub 0 1) [||] = None
   **)
 
+  (* FIXME *)
   (**T aaverageSub_overflows
     aaverageSub 0 10 [|max_int/3; max_int/3; max_int/3; max_int/3|] <> max_int/3
     aaverageSub 0 10 [|max_int/2; max_int/2; max_int/2|] <> max_int/2

@@ -7,6 +7,7 @@ OCAMLINCLUDES += $(ROOT)/src
 
 FILES[] =
 EXTRACTED_TESTS[] =
+EXTRACTED_TESTS_V[] =
 
 OCAMLINCLUDES += $(TESTDIRS) $(ROOT)/test
 
@@ -20,25 +21,36 @@ ExtractTests(file, deps) =
     $(DEST).ml: $(ROOT)/$(file).ml
         ruby $(ROOT)/tools/make_suite.rb $^ > $@
     EXTRACTED_TESTS += $(DEST)
+    $(DEST)_v.ml: $(ROOT)/$(file).ml
+        ruby $(ROOT)/tools/make_suite.rb -v $^ > $@
+    EXTRACTED_TESTS_V += $(DEST)_v
     if $(not $(mem $(ROOT)/$(file), $(FILES)))
 	FILES[] += $(ROOT)/$(file)
 	export FILES
     export FILES
     export EXTRACTED_TESTS
+    export EXTRACTED_TESTS_V
 
 ExtractTests(src/prelude, \ )
 
 OCamlProgram(run_unit_tests, tests $(FILES) $(EXTRACTED_TESTS) test_runner)
+OCamlProgram(run_unit_tests_v, tests $(FILES) $(EXTRACTED_TESTS_V) test_runner)
 
 unit_tests.results: run_unit_tests
 	./run_unit_tests | tee $@
 
+unit_tests.verbose.results: run_unit_tests_v
+        ./run_unit_tests_v | tee $@
+
 .PHONY: clean
 clean:
 	rm -f *.cmi *.cmo *.cmx *.cmxa *.cma *.annot *.s *.o *.opt \
-	    *.run *.a *.inc *.results \
+	    *.run *.a *.inc *.results run_unit_tests* \
 	    $(addsuffixes .cmi .cmo .cmx .annot .s, $(FILES))
 
 .PHONY: test
 
+.PHONY: test_verbose
+
 test: unit_tests.results
+test_verbose: unit_tests.verbose.results
