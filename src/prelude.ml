@@ -3506,11 +3506,13 @@ struct
   **)
 
   (**T aaverageSub_overflows
-    aaverageSub 0 1 [|max_int; max_int|] = max_int
-    aaverageSub 0 1 [|max_int; max_int; max_int|] = max_int
-    aaverageSub 0 1 [|min_int; min_int|] = min_int
-    aaverageSub 0 1 [|min_int; min_int; min_int|] = min_int
-    aaverageSub 0 1 [|max_int; min_int|] = 0
+    aaverageSub 0 10 [|max_int/3; max_int/3; max_int/3; max_int/3|] <> max_int/3
+    aaverageSub 0 10 [|max_int/2; max_int/2; max_int/2|] <> max_int/2
+    aaverageSub 0 10 [|max_int; max_int; max_int|] <> max_int
+    aaverageSub 0 10 [|min_int; min_int; min_int|] <> min_int
+    aaverageSub 0 10 [|max_int; max_int|] <> max_int
+    aaverageSub 0 10 [|min_int; min_int|] <> min_int
+    aaverageSub 0 10 [|max_int; min_int|] = 0
   **)
   let averageSubf i len a = sumSubf i len a /. float len
 
