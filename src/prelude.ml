@@ -3718,8 +3718,22 @@ struct
   let par_mapReduce ?process_count ~combine ~process l =
     let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l |> par_map ~process_count process |> combine
+  (**T
+    PreArray.par_mapReduce ~combine:aconcat ~process:(amap succ) (1--|10) = amap succ (1--|10)
+    PreArray.par_mapReduce ~process_count:2 ~combine:aconcat ~process:(amap succ) (1--|10) = amap succ (1--|10)
+    PreArray.par_mapReduce ~process_count:2 ~combine:(aconcat @. reverse) ~process:(amap succ) (1--|10) = amap succ ((6--|10)@|(1--|5))
+    PreArray.par_mapReduce ~process_count:2 ~combine:(aconcat @. reverse) ~process:(amap succ) [||] = [||]
+    PreArray.par_mapReduce ~process_count:2 ~combine:(aconcat @. reverse) ~process:(amap succ) [|1|] = [|2|]
+  **)
 
   let pmapReduce combine process = par_mapReduce ~combine ~process
+  (**T
+    PreArray.pmapReduce aconcat (amap succ) (1--|10) = amap succ (1--|10)
+    PreArray.pmapReduce ~process_count:2 aconcat (amap succ) (1--|10) = amap succ (1--|10)
+    PreArray.pmapReduce ~process_count:2 (aconcat @. reverse) (amap succ) (1--|10) = amap succ ((6--|10)@|(1--|5))
+    PreArray.pmapReduce ~process_count:2 (aconcat @. reverse) (amap succ) [||] = [||]
+    PreArray.pmapReduce ~process_count:2 (aconcat @. reverse) (amap succ) [|1|] = [|2|]
+  **)
 
   let pfoldl r f init = pmapReduce (PreList.foldl1 r) (foldl f init)
   let pfoldl1 f = pmapReduce (PreList.foldl1 f) (foldl1 f)
