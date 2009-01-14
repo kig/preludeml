@@ -3258,13 +3258,48 @@ struct
       if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
     let first, sub_len = sub_start_and_length i len s in
     aux f s init first (first+sub_len-1)
+  (**T
+    afoldrSub 0 10 (+) 0 (1--|10) = asum (1--|10)
+    afoldrSub (-10) 10 (+) 0 (1--|10) = asum (1--|10)
+    afoldrSub (-20) 20 (+) 0 (1--|10) = asum (1--|10)
+    afoldrSub 0 3 (+) 0 (1--|10) = asum (1--|3)
+    afoldrSub 3 3 (+) 0 (1--|10) = asum (4--|6)
+    afoldrSub (-3) 3 (+) 0 (1--|10) = asum (8--|10)
+    afoldrSub (-1) 3 (+) 0 (1--|10) = asum (10--|10)
+    afoldrSub (-3) 1 (+) 0 (1--|10) = asum (8--|8)
+    afoldrSub 20 (-20) (+) 0 (1--|10) = asum [||]
+    afoldrSub (-20) 10 (+) 0 (1--|10) = asum [||]
+    afoldrSub 10 0 (+) 0 (1--|10) = asum [||]
+    afoldrSub 3 (-1) (+) 0 (1--|10) = asum [||]
+
+    afoldrSub 0 1 (+) 0 (1--|1) = asum (1--|1)
+    afoldrSub 0 1 (+) 0 [||] = asum [||]
+  **)
 
   let foldr1Sub i len f s =
-    let i = normalizeIndex i s in
-    let j = i + len - 1 in
-    if j < 0 || j >= length s then raise Not_found;
-    foldrSub i (len-1) f (unsafe_get s j) s
+    let rec aux f s v i j =
+      if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
+    let first, sub_len = sub_start_and_length i len s in
+    if sub_len <= 0 || first < 0 || first >= length s
+    then raise Not_found
+    else aux f s (unsafe_get s first) (first+1) (first+sub_len-1)
+  (**T
+    afoldr1Sub 0 10 (+) (1--|10) = asum (1--|10)
+    afoldr1Sub (-10) 10 (+) (1--|10) = asum (1--|10)
+    afoldr1Sub (-20) 20 (+) (1--|10) = asum (1--|10)
+    afoldr1Sub 0 3 (+) (1--|10) = asum (1--|3)
+    afoldr1Sub 3 3 (+) (1--|10) = asum (4--|6)
+    afoldr1Sub (-3) 3 (+) (1--|10) = asum (8--|10)
+    afoldr1Sub (-1) 3 (+) (1--|10) = asum (10--|10)
+    afoldr1Sub (-3) 1 (+) (1--|10) = asum (8--|8)
+    optNF (afoldr1Sub 20 (-20) (+)) (1--|10) = None
+    optNF (afoldr1Sub (-20) 10 (+)) (1--|10) = None
+    optNF (afoldr1Sub 10 0 (+)) (1--|10) = None
+    optNF (afoldr1Sub 3 (-1) (+)) (1--|10) = None
 
+    afoldr1Sub 0 1 (+) (1--|1) = asum (1--|1)
+    optNF (afoldr1Sub 0 1 (+)) [||] = None
+  **)
 
   let foldlSlice i j f init s =
     let i, len = slice_to_sub i j s in
