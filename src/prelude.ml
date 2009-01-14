@@ -3738,20 +3738,143 @@ struct
   **)
 
   let pfoldl r f init = pmapReduce (PreList.foldl1 r) (foldl f init)
+  (**T
+    apfoldl (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldl ~process_count:2 (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldl ~process_count:2 (+) (+) 0 [|1|] = asum [|1|]
+    apfoldl ~process_count:1 (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldl ~process_count:1 (+) (+) 0 [|1|] = asum [|1|]
+    apfoldl ~process_count:0 (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldl ~process_count:0 (+) (+) 0 [|1|] = asum [|1|]
+    apfoldl ~process_count:3 (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldl ~process_count:3 (+) (+) 0 [|1|] = asum [|1|]
+    apfoldl ~process_count:2 (multiply) (multiply) 1 (1--|10) = aproduct (1--|10)
+    apfoldl ~process_count:2 (multiply) (multiply) 1 [|1|] = aproduct [|1|]
+    optNF (apfoldl ~process_count:2 (+) (+) 0) [||] = Some 0
+  **)
   let pfoldl1 f = pmapReduce (PreList.foldl1 f) (foldl1 f)
+  (**T
+    apfoldl1 (+) (1--|10) = asum (1--|10)
+    apfoldl1 ~process_count:3 (+) (1--|10) = asum (1--|10)
+    apfoldl1 ~process_count:2 (+) [|1|] = asum [|1|]
+    apfoldl1 ~process_count:1 (multiply) (1--|10) = aproduct (1--|10)
+    apfoldl1 ~process_count:0 (multiply) [|1|] = aproduct [|1|]
+    optNF (apfoldl1 ~process_count:2 (+)) [||] = None
+  **)
+
   let pfoldr r f init = pmapReduce (PreList.foldr1 r) (foldr f init)
+  (**T
+    apfoldr ~process_count:2 (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldr ~process_count:2 (+) (+) 0 [|1|] = asum [|1|]
+    apfoldr (+) (+) 0 [|1|] = asum [|1|]
+    apfoldr ~process_count:1 (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldr ~process_count:1 (+) (+) 0 [|1|] = asum [|1|]
+    apfoldr ~process_count:0 (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldr ~process_count:0 (+) (+) 0 [|1|] = asum [|1|]
+    apfoldr ~process_count:3 (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldr ~process_count:3 (+) (+) 0 [|1|] = asum [|1|]
+    apfoldr ~process_count:2 (multiply) (multiply) 1 (1--|10) = aproduct (1--|10)
+    apfoldr ~process_count:2 (multiply) (multiply) 1 [|1|] = aproduct [|1|]
+    optNF (apfoldr ~process_count:2 (+) (+) 0) [||] = Some 0
+  **)
+
   let pfoldr1 f = pmapReduce (PreList.foldr1 f) (foldr1 f)
+  (**T
+    apfoldr1 ~process_count:3 (+) (1--|10) = asum (1--|10)
+    apfoldr1 (+) (1--|10) = asum (1--|10)
+    apfoldr1 ~process_count:2 (+) [|1|] = asum [|1|]
+    apfoldr1 ~process_count:1 (multiply) (1--|10) = aproduct (1--|10)
+    apfoldr1 ~process_count:0 (multiply) [|1|] = aproduct [|1|]
+    optNF (apfoldr1 ~process_count:2 (+)) [||] = None
+  **)
 
   let piter f = pmapReduce ignore (iter f)
+  (**T
+    apiter ~process_count:3 (ignore @. succ) (1--|10) = ()
+    apiter ~process_count:2 (ignore @. succ) (1--|10) = ()
+    apiter ~process_count:1 (ignore @. succ) (1--|10) = ()
+    apiter ~process_count:0 (ignore @. succ) (1--|10) = ()
+    apiter ~process_count:3 (ignore @. succ) [|1|] = ()
+    apiter ~process_count:2 (ignore @. succ) [|1|] = ()
+    apiter ~process_count:1 (ignore @. succ) [|1|] = ()
+    apiter ~process_count:0 (ignore @. succ) [|1|] = ()
+    apiter ~process_count:3 (ignore @. succ) [||] = ()
+    apiter ~process_count:2 (ignore @. succ) [||] = ()
+    apiter ~process_count:1 (ignore @. succ) [||] = ()
+    apiter ~process_count:0 (ignore @. succ) [||] = ()
+    apiter (ignore @. succ) [||] = ()
+    apiter (ignore @. succ) (1--|10) = ()
+    apiter (ignore @. succ) [|1|] = ()
+  **)
+
   let pmap f = pmapReduce concat (map f)
+  (**T
+    apmap ~process_count:3 succ (1--|10) = amap succ (1--|10)
+    apmap ~process_count:2 succ (1--|10) = amap succ (1--|10)
+    apmap ~process_count:1 succ (1--|10) = amap succ (1--|10)
+    apmap ~process_count:0 succ (1--|10) = amap succ (1--|10)
+    apmap ~process_count:3 succ [|1|] = amap succ [|1|]
+    apmap ~process_count:2 succ [|1|] = amap succ [|1|]
+    apmap ~process_count:1 succ [|1|] = amap succ [|1|]
+    apmap ~process_count:0 succ [|1|] = amap succ [|1|]
+    apmap ~process_count:3 succ [||] = amap succ [||]
+    apmap ~process_count:2 succ [||] = amap succ [||]
+    apmap ~process_count:1 succ [||] = amap succ [||]
+    apmap ~process_count:0 succ [||] = amap succ [||]
+    apmap succ (1--|10) = amap succ (1--|10)
+    apmap succ [||] = amap succ [||]
+    apmap succ [|1|] = amap succ [|1|]
+  **)
+
   let pfilter f = pmapReduce concat (filter f)
+  (**T
+    apfilter even (1--|10) = [|2;4;6;8;10|]
+    apfilter odd (1--|10) = [|1;3;5;7;9|]
+    apfilter even [|1|] = [||]
+    apfilter odd [|1|] = [|1|]
+    apfilter even [||] = [||]
+  **)
+
 
   let pfoldlSeqN ?process_count n r f init l =
     PreList.foldl (fun acc il -> r acc (pfoldl ?process_count r f init il))
           init (groupsOf n l)
+  (**T
+    apfoldlSeqN 3 (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldlSeqN ~process_count:2 3 (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldlSeqN ~process_count:2 3 (+) (+) 0 [|1|] = asum [|1|]
+    apfoldlSeqN ~process_count:1 3 (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldlSeqN ~process_count:1 3 (+) (+) 0 [|1|] = asum [|1|]
+    apfoldlSeqN ~process_count:0 3 (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldlSeqN ~process_count:0 3 (+) (+) 0 [|1|] = asum [|1|]
+    apfoldlSeqN ~process_count:3 3 (+) (+) 0 (1--|10) = asum (1--|10)
+    apfoldlSeqN ~process_count:3 3 (+) (+) 0 [|1|] = asum [|1|]
+    apfoldlSeqN ~process_count:2 3 (multiply) (multiply) 1 (1--|10) = aproduct (1--|10)
+    apfoldlSeqN ~process_count:2 3 (multiply) (multiply) 1 [|1|] = aproduct [|1|]
+    optNF (apfoldlSeqN ~process_count:2 3 (+) (+) 0) [||] = Some 0
+  **)
+
 
   let piterSeqN ?process_count n r f l =
     PreList.iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
+  (**T
+    apiterSeqN ~process_count:3 1 ignore succ (1--|10) = ()
+    apiterSeqN ~process_count:2 2 ignore succ (1--|10) = ()
+    apiterSeqN ~process_count:1 1 ignore succ (1--|10) = ()
+    apiterSeqN ~process_count:0 4 ignore succ (1--|10) = ()
+    apiterSeqN ~process_count:3 1 ignore succ [|1|] = ()
+    apiterSeqN ~process_count:2 6 ignore succ [|1|] = ()
+    apiterSeqN ~process_count:1 1 ignore succ [|1|] = ()
+    apiterSeqN ~process_count:0 1 ignore succ [|1|] = ()
+    apiterSeqN ~process_count:3 2 ignore succ [||] = ()
+    apiterSeqN ~process_count:2 1 ignore succ [||] = ()
+    apiterSeqN ~process_count:1 3 ignore succ [||] = ()
+    apiterSeqN ~process_count:0 1 ignore succ [||] = ()
+    apiterSeqN 0 ignore succ [||] = ()
+    apiterSeqN 1 ignore succ (1--|10) = ()
+    apiterSeqN 1 ignore succ [|1|] = ()
+  **)
+
 
   let pinit ?process_count f l =
     let process_count = max 1 (process_count |? !global_process_count) in
@@ -3761,6 +3884,19 @@ struct
       let len = min plen (l - start) in
       init (fun j -> f (start + j)) len in
     concat (par_map ~process_count process (0--(process_count-1)))
+  (**T
+    apinit succ 10 = (1--|10)
+    apinit pred 10 = ((-1)--|8)
+    apinit succ 0 = [||]
+    apinit succ 1 = [|1|]
+    apinit ~process_count:4 succ 10 = (1--|10)
+    apinit ~process_count:3 pred 10 = ((-1)--|8)
+    apinit ~process_count:2 succ 0 = [||]
+    apinit ~process_count:1 pred 10 = ((-1)--|8)
+    apinit ~process_count:1 succ 1 = [|1|]
+    apinit ~process_count:0 succ 1 = [|1|]
+  **)
+
 
   let pzipWith ?process_count f a b =
     let process_count = max 1 (process_count |? !global_process_count) in
@@ -3768,18 +3904,61 @@ struct
     pinit ~process_count (fun i ->
       f (unsafe_get a i) (unsafe_get b i)
     ) len
+  (**T
+    apzipWith (+) (1--|10) (1--|10) = amap (dup (+)) (1--|10)
+    apzipWith (-) (1--|5) (3--|1) = [|-2; 0; 2|]
+    apzipWith (-) (1--|3) (5--|1) = [|-4; -2; 0|]
+    apzipWith (+) [|1|] (1--|10) = [|2|]
+    apzipWith (+) (1--|10) [|1|] = [|2|]
+    apzipWith (+) [|1|] [|1|] = [|2|]
+    apzipWith (+) [||] (1--|10) = [||]
+    apzipWith (+) (1--|10) [||] = [||]
+    apzipWith (+) [||] [||] = [||]
+    apzipWith (+) ~process_count:3 (1--|10) (1--|10) = amap (dup (+)) (1--|10)
+    apzipWith (-) ~process_count:2 (1--|5) (3--|1) = [|-2; 0; 2|]
+    apzipWith (-) ~process_count:1 (1--|3) (5--|1) = [|-4; -2; 0|]
+    apzipWith (+) ~process_count:0 [|1|] (1--|10) = [|2|]
+  **)
+
 
   let par_mapReduceWithIndex ?process_count ~combine ~process l =
     let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l
       |> PreList.mapWithIndex tuple
       |> par_map  ~process_count process |> combine
+  (**T
+    PreArray.par_mapReduceWithIndex ~process_count:5 ~combine:(areverse @. aconcat) ~process:(fun (l, idx) -> amap succ (if odd idx then [||] else l)) (0--|8) = [|9;6;5;2;1|]
+    PreArray.par_mapReduceWithIndex ~process_count:5 ~combine:(areverse @. aconcat) ~process:(fun (l, idx) -> amap succ (if odd idx then [||] else l)) [||] = [||]
+    PreArray.par_mapReduceWithIndex ~process_count:5 ~combine:(areverse @. aconcat) ~process:(fun (l, idx) -> amap succ (if odd idx then [||] else l)) [|0|] = [|1|]
+    PreArray.par_mapReduceWithIndex ~process_count:0 ~combine:(areverse @. aconcat) ~process:(fun (l, idx) -> amap succ (if odd idx then [||] else l)) [|0|] = [|1|]
+    PreArray.par_mapReduceWithIndex ~process_count:0 ~combine:(areverse @. aconcat) ~process:(fun (l, idx) -> amap succ (if odd idx then [||] else l)) [||] = [||]
+    PreArray.par_mapReduceWithIndex ~process_count:0 ~combine:(areverse @. aconcat) ~process:(fun (l, idx) -> amap succ (if odd idx then [||] else l)) (0--|9) = (10--|1)
+  **)
+
 
   let pmapReduceWithIndex combine process =
     par_mapReduceWithIndex ~combine ~process
+  (**T
+    apmapReduceWithIndex ~process_count:5 (areverse @. aconcat) (fun (l, idx) -> amap succ (if odd idx then [||] else l)) (0--|8) = [|9;6;5;2;1|]
+    apmapReduceWithIndex ~process_count:5 (areverse @. aconcat) (fun (l, idx) -> amap succ (if odd idx then [||] else l)) [||] = [||]
+    apmapReduceWithIndex ~process_count:5 (areverse @. aconcat) (fun (l, idx) -> amap succ (if odd idx then [||] else l)) [|0|] = [|1|]
+    apmapReduceWithIndex ~process_count:0 (areverse @. aconcat) (fun (l, idx) -> amap succ (if odd idx then [||] else l)) [|0|] = [|1|]
+    apmapReduceWithIndex ~process_count:0 (areverse @. aconcat) (fun (l, idx) -> amap succ (if odd idx then [||] else l)) [||] = [||]
+    apmapReduceWithIndex ~process_count:0 (areverse @. aconcat) (fun (l, idx) -> amap succ (if odd idx then [||] else l)) (0--|9) = (10--|1)
+  **)
 
   let pmapWithInit init f =
     pmapReduceWithIndex concat (fun (sublist, idx) -> map f (init sublist idx))
+  (**T
+    apmapWithInit ~process_count:2 (fun l i -> if odd i then areverse l else l) succ (0--|9) = (1--|5) @| (10--|6)
+    apmapWithInit ~process_count:2 (fun l i -> if odd i then areverse l else l) succ [|0|] = [|1|]
+    apmapWithInit ~process_count:2 (fun l i -> if odd i then areverse l else l) succ [||] = [||]
+    apmapWithInit ~process_count:1 (fun l i -> if odd i then areverse l else l) succ [|0|] = [|1|]
+    apmapWithInit ~process_count:1 (fun l i -> if odd i then areverse l else l) succ [||] = [||]
+    apmapWithInit ~process_count:(-1) (fun l i -> if odd i then areverse l else l) succ [|0|] = [|1|]
+    apmapWithInit ~process_count:0 (fun l i -> if odd i then areverse l else l) succ [||] = [||]
+  **)
+
 end
 
 
