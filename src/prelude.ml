@@ -2519,14 +2519,14 @@ module PreArray =
 struct
   include Array
 
+  (* Basic operations *)
+
   let len = length
   (**T
     alen (1--|10) = 10
     alen [|1|] = 1
     alen [||] = 0
   **)
-
-  (* Basic operations *)
 
   let init f l = init l f
   (**T
@@ -2609,7 +2609,7 @@ struct
     PreArray.replicate (-1) '-' = [||]
   **)
 
-  let times n a = PreList.replicate n a |> concat
+  let times n a = concat (PreList.replicate n a)
   (**T
     atimes 3 (1--|3) = [|1;2;3;1;2;3;1;2;3|]
     atimes 0 (1--|3) = [||]
@@ -2645,6 +2645,13 @@ struct
   let iter f s =
     let l = len s in
     for i = 0 to l - 1 do f (unsafe_get s i) done
+  (**T
+    mapWith aiter id (1--|100000) = (1--100000)
+    mapWith aiter id (1--|10) = (1--10)
+    mapWith aiter succ (1--|10) = (2--11)
+    mapWith aiter succ (1--|1) = [2]
+    mapWith aiter succ [||] = []
+  **)
 
   let iterWithIndex f s =
     let l = len s in
@@ -3968,10 +3975,25 @@ module PreString =
 struct
   include String
 
+  (* Basic operations *)
+
+  let len = length
+  (**T
+    slen (1--^|10) = 10
+    slen "1" = 1
+    slen "" = 0
+  **)
+
   let init f l =
     let s = create l in
     for i=0 to l-1 do unsafe_set s i (f i) done;
     s
+  (**T
+    sinit (chr @. succ) 10 = (1--^|10)
+    sinit (fun i -> chr (i+65)) 10 = "ABCDEFGHIJ"
+    sinit (chr @. succ) 0 = ""
+    sinit (chr @. succ) 1 = "\001"
+  **)
 
   let range s e =
     if s > e
@@ -3992,22 +4014,102 @@ struct
     done;
     s2
   let rev = reverse
-  let len = length
+  (**T
+    srev (1--^|10) = (10--^|1)
+    srev "1" = "1"
+    srev "12" = "21"
+    srev "foobar" = "raboof"
+    srev "" = ""
+  **)
   let normalizeIndex i s = if i < 0 then (len s) + i else i
+  (**T
+    PreString.normalizeIndex 0 "" = 0
+    PreString.normalizeIndex 2 "" = 2
+    PreString.normalizeIndex (-2) "" = -2
+    PreString.normalizeIndex 0 (1--^|10) = 0
+    PreString.normalizeIndex 2 (1--^|10) = 2
+    PreString.normalizeIndex (-1) (1--^|10) = 9
+    PreString.normalizeIndex (-2) (1--^|10) = 8
+    snormalizeIndex (-1) (1--^|2) = 1
+    PreString.normalizeIndex (-2) (1--^|2) = 0
+  **)
 
-  let times n a = PreList.replicate n a |> concat ""
+  let replicate n v = make (max 0 n) v
+  (**T
+    PreString.replicate 5 '-' = "-----"
+    PreString.replicate 1 '-' = "-"
+    sreplicate 0 '-' = ""
+    PreString.replicate (-1) '-' = ""
+  **)
+
+  let times n a = concat "" (PreList.replicate n a)
+  (**T
+    (let s = (1--^|3) in stimes 3 s = s ^ s ^ s)
+    stimes 0 (1--^|3) = ""
+    stimes 1 (1--^|3) = (1--^|3)
+    stimes (-1) (1--^|3) = ""
+    stimes 4 "" = ""
+    stimes 3 "1" = "111"
+  **)
+
+  let cycle n a =
+    let l = len a in
+    if l = 0 || n <= 0 then ""
+    else
+      let i = ref 0 in
+      init (fun _ ->
+        if !i >= l then i := 0;
+        let v = unsafe_get a !i in
+        i := !i + 1;
+        v
+      ) n
+  (**T
+    scycle 5 ('1'--^'3') = "12312"
+    scycle 3 ('1'--^'9') = "123"
+    scycle 3 "1" = "111"
+    scycle 3 "" = ""
+    scycle 0 "1" = ""
+    scycle 1 "1" = "1"
+    scycle (-1) "1" = ""
+  **)
+
 
   (* Iterators *)
 
   let iter f s =
     let l = len s in
     for i = 0 to l - 1 do f (unsafe_get s i) done
+  (**T
+    mapWith siter id (sreplicate 100000 '.') = replicate 100000 '.'
+    mapWith siter id (1--^|10) = explode (1--^|10)
+    mapWith siter succChar (1--^|10) = explode (2--^|11)
+    mapWith siter succChar (1--^|1) = ['\002']
+    mapWith siter succChar "" = []
+  **)
+
   let iterWithIndex f s =
     let l = len s in
     for i = 0 to l - 1 do f (unsafe_get s i) i done
+  (**T
+    mapWith (fun f -> siterWithIndex (fun s i -> f (ord s,i))) (uncurry (+)) (0--^|10) = map (multiply 2) (0--10)
+    (let i = ref '0' and j = ref 0 in siterWithIndex (fun a b -> i:=a; j:=b) (20--^|30); !i = '\030' && !j = 10)
+    siterWithIndex (ignore @.. add @. ord) "1" = ()
+    siterWithIndex (ignore @.. add @. ord) "" = ()
+  **)
 
   let map f s = init (fun i -> f (unsafe_get s i)) (len s)
+  (**T
+    smap succChar (1--^|10) = (2--^|11)
+    smap succChar "" = ""
+    smap succChar "1" = "2"
+  **)
   let mapWithIndex f s = init (fun i -> f (unsafe_get s i) i) (len s)
+  (**T
+    smapWithIndex (fun s i -> chr (ord s + i)) (0--^|10) = smap (chr @. multiply 2 @. ord) (0--^|10)
+    smapWithIndex (chr @.. (-) @. ord) (10--^|20) = sreplicate 11 '\010'
+    smapWithIndex (chr @.. (+) @. ord) "" = ""
+    smapWithIndex (chr @.. (+) @. ord) "1" = "1"
+  **)
 
   let mapToList f s = PreList.init (fun i -> f (unsafe_get s i)) (len s)
   let mapToArray f s = PreArray.init (fun i -> f (unsafe_get s i)) (len s)
@@ -5152,6 +5254,9 @@ let sconcat = PreString.concat
 let sreverse = PreString.reverse
 let srev = sreverse
 let snormalizeIndex = PreString.normalizeIndex
+let sreplicate = PreString.replicate
+let stimes = PreString.times
+let scycle = PreString.cycle
 
 let smap = PreString.map
 let smapSub = PreString.mapSub
@@ -5205,7 +5310,7 @@ let saveragef = PreString.averagef
 let saverageSubf = PreString.averageSubf
 let saverageSlicef = PreString.averageSlicef
 
-(* let srange = PreString.range *)
+let srange = PreString.range
 let szipWith = PreString.zipWith
 let smap2 = PreString.zipWith
 let szipWith3 = PreString.zipWith3
@@ -5215,7 +5320,6 @@ let sslice = PreString.slice
 let ssubStride = PreString.subStride
 let sgroupsOf = PreString.groupsOf
 let ssplitInto = PreString.splitInto
-let stimes = PreString.times
 
 let sfirst = PreString.first
 let shead = PreString.head
