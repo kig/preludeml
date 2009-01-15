@@ -4661,58 +4661,268 @@ struct
   let iterSub i len f s =
     let first, sub_len = sub_start_and_length i len s in
     for j=first to first+sub_len-1 do f (unsafe_get s j) done
+  (**T
+    mapWith (siterSub 0 10) id (1--^|10) = ((chr 1)-~(chr 10))
+    mapWith (siterSub 2 6) id (1--^|10) = ((chr 3)-~(chr 8))
+    mapWith (siterSub (-2) 10) id (1--^|10) = ((chr 9)-~(chr 10))
+    mapWith (siterSub (-18) 10) id (1--^|10) = [chr 1; chr 2]
+    mapWith (siterSub (-10) 10) id (1--^|10) = ((chr 1)-~(chr 10))
+    mapWith (siterSub (-12) 1) id (1--^|10) = []
+    mapWith (siterSub 9 10) id (1--^|10) = [chr 10]
+    mapWith (siterSub (-19) 10) id (1--^|10) = [chr 1]
+    mapWith (siterSub (-20) 10) id (1--^|10) = []
+    mapWith (siterSub (-20) 20) id (1--^|10) = ((chr 1)-~(chr 10))
+    mapWith (siterSub (-20) 50) id "" = []
+    mapWith (siterSub (-20) 50) id "\001" = [chr 1]
+  **)
 
   let iterSlice i j f s =
     let i, len = slice_to_sub i j s in
     iterSub i len f s
+  (**T
+    mapWith (siterSlice 0 9) id (1--^|10) = ((chr 1)-~(chr 10))
+    mapWith (siterSlice 2 6) id (1--^|10) = ((chr 3)-~(chr 7))
+    mapWith (siterSlice 6 2) id (1--^|10) = []
+    mapWith (siterSlice 0 0) id (1--^|10) = [chr 1]
+    mapWith (siterSlice 1 0) id (1--^|10) = []
+    mapWith (siterSlice 9 9) id (1--^|10) = [chr 10]
+    mapWith (siterSlice 9 8) id (1--^|10) = []
+    mapWith (siterSlice (-2) (-1)) id (1--^|10) = [chr 9; chr 10]
+    mapWith (siterSlice (-12) 0) id (1--^|10) = [chr 1]
+    mapWith (siterSlice (-12) (-1)) id (1--^|10) = ((chr 1)-~(chr 10))
+    mapWith (siterSlice (-12) (-11)) id (1--^|10) = []
+    mapWith (siterSlice (-5) (-1)) id (1--^|10) = ((chr 6)-~(chr 10))
+    mapWith (siterSlice (-20) 20) id (1--^|10) = ((chr 1)-~(chr 10))
+    mapWith (siterSlice (-20) 50) id "" = []
+    mapWith (siterSlice (-20) 50) id "\001" = [chr 1]
+  **)
 
   let mapSub i len f s =
     let first, sub_len = sub_start_and_length i len s in
     init (fun j -> f (unsafe_get s (first+j))) sub_len
+  (**T
+    smapSub 0 10 succChar (1--^|10) = (2--^|11)
+    smapSub 2 6 id (1--^|10) = (3--^|8)
+    smapSub (-2) 10 id (1--^|10) = (9--^|10)
+    smapSub (-18) 10 id (1--^|10) = "\001\002"
+    smapSub (-10) 10 id (1--^|10) = (1--^|10)
+    smapSub (-12) 1 id (1--^|10) = ""
+    smapSub 9 10 id (1--^|10) = "\010"
+    smapSub (-19) 10 id (1--^|10) = "\001"
+    smapSub (-20) 10 id (1--^|10) = ""
+    smapSub (-20) 20 id (1--^|10) = (1--^|10)
+    smapSub (-20) 50 id "" = ""
+    smapSub (-20) 50 id "\001" = "\001"
+  **)
 
   let mapSlice i j f s =
     let i, len = slice_to_sub i j s in
     mapSub i len f s
+  (**T
+    smapSlice 0 9 id (1--^|10) = (1--^|10)
+    smapSlice 2 6 id (1--^|10) = (3--^|7)
+    smapSlice 6 2 id (1--^|10) = ""
+    smapSlice 0 0 id (1--^|10) = "\001"
+    smapSlice 1 0 id (1--^|10) = ""
+    smapSlice 9 9 id (1--^|10) = "\010"
+    smapSlice 9 8 id (1--^|10) = ""
+    smapSlice (-2) (-1) id (1--^|10) = "\009\010"
+    smapSlice (-12) 0 id (1--^|10) = "\001"
+    smapSlice (-12) (-1) id (1--^|10) = (1--^|10)
+    smapSlice (-12) (-11) id (1--^|10) = ""
+    smapSlice (-5) (-1) id (1--^|10) = (6--^|10)
+    smapSlice (-20) 20 id (1--^|10) = (1--^|10)
+    smapSlice (-20) 50 id "" = ""
+    smapSlice (-20) 50 id "\001" = "\001"
+  **)
 
   let foldlSub i len f init s =
     let rec aux f s v i j =
       if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
     let first, sub_len = sub_start_and_length i len s in
     aux f s init first (first+sub_len-1)
+  (**T
+    sfoldlSub 0 10 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldlSub (-10) 10 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldlSub (-20) 20 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldlSub 0 3 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|3)
+    sfoldlSub 3 3 (+^) '\000' (1--^|10) = chr @@ ssum (4--^|6)
+    sfoldlSub (-3) 3 (+^) '\000' (1--^|10) = chr @@ ssum (8--^|10)
+    sfoldlSub (-1) 3 (+^) '\000' (1--^|10) = chr @@ ssum (10--^|10)
+    sfoldlSub (-3) 1 (+^) '\000' (1--^|10) = chr @@ ssum (8--^|8)
+    sfoldlSub 20 (-20) (+^) '\000' (1--^|10) = chr @@ ssum ""
+    sfoldlSub (-20) 10 (+^) '\000' (1--^|10) = chr @@ ssum ""
+    sfoldlSub 10 0 (+^) '\000' (1--^|10) = chr @@ ssum ""
+    sfoldlSub 3 (-1) (+^) '\000' (1--^|10) = chr @@ ssum ""
+
+    sfoldlSub 0 1 (+^) '\000' (1--^|1) = chr @@ ssum (1--^|1)
+    sfoldlSub 0 1 (+^) '\000' "" = chr @@ ssum ""
+  **)
 
   let foldl1Sub i len f s =
-    let i = normalizeIndex i s in
-    if i < 0 || i >= length s then raise Not_found;
-    foldlSub (i+1) (len-1) f (unsafe_get s i) s
+    let rec aux f s v i j =
+      if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
+    let first, sub_len = sub_start_and_length i len s in
+    if sub_len <= 0 || first < 0 || first >= length s
+    then raise Not_found
+    else aux f s (unsafe_get s first) (first+1) (first+sub_len-1)
+  (**T
+    sfoldl1Sub 0 10 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldl1Sub (-10) 10 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldl1Sub (-20) 20 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldl1Sub 0 3 (+^) (1--^|10) = chr @@ ssum (1--^|3)
+    sfoldl1Sub 3 3 (+^) (1--^|10) = chr @@ ssum (4--^|6)
+    sfoldl1Sub (-3) 3 (+^) (1--^|10) = chr @@ ssum (8--^|10)
+    sfoldl1Sub (-1) 3 (+^) (1--^|10) = chr @@ ssum (10--^|10)
+    sfoldl1Sub (-3) 1 (+^) (1--^|10) = chr @@ ssum (8--^|8)
+    optNF (sfoldl1Sub 20 (-20) (+^)) (1--^|10) = None
+    optNF (sfoldl1Sub (-20) 10 (+^)) (1--^|10) = None
+    optNF (sfoldl1Sub 10 0 (+^)) (1--^|10) = None
+    optNF (sfoldl1Sub 3 (-1) (+^)) (1--^|10) = None
+
+    sfoldl1Sub 0 1 (+^) (1--^|1) = chr @@ ssum (1--^|1)
+    optNF (sfoldl1Sub 0 1 (+^)) "" = None
+  **)
 
   let foldrSub i len f init s =
     let rec aux f s v i j =
       if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
     let first, sub_len = sub_start_and_length i len s in
     aux f s init first (first+sub_len-1)
+  (**T
+    sfoldrSub 0 10 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldrSub (-10) 10 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldrSub (-20) 20 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldrSub 0 3 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|3)
+    sfoldrSub 3 3 (+^) '\000' (1--^|10) = chr @@ ssum (4--^|6)
+    sfoldrSub (-3) 3 (+^) '\000' (1--^|10) = chr @@ ssum (8--^|10)
+    sfoldrSub (-1) 3 (+^) '\000' (1--^|10) = chr @@ ssum (10--^|10)
+    sfoldrSub (-3) 1 (+^) '\000' (1--^|10) = chr @@ ssum (8--^|8)
+    sfoldrSub 20 (-20) (+^) '\000' (1--^|10) = chr @@ ssum ""
+    sfoldrSub (-20) 10 (+^) '\000' (1--^|10) = chr @@ ssum ""
+    sfoldrSub 10 0 (+^) '\000' (1--^|10) = chr @@ ssum ""
+    sfoldrSub 3 (-1) (+^) '\000' (1--^|10) = chr @@ ssum ""
+
+    sfoldrSub 0 1 (+^) '\000' (1--^|1) = chr @@ ssum (1--^|1)
+    sfoldrSub 0 1 (+^) '\000' "" = chr @@ ssum ""
+  **)
 
   let foldr1Sub i len f s =
-    let i = normalizeIndex i s in
-    let j = i + len - 1 in
-    if j < 0 || j >= length s then raise Not_found;
-    foldrSub i (len-1) f (unsafe_get s j) s
+    let rec aux f s v i j =
+      if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
+    let first, sub_len = sub_start_and_length i len s in
+    if sub_len <= 0 || first < 0 || first >= length s
+    then raise Not_found
+    else aux f s (unsafe_get s first) (first+1) (first+sub_len-1)
+  (**T
+    sfoldr1Sub 0 10 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldr1Sub (-10) 10 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldr1Sub (-20) 20 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldr1Sub 0 3 (+^) (1--^|10) = chr @@ ssum (1--^|3)
+    sfoldr1Sub 3 3 (+^) (1--^|10) = chr @@ ssum (4--^|6)
+    sfoldr1Sub (-3) 3 (+^) (1--^|10) = chr @@ ssum (8--^|10)
+    sfoldr1Sub (-1) 3 (+^) (1--^|10) = chr @@ ssum (10--^|10)
+    sfoldr1Sub (-3) 1 (+^) (1--^|10) = chr @@ ssum (8--^|8)
+    optNF (sfoldr1Sub 20 (-20) (+^)) (1--^|10) = None
+    optNF (sfoldr1Sub (-20) 10 (+^)) (1--^|10) = None
+    optNF (sfoldr1Sub 10 0 (+^)) (1--^|10) = None
+    optNF (sfoldr1Sub 3 (-1) (+^)) (1--^|10) = None
 
+    sfoldr1Sub 0 1 (+^) (1--^|1) = chr @@ ssum (1--^|1)
+    optNF (sfoldr1Sub 0 1 (+^)) "" = None
+  **)
 
   let foldlSlice i j f init s =
     let i, len = slice_to_sub i j s in
     foldlSub i len f init s
+  (**T
+    sfoldlSlice 0 10 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldlSlice 0 9 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldlSlice 0 (-1) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldlSlice (-10) 10 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldlSlice (-20) 20 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldlSlice (-20) 10 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldlSlice 0 3 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|4)
+    sfoldlSlice 3 (-1) (+^) '\000' (1--^|10) = chr @@ ssum (4--^|10)
+    sfoldlSlice 3 3 (+^) '\000' (1--^|10) = chr @@ ssum (4--^|4)
+    sfoldlSlice (-1) (-1) (+^) '\000' (1--^|10) = chr @@ ssum (10--^|10)
+    sfoldlSlice (-3) 3 (+^) '\000' (1--^|10) = chr @@ ssum ""
+    sfoldlSlice (-3) 1 (+^) '\000' (1--^|10) = chr @@ ssum ""
+    sfoldlSlice 20 (-20) (+^) '\000' (1--^|10) = chr @@ ssum ""
+    sfoldlSlice 10 0 (+^) '\000' (1--^|10) = chr @@ ssum ""
+
+    sfoldlSlice 0 1 (+^) '\000' (1--^|1) = chr @@ ssum (1--^|1)
+    sfoldlSlice 0 1 (+^) '\000' "" = chr @@ ssum ""
+  **)
 
   let foldl1Slice i j f s =
     let i, len = slice_to_sub i j s in
     foldl1Sub i len f s
+  (**T
+    sfoldl1Slice 0 10 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldl1Slice 0 9 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldl1Slice 0 (-1) (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldl1Slice (-10) 10 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldl1Slice (-20) 20 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldl1Slice (-20) 10 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldl1Slice 0 3 (+^) (1--^|10) = chr @@ ssum (1--^|4)
+    sfoldl1Slice 3 (-1) (+^) (1--^|10) = chr @@ ssum (4--^|10)
+    sfoldl1Slice 3 3 (+^) (1--^|10) = chr @@ ssum (4--^|4)
+    sfoldl1Slice (-1) (-1) (+^) (1--^|10) = chr @@ ssum (10--^|10)
+    optNF (sfoldl1Slice (-3) 3 (+^)) (1--^|10) = None
+    optNF (sfoldl1Slice (-3) 1 (+^)) (1--^|10) = None
+    optNF (sfoldl1Slice 20 (-20) (+^)) (1--^|10) = None
+    optNF (sfoldl1Slice 10 0 (+^)) (1--^|10) = None
+
+    sfoldl1Slice 0 1 (+^) (1--^|1) = chr @@ ssum (1--^|1)
+    optNF (sfoldl1Slice 0 1 (+^)) "" = None
+  **)
 
   let foldrSlice i j f init s =
     let i, len = slice_to_sub i j s in
     foldrSub i len f init s
+  (**T
+    sfoldrSlice 0 10 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldrSlice 0 9 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldrSlice 0 (-1) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldrSlice (-10) 10 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldrSlice (-20) 20 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldrSlice (-20) 10 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldrSlice 0 3 (+^) '\000' (1--^|10) = chr @@ ssum (1--^|4)
+    sfoldrSlice 3 (-1) (+^) '\000' (1--^|10) = chr @@ ssum (4--^|10)
+    sfoldrSlice 3 3 (+^) '\000' (1--^|10) = chr @@ ssum (4--^|4)
+    sfoldrSlice (-1) (-1) (+^) '\000' (1--^|10) = chr @@ ssum (10--^|10)
+    sfoldrSlice (-3) 3 (+^) '\000' (1--^|10) = chr @@ ssum ""
+    sfoldrSlice (-3) 1 (+^) '\000' (1--^|10) = chr @@ ssum ""
+    sfoldrSlice 20 (-20) (+^) '\000' (1--^|10) = chr @@ ssum ""
+    sfoldrSlice 10 0 (+^) '\000' (1--^|10) = chr @@ ssum ""
+
+    sfoldrSlice 0 1 (+^) '\000' (1--^|1) = chr @@ ssum (1--^|1)
+    sfoldrSlice 0 1 (+^) '\000' "" = chr @@ ssum ""
+  **)
 
   let foldr1Slice i j f s =
     let i, len = slice_to_sub i j s in
     foldr1Sub i len f s
+  (**T
+    sfoldr1Slice 0 10 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldr1Slice 0 9 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldr1Slice 0 (-1) (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldr1Slice (-10) 10 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldr1Slice (-20) 20 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldr1Slice (-20) 10 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    sfoldr1Slice 0 3 (+^) (1--^|10) = chr @@ ssum (1--^|4)
+    sfoldr1Slice 3 (-1) (+^) (1--^|10) = chr @@ ssum (4--^|10)
+    sfoldr1Slice 3 3 (+^) (1--^|10) = chr @@ ssum (4--^|4)
+    sfoldr1Slice (-1) (-1) (+^) (1--^|10) = chr @@ ssum (10--^|10)
+    optNF (sfoldr1Slice (-3) 3 (+^)) (1--^|10) = None
+    optNF (sfoldr1Slice (-3) 1 (+^)) (1--^|10) = None
+    optNF (sfoldr1Slice 20 (-20) (+^)) (1--^|10) = None
+    optNF (sfoldr1Slice 10 0 (+^)) (1--^|10) = None
+
+    sfoldr1Slice 0 1 (+^) (1--^|1) = chr @@ ssum (1--^|1)
+    optNF (sfoldr1Slice 0 1 (+^)) "" = None
+  **)
 
   let add_int i c = i + ord c
   let add_float i c = i +. float (ord c)
