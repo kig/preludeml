@@ -4243,11 +4243,38 @@ struct
     let len = min (len a) (len b) in
     init (fun i -> f (unsafe_get a i) (unsafe_get b i) ) len
   let map2 = zipWith
+  (**T
+    szipWith (+^) (1--^|10) (1--^|10) = smap (dup (+^)) (1--^|10)
+    szipWith (-^) (3--^|7) (3--^|1) = "\000\002\004"
+    szipWith (-^) (5--^|7) (5--^|1) = "\000\002\004"
+    szipWith (+^) "1" (1--^|10) = "2"
+    szipWith (+^) (1--^|10) "1" = "2"
+    szipWith (+^) "\001" "\001" = "\002"
+    szipWith (+^) "" (1--^|10) = ""
+    szipWith (+^) (1--^|10) "" = ""
+    szipWith (+^) "" "" = ""
+  **)
 
   let zipWith3 f a b c =
     let len = min (min (len a) (len b)) (len c) in
     init (fun i -> f (unsafe_get a i) (unsafe_get b i) (unsafe_get c i) ) len
   let map3 = zipWith3
+  (**T
+    szipWith3 (fun a b c -> a +^ b +^ c) (1--^|50) (1--^|50) (1--^|50) = smap (fun c -> chr (ord c * 3)) (1--^|50)
+    szipWith3 (fun a b c -> a +^ b +^ c) "1" (1--^|10) (1--^|10) = "3"
+    szipWith3 (fun a b c -> a +^ b +^ c) (1--^|10) "1" (1--^|10) = "3"
+    szipWith3 (fun a b c -> a +^ b +^ c) (1--^|10) (1--^|10) "1" = "3"
+    szipWith3 (fun a b c -> a +^ b +^ c) "1" (1--^|10) "\001" = "3"
+    szipWith3 (fun a b c -> a +^ b +^ c) "1" "\001" (1--^|10) = "3"
+    szipWith3 (fun a b c -> a +^ b +^ c) (1--^|10) "" "1" = ""
+    szipWith3 (fun a b c -> a +^ b +^ c) (1--^|10) "1" "" = ""
+    szipWith3 (fun a b c -> a +^ b +^ c) (1--^|10) "" "" = ""
+    szipWith3 (fun a b c -> a +^ b +^ c) "" "1" "1" = ""
+    szipWith3 (fun a b c -> a +^ b +^ c) "" "" "1" = ""
+    szipWith3 (fun a b c -> a +^ b +^ c) "" "1" "" = ""
+    szipWith3 (fun a b c -> a +^ b +^ c) "1" "" "" = ""
+    szipWith3 (fun a b c -> a +^ b +^ c) "" "" "" = ""
+  **)
 
   (* Folds *)
 
@@ -5353,6 +5380,11 @@ let sfind = PreString.find
 let sfindWithIndex = PreString.findWithIndex
 let sfindIndex = PreString.findIndex
 let sindexOf = PreString.indexOf
+
+let (+^) a b = chr (ord a + ord b)
+let (-^) a b = chr (ord a - ord b)
+let ( *^ ) a b = chr (ord a * ord b)
+let ( /^ ) a b = chr (ord a / ord b)
 
 let sfoldl = PreString.foldl
 let sfoldl1 = PreString.foldl1
