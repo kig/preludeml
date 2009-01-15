@@ -4282,6 +4282,12 @@ struct
     let rec aux f s len v i =
       if i >= len then v else aux f s len (f v (unsafe_get s i)) (i+1) in
     aux f s (len s) init 0
+  (**T
+    sfoldl (+^) '\000' (1--^|10) = '\055'
+    sfoldl (fun s b -> s ^ (string_of_char b)) "--" ('1'--^'3') = "--123"
+    sfoldl (+^) '1' "" = '1'
+    sfoldl (+^) '1' "\001" = '2'
+  **)
 
   let foldl1 f a =
     let rec aux f i acc len a =
@@ -4290,11 +4296,21 @@ struct
     let len = len a in
     if len < 1 then raise Not_found;
     aux f 1 (unsafe_get a 0) len a
+  (**T
+    sfoldl1 (+^) (1--^|10) = chr 55
+    optNF (sfoldl1 (+^)) "" = None
+    sfoldl1 (+^) "1" = '1'
+  **)
 
   let foldr f init s =
     let rec aux f s v i =
       if i < 0 then v else aux f s (f (unsafe_get s i) v) (i-1) in
     aux f s init (len s - 1)
+  (**T
+    sfoldr (+^) '\000' (1--^|10) = chr 55
+    sfoldr (+^) '\001' "" = '\001'
+    sfoldr (+^) '\001' "1" = '2'
+  **)
 
   let foldr1 f a =
     let rec aux f i acc a =
@@ -4303,12 +4319,51 @@ struct
     let len = len a in
     if len < 1 then raise Not_found;
     aux f (len-2) (unsafe_get a (len-1)) a
+  (**T
+    sfoldr1 (+^) (1--^|10) = chr 55
+    optNF (sfoldr1 (+^)) "" = None
+    sfoldr1 (+^) "1" = '1'
+  **)
 
-  let maximum = foldl1 max
-  let minimum = foldl1 min
+
+  let maximum a = foldl1 max a
+  (**T
+    smaximum "12301431" = '4'
+    smaximum "1" = '1'
+    optNF smaximum "" = None
+  **)
+  let minimum a = foldl1 min a
+  (**T
+    sminimum "12301431" = '0'
+    sminimum "1" = '1'
+    optNF sminimum "" = None
+  **)
 
   let maximumBy f = foldl1 (fun s i -> if (f s) < (f i) then i else s)
+  (**T
+    smaximumBy (square @. subtract 3 @. ord) (0 --^| 5) = chr 0
+    smaximumBy (square @. subtract 2 @. ord) (0 --^| 5) = chr 5
+    optNF (smaximumBy (square @. ord)) "" = None
+  **)
   let minimumBy f = foldl1 (fun s i -> if (f s) > (f i) then i else s)
+  (**T
+    sminimumBy (square @. subtract 3 @. ord) (0 --^| 5) = chr 3
+    sminimumBy (square @. subtract 3 @. ord) (0 --^| 1) = chr 1
+    optNF (sminimumBy (square @. ord)) "" = None
+  **)
+
+  let maximumByWith f lst = PreArray.maximumBy snd (mapToArray (fupler f) lst)
+  (*T
+    smaximumByWith square (-3 --^| 2) = (-3, 9)
+    smaximumByWith square (-1 --^| 2) = (2, 4)
+    optNF (smaximumByWith square) "" = None
+  **)
+  let minimumByWith f lst = PreArray.minimumBy snd (mapToArray (fupler f) lst)
+  (*T
+    sminimumByWith square (-3 --^| (-1)) = (-1, 1)
+    sminimumByWith square (-1 --^| 2) = (0, 0)
+    optNF (sminimumByWith square) "" = None
+  **)
 
   (* Subsequences *)
 
@@ -5399,6 +5454,14 @@ let sfoldrSub = PreString.foldrSub
 let sfoldr1Sub = PreString.foldr1Sub
 let sfoldrSlice = PreString.foldrSlice
 let sfoldr1Slice = PreString.foldr1Slice
+
+let smaximum = PreString.maximum
+let smaximumBy = PreString.maximumBy
+let smaximumByWith = PreString.maximumByWith
+
+let sminimum = PreString.minimum
+let sminimumBy = PreString.minimumBy
+let sminimumByWith = PreString.minimumByWith
 
 let ssum = PreString.sum
 let ssumSub = PreString.sumSub
