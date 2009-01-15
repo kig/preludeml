@@ -4484,15 +4484,46 @@ struct
 
 
   let last a = if len a = 0 then raise Not_found else unsafe_get a (len a - 1)
-  let popped = slice 0 (-2)
+  (**T
+    slast "123" = '3'
+    slast "1" = '1'
+    optNF slast "" = None
+  **)
+  let popped a = if len a = 0 then raise Not_found else slice 0 (-2) a
+  (**T
+    spopped "123" = "12"
+    optNF spopped "" = None
+    optNF spopped "1" = Some ""
+  **)
 
   let append = (^)
 
   let pop a = (popped a, last a)
+  (**T
+    spop "123" = ("12", '3')
+    optNF spop "" = None
+    optNF spop "1" = Some ("", '1')
+    optNF spop "12" = Some ("1", '2')
+  **)
   let push v a = append a (string_of_char v)
+  (**T
+    spush '\010' (1--^|9) = (1--^|10)
+    spush '1' "0" = ('0'--^'1')
+    spush '0' "" = "0"
+  **)
 
   let shift a = (tail a, first a)
+  (**T
+    sshift (1--^|10) = ((2--^|10), '\001')
+    optNF sshift "" = None
+    optNF sshift "1" = Some ("", '1')
+  **)
   let unshift v a = append (string_of_char v) a
+  (**T
+    sunshift '\000' (1--^|10) = (0--^|10)
+    sunshift '\000' "\001" = (0--^|1)
+    sunshift '\000' "" = "\000"
+  **)
 
   let take n s = sub 0 n s
   let takeWhile f s = take (maybeNF (len s-1) (findIndex (fun v -> not (f v))) s + 1) s
