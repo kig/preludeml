@@ -2933,10 +2933,31 @@ struct
     aslice 0 (-1) (1--|10) = (1--|10)
   **)
   let subStride stride i len a =
-    let i = normalizeIndex i a in
-    if i + (len-1) * stride >= length a
-    then invalid_arg "subStride: index out of bounds";
-    init (fun j -> unsafe_get a (i + j*stride)) len
+    if stride < 0 then invalid_arg "PreArray.subStride: negative stride";
+    let len = max 0 len in
+    let first, sub_len = sub_start_and_length i (len*stride) a in
+    let stride_len = (sub_len+(stride-1)) / stride in
+    init (fun j -> unsafe_get a (first + j*stride)) stride_len
+  (**T
+    asubStride 1 2 3 (aexplode "foobar") = aexplode "oba"
+    asubStride 2 1 3 (aexplode "foobar") = aexplode "obr"
+    asubStride 2 0 3 (aexplode "foobar") = aexplode "foa"
+    asubStride 3 0 3 (aexplode "foobar") = aexplode "fb"
+    asubStride 4 0 3 (aexplode "foobar") = aexplode "fa"
+    asubStride 4 1 3 (aexplode "foobar") = aexplode "or"
+    asubStride 4 1 1 (aexplode "foobar") = aexplode "o"
+    asubStride 8 1 3 (aexplode "foobar") = aexplode "o"
+    asubStride 1 0 (-1) (aexplode "foobar") = aexplode ""
+    asubStride 1 (-1) 1 (aexplode "foobar") = aexplode "r"
+    asubStride 1 0 1 (aexplode "f") = aexplode "f"
+    asubStride 2 0 1 (aexplode "f") = aexplode "f"
+    asubStride 4 0 1 (aexplode "f") = aexplode "f"
+    asubStride 4 0 0 (aexplode "f") = aexplode ""
+    asubStride 4 1 0 (aexplode "f") = aexplode ""
+    asubStride 4 0 1 (aexplode "") = aexplode ""
+    asubStride 4 1 1 (aexplode "") = aexplode ""
+    optE (asubStride (-1) 0 10) [||] = None
+  **)
 
   (* List-like interface *)
 
@@ -4379,6 +4400,26 @@ struct
   let sub i len s =
     let first, sub_len = sub_start_and_length i len s in
     init (fun x -> unsafe_get s (first+x)) sub_len
+  (**T
+    PreString.sub 2 3 "foobar" = "oba"
+    PreString.sub (-3) 2 "foobar" = "ba"
+    PreString.sub 0 0 (1--^|10) = ""
+    PreString.sub 0 0 "" = ""
+    PreString.sub 0 1 "" = ""
+    PreString.sub 1 0 "" = ""
+    PreString.sub 1 1 "" = ""
+    PreString.sub 0 0 "1" = ""
+    PreString.sub 0 (-1) "1" = ""
+    PreString.sub (-10) (-1) "1" = ""
+    PreString.sub (-10) 1 "1" = ""
+    PreString.sub 0 1 "1" = "1"
+    PreString.sub 1 1 "1" = ""
+    PreString.sub 1 0 "1" = ""
+    PreString.sub 80 1 "1" = ""
+    PreString.sub 15 (-5) (1--^|10) = ""
+    PreString.sub 0 1 (1--^|10) = "\001"
+    ssub 0 (-1) (1--^|10) = ""
+  **)
 
   let slice_to_sub i j s =
     let si = normalizeIndex i s
@@ -4389,12 +4430,41 @@ struct
   let slice i j s =
     let i, len = slice_to_sub i j s in
     sub i len s
+  (**T
+    PreString.slice 2 3 ("foobar") = "ob"
+    PreString.slice (-3) (-1) ("foobar") = "bar"
+    PreString.slice 0 0 (1--^|10) = "\001"
+    PreString.slice 0 1 (1--^|10) = "\001\002"
+    PreString.slice 1 0 (1--^|10) = ""
+    sslice 0 (-1) (1--^|10) = (1--^|10)
+  **)
 
   let subStride stride i len a =
-    let i = normalizeIndex i a in
-    if i + (len-1) * stride >= length a
-    then invalid_arg "subStride: index out of bounds";
-    init (fun j -> unsafe_get a (i + j*stride)) len
+    if stride < 0 then invalid_arg "PreString.subStride: negative stride";
+    let len = max 0 len in
+    let first, sub_len = sub_start_and_length i (len*stride) a in
+    let stride_len = (sub_len+(stride-1)) / stride in
+    init (fun j -> unsafe_get a (first + j*stride)) stride_len
+  (**T
+    ssubStride 1 2 3 ("foobar") = "oba"
+    ssubStride 2 1 3 ("foobar") = "obr"
+    ssubStride 2 0 3 ("foobar") = "foa"
+    ssubStride 3 0 3 ("foobar") = "fb"
+    ssubStride 4 0 3 ("foobar") = "fa"
+    ssubStride 4 1 3 ("foobar") = "or"
+    ssubStride 4 1 1 ("foobar") = "o"
+    ssubStride 8 1 3 ("foobar") = "o"
+    ssubStride 1 0 (-1) ("foobar") = ""
+    ssubStride 1 (-1) 1 ("foobar") = "r"
+    ssubStride 1 0 1 ("f") = "f"
+    ssubStride 2 0 1 ("f") = "f"
+    ssubStride 4 0 1 ("f") = "f"
+    ssubStride 4 0 0 ("f") = ""
+    ssubStride 4 1 0 ("f") = ""
+    ssubStride 4 0 1 ("") = ""
+    ssubStride 4 1 1 ("") = ""
+    optE (ssubStride (-1) 0 10) "" = None
+  **)
 
 
   (* List-like interface *)
@@ -4859,37 +4929,6 @@ struct
   let maximumBy f = foldl1 (fun s i -> if (f s) < (f i) then i else s)
   let minimumBy f = foldl1 (fun s i -> if (f s) > (f i) then i else s)
 
-  (* Subsequences *)
-
-  let sub_start_and_length i len s =
-    let slen = length s in
-    let ni = normalizeIndex i s in
-    let len = len + min 0 ni in
-    let len = len + min 0 (slen-1-ni) in
-    let i = max 0 (min (slen-1) ni) in
-    let j = max 0 (min slen (i + len)) - 1 in
-    (i, max 0 (j-i+1))
-
-  let sub i len s =
-    let first, sub_len = sub_start_and_length i len s in
-    init (fun x -> unsafe_get s (first+x)) sub_len
-
-  let slice_to_sub i j s =
-    let si = normalizeIndex i s
-    and sj = normalizeIndex j s + 1 in
-    let len = sj - si in
-    i, len
-
-  let slice i j s =
-    let i, len = slice_to_sub i j s in
-    sub i len s
-
-  let subStride stride i len a =
-    let i = normalizeIndex i a in
-    if i + (len-1) * stride >= length a
-    then invalid_arg "subStride: index out of bounds";
-    init (fun j -> unsafe_get a (i + j*stride)) len
-
 
   (* List-like interface *)
 
@@ -4923,43 +4962,8 @@ struct
   let reject f s = filter (fun v -> not (f v)) s
   let without v s = filter ((<>) v) s
 
-  let groupsOf n a =
-    let l = len a in
-    let n = max 1 n in
-    if l = 0 then [a] else
-      let count, rem = quot_rem l n in
-      unfoldrWhile (gte 0) (fun i -> sub (i*n) n a, i-1) (count-1) @
-      if rem = 0 then [] else [sub (-rem) rem a]
-  (**T
-    PreArray.groupsOf 3 (1--|10) = [[|1; 2; 3|]; [|4; 5; 6|]; [|7; 8; 9|]; [|10|]]
-    PreArray.groupsOf 3 [||] = [[||]]
-    PreArray.groupsOf 3 [|1|] = [[|1|]]
-    PreArray.groupsOf 3 (1--|3) = [(1--|3)]
-    PreArray.groupsOf 5 (1--|3) = [(1--|3)]
-    PreArray.groupsOf 3 (1--|4) = [(1--|3); [|4|]]
-    PreArray.groupsOf 1 (1--|3) = [[|1|]; [|2|]; [|3|]]
-    PreArray.groupsOf 0 (1--|3) = [[|1|]; [|2|]; [|3|]]
-    agroupsOf (-1) (1--|3) = [[|1|]; [|2|]; [|3|]]
-  **)
 
-  let splitInto n range =
-    let len = len range in
-    let plen = int (ceil (float len /. float (max 1 n))) in
-    groupsOf plen range
-  (**T
-    PreArray.splitInto 4 (1--|10) = [[|1; 2; 3|]; [|4; 5; 6|]; [|7; 8; 9|]; [|10|]]
-    PreArray.splitInto 3 (1--|3) = [[|1|]; [|2|]; [|3|]]
-    PreArray.splitInto 1 (1--|3) = [(1--|3)]
-    PreArray.splitInto 0 (1--|3) = [(1--|3)]
-    PreArray.splitInto (-1) (1--|3) = [(1--|3)]
-    PreArray.splitInto 2 [||] = [[||]]
-    asplitInto 1 [||] = [[||]]
-  **)
-
-
-  (* Subsequence iterators *)
-
-  (* Subsequence iterators *)
+(* Subsequence iterators *)
 
   let iterSub i len f s =
     let first, sub_len = sub_start_and_length i len s in
