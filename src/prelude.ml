@@ -4526,21 +4526,101 @@ struct
   **)
 
   let take n s = sub 0 n s
-  let takeWhile f s = take (maybeNF (len s-1) (findIndex (fun v -> not (f v))) s + 1) s
-
-  let drop n s = sub (-n) (len s - n) s
+  (**T
+    PreString.take 3 (1--^|10) = (1--^|3)
+    PreString.take 0 (1--^|10) = ""
+    PreString.take 15 (1--^|10) = (1--^|10)
+    PreString.take 3 "" = ""
+    stake 0 "" = ""
+  **)
+  let takeWhile f s = take (maybeNF (len s) (findIndex (fun v -> not (f v))) s) s
+  (**T
+    PreString.takeWhile (lt '\005') (1--^|10) = (1--^|4)
+    PreString.takeWhile (lt '\005') (6--^|10) = ""
+    PreString.takeWhile (lt '\005') "" = ""
+    stakeWhile (lt '\005') (1--^|3) = (1--^|3)
+  **)
+  let takeUntil f s = take (maybeNF (len s) (findIndex (fun v -> f v)) s) s
+  (**T
+    PreString.takeUntil (gte '\005') (1--^|10) = (1--^|4)
+    PreString.takeUntil (gte '\005') (6--^|10) = ""
+    PreString.takeUntil (gte '\005') "" = ""
+    stakeUntil (gte '\005') (1--^|3) = (1--^|3)
+  **)
+  let drop n s = sub n (len s - n) s
+  (**T
+    PreString.drop 3 (1--^|10) = (4--^|10)
+    PreString.drop 0 (1--^|10) = (1--^|10)
+    PreString.drop 15 (1--^|10) = ""
+    PreString.drop 3 "" = ""
+    sdrop 0 "" = ""
+  **)
   let dropWhile f s = drop (maybeNF (len s) (findIndex (fun v -> not (f v))) s) s
-
+  (**T
+    PreString.dropWhile (lt '\005') (1--^|10) = (5--^|10)
+    PreString.dropWhile (lt '\005') (6--^|10) = (6--^|10)
+    PreString.dropWhile (lt '\005') "" = ""
+    sdropWhile (lt '\005') (1--^|3) = ""
+  **)
+  let dropUntil f s = drop (maybeNF (len s) (findIndex (fun v -> f v)) s) s
+  (**T
+    PreString.dropUntil (gte '\005') (1--^|10) = (5--^|10)
+    PreString.dropUntil (gte '\005') (6--^|10) = (6--^|10)
+    PreString.dropUntil (gte '\005') "" = ""
+    sdropUntil (gte '\005') (1--^|3) = ""
+  **)
   let splitAt n xs = (take n xs, drop n xs)
-
+  (**T
+    PreString.splitAt 3 ("foobar") = ("foo", "bar")
+    PreString.splitAt 1 "1" = ("1", "")
+    PreString.splitAt 0 "1" = ("", "1")
+    PreString.splitAt 1 "" = ("", "")
+    ssplitAt 0 "" = ("", "")
+  **)
   let break f s = splitAt (maybeNF (len s) (findIndex f) s) s
+  (**T
+    PreString.break (gt '\005') "\004\003\006\002" = ("\004\003", "\006\002")
+    sbreak (gt '\005') (1--^|10) = ((1--^|5), (6--^|10))
+  **)
   let span f s = break (fun v -> not (f v)) s
+  (**T
+    PreString.span (gt '5') "6006" = ("6", "006")
+    PreString.span (lessOrEqualTo '5') ('0'--^'9') = ("012345", "6789")
+    PreString.span (gt '5') "" = ("", "")
+    PreString.span (gt '5') "6" = ("6", "")
+    PreString.span (gt '5') "0" = ("", "0")
+    PreString.span (gt '5') "06" = ("", "06")
+    PreString.span (gt '5') "60" = ("6", "0")
+    PreString.span (gt '5') "66" = ("66", "")
+    sspan (gt '5') "00" = ("", "00")
+  **)
 
   let interlace elem s =
-    init (fun i -> if i mod 2 = 0 then unsafe_get s (i/2) else elem) (2 * len s - 1)
+    init (fun i -> if i mod 2 = 0 then unsafe_get s (i/2) else elem) (max 0 (2 * len s - 1))
+  (**T
+    PreString.interlace '0' "123" = "10203"
+    PreString.interlace '-' "abcde" = "a-b-c-d-e"
+    PreString.interlace '0' "" = ""
+    PreString.interlace '0' "1" = "1"
+    sinterlace '0' "12" = "102"
+  **)
+
 
   let reject f s = filter (fun v -> not (f v)) s
+ (**T
+    PreString.reject (gt '\004') (1--^|5) = (1--^|4)
+    PreString.reject (gt '\004') "" = ""
+    PreString.reject (gt '\000') (1--^|5) = ""
+    PreString.reject (gt '\005') (1--^|5) = (1--^|5)
+    sreject (gt '\003') (5--^|1) = (3--^|1)
+  **)
   let without v s = filter ((<>) v) s
+  (**T
+    PreString.without '4' "124124" = "1212"
+    PreString.without '4' "" = ""
+    PreString.without '4' "4" = ""
+    swithout '4' "1" = "1"
+  **)
 
   let groupsOf n a =
     let l = len a in
@@ -4550,15 +4630,15 @@ struct
       unfoldrWhile (gte 0) (fun i -> sub (i*n) n a, i-1) (count-1) @
       if rem = 0 then [] else [sub (-rem) rem a]
   (**T
-    PreArray.groupsOf 3 (1--|10) = [[|1; 2; 3|]; [|4; 5; 6|]; [|7; 8; 9|]; [|10|]]
-    PreArray.groupsOf 3 [||] = [[||]]
-    PreArray.groupsOf 3 [|1|] = [[|1|]]
-    PreArray.groupsOf 3 (1--|3) = [(1--|3)]
-    PreArray.groupsOf 5 (1--|3) = [(1--|3)]
-    PreArray.groupsOf 3 (1--|4) = [(1--|3); [|4|]]
-    PreArray.groupsOf 1 (1--|3) = [[|1|]; [|2|]; [|3|]]
-    PreArray.groupsOf 0 (1--|3) = [[|1|]; [|2|]; [|3|]]
-    agroupsOf (-1) (1--|3) = [[|1|]; [|2|]; [|3|]]
+    PreString.groupsOf 3 ('0'--^'9') = ["012";"345";"678";"9"]
+    PreString.groupsOf 3 "" = [""]
+    PreString.groupsOf 3 "1" = ["1"]
+    PreString.groupsOf 3 (1--^|3) = [(1--^|3)]
+    PreString.groupsOf 5 (1--^|3) = [(1--^|3)]
+    PreString.groupsOf 3 (1--^|4) = [(1--^|3); "\004"]
+    PreString.groupsOf 1 (1--^|3) = ["\001";"\002";"\003"]
+    PreString.groupsOf 0 (1--^|3) = ["\001";"\002";"\003"]
+    sgroupsOf (-1) (1--^|3) = ["\001";"\002";"\003"]
   **)
 
   let splitInto n range =
@@ -4566,17 +4646,15 @@ struct
     let plen = int (ceil (float len /. float (max 1 n))) in
     groupsOf plen range
   (**T
-    PreArray.splitInto 4 (1--|10) = [[|1; 2; 3|]; [|4; 5; 6|]; [|7; 8; 9|]; [|10|]]
-    PreArray.splitInto 3 (1--|3) = [[|1|]; [|2|]; [|3|]]
-    PreArray.splitInto 1 (1--|3) = [(1--|3)]
-    PreArray.splitInto 0 (1--|3) = [(1--|3)]
-    PreArray.splitInto (-1) (1--|3) = [(1--|3)]
-    PreArray.splitInto 2 [||] = [[||]]
-    asplitInto 1 [||] = [[||]]
+    PreString.splitInto 4 ('0'--^'9') = ["012";"345";"678";"9"]
+    PreString.splitInto 3 (1--^|3) = ["\001";"\002";"\003"]
+    PreString.splitInto 1 (1--^|3) = [(1--^|3)]
+    PreString.splitInto 0 (1--^|3) = [(1--^|3)]
+    PreString.splitInto (-1) (1--^|3) = [(1--^|3)]
+    PreString.splitInto 2 "" = [""]
+    ssplitInto 1 "" = [""]
   **)
 
-
-  (* Subsequence iterators *)
 
   (* Subsequence iterators *)
 
@@ -5558,9 +5636,11 @@ let sunshift = PreString.unshift
 
 let stake = PreString.take
 let stakeWhile = PreString.takeWhile
+let stakeUntil = PreString.takeUntil
 
 let sdrop = PreString.drop
 let sdropWhile = PreString.dropWhile
+let sdropUntil = PreString.dropUntil
 
 let ssplitAt = PreString.splitAt
 
