@@ -2706,6 +2706,7 @@ struct
         aux f s (i-1) res in
     aux f s (len s - 1) []
   (**T
+    afilterWithIndex (fun e i -> e > 5) (1--|9) = (6--|9)
     afilterWithIndex (fun _ i -> i > 5) (1--|9) = (7--|9)
     afilterWithIndex (fun _ i -> i > 10) (1--|9) = [||]
     afilterWithIndex (fun _ i -> i > 10) [||] = [||]
@@ -4193,6 +4194,12 @@ struct
         let res = if f c i then c::res else res in
         aux f s (i-1) res in
     aux f s (len s - 1) []
+  (**T
+    sfilterWithIndex (fun e i -> ord e > 5) (1--^|9) = (6--^|9)
+    sfilterWithIndex (fun _ i -> i > 5) (1--^|9) = (7--^|9)
+    sfilterWithIndex (fun _ i -> i > 10) (1--^|9) = ""
+    sfilterWithIndex (fun _ i -> i > 10) "" = ""
+  **)
 
   let findWithIndex f s =
     let rec aux f s i len =
@@ -4202,11 +4209,33 @@ struct
         if f v i then (v, i)
         else aux f s (i+1) len in
     aux f s 0 (len s)
+  (**T
+    sfindWithIndex (fun v _ -> ord v > 4) (2--^|9) = ('\005',3)
+    sfindWithIndex (fun _ i -> i > 4) (2--^|9) = ('\007',5)
+    optNF (sfindWithIndex (const (gt 4))) (0--^|3) = None
+    optNF (sfindWithIndex (const (gt 4))) "" = None
+  **)
 
   let find f s = fst (findWithIndex (fun v _ -> f v) s)
-  let findIndex f s = snd (findWithIndex (fun v _ -> f v) s)
+  (**T
+    sfind (gt 5 @. ord) (1--^|9) = '\006'
+    optNF (sfind (gt 4 @. ord)) (0--^|3) = None
+    optNF (sfind (gt 4 @. ord)) "" = None
+  **)
+
+ let findIndex f s = snd (findWithIndex (fun v _ -> f v) s)
+  (**T
+    sfindIndex (gt 5 @. ord) (1--^|9) = 5
+    optNF (sfindIndex (gt 4 @. ord)) (0--^|3) = None
+    optNF (sfindIndex (gt 4 @. ord)) "" = None
+  **)
 
   let indexOf v s = findIndex ((=) v) s
+  (**T
+    sindexOf '\014' (10--^|20) = 4
+    optNF (sindexOf '\001') (10--^|20) = None
+    sindexOf 'a' "foobar" = 4
+  **)
 
   (* Zipping *)
 
@@ -5323,6 +5352,7 @@ let sfilterWithIndex = PreString.filterWithIndex
 let sfind = PreString.find
 let sfindWithIndex = PreString.findWithIndex
 let sfindIndex = PreString.findIndex
+let sindexOf = PreString.indexOf
 
 let sfoldl = PreString.foldl
 let sfoldl1 = PreString.foldl1
