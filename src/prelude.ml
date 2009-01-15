@@ -2962,11 +2962,9 @@ struct
   (* List-like interface *)
 
   let first a = if len a = 0 then raise Not_found else unsafe_get a 0
-  (**T
-    afirst (2--|10) = 2
-  **)
   let head = first
   (**T
+    afirst (2--|10) = 2
     optNF ahead [||] = None
     optNF ahead [|1|] = Some 1
     optNF ahead (1--|10) = Some 1
@@ -4471,7 +4469,19 @@ struct
 
   let first a = if len a = 0 then raise Not_found else unsafe_get a 0
   let head = first
-  let tail = slice 1 (-1)
+  (**T
+    sfirst (2--^|10) = '\002'
+    optNF shead "" = None
+    optNF shead "1" = Some '1'
+    optNF shead "123456789" = Some '1'
+  **)
+  let tail a = if len a = 0 then raise Not_found else slice 1 (-1) a
+  (**T
+    optNF stail "" = None
+    optNF stail "1" = Some ""
+    optNF stail (1--^|10) = Some (2--^|10)
+  **)
+
 
   let last a = if len a = 0 then raise Not_found else unsafe_get a (len a - 1)
   let popped = slice 0 (-2)
