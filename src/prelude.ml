@@ -4112,18 +4112,60 @@ struct
   **)
 
   let mapToList f s = PreList.init (fun i -> f (unsafe_get s i)) (len s)
+  (**T
+    smapToList id "ABC" = explode "ABC"
+    smapToList succChar "ABC" = explode "BCD"
+    smapToList id "a" = ['a']
+    smapToList id "" = []
+  **)
   let mapToArray f s = PreArray.init (fun i -> f (unsafe_get s i)) (len s)
+  (**T
+    smapToArray id "ABC" = aexplode "ABC"
+    smapToArray succChar "ABC" = aexplode "BCD"
+    smapToArray id "a" = [|'a'|]
+    smapToArray id "" = [||]
+  **)
 
   (* Conversions *)
 
   let to_array s = PreArray.init (unsafe_get s) (len s)
+  (**T
+    PreString.to_array "ABCDEF" = [|'A'; 'B'; 'C'; 'D'; 'E'; 'F'|]
+    PreString.to_array "A" = [|'A'|]
+    PreString.to_array "" = [||]
+  **)
   let of_array arr = init (Array.unsafe_get arr) (Array.length arr)
+  (**T
+    PreString.of_array [|'A'; 'B'; 'C'; 'D'; 'E'; 'F'|] = "ABCDEF"
+    PreString.of_array [|'A'|] = "A"
+    PreString.of_array [||] = ""
+  **)
 
   let to_list s = PreList.init (unsafe_get s) (len s)
+  (**T
+    PreString.to_list "ABCDEF" = ['A'; 'B'; 'C'; 'D'; 'E'; 'F']
+    PreString.to_list "A" = ['A']
+    PreString.to_list "" = []
+  **)
   let of_list l = of_array (Array.of_list l)
+  (**T
+    PreString.of_list ['A'; 'B'; 'C'; 'D'; 'E'; 'F'] = "ABCDEF"
+    PreString.of_list ['A'] = "A"
+    PreString.of_list [] = ""
+  **)
 
   let to_byte_array s = PreArray.init (fun i -> ord (unsafe_get s i)) (len s)
+  (**T
+    PreString.to_byte_array "ABCDEF" = (65--|70)
+    PreString.to_byte_array "A" = [|65|]
+    PreString.to_byte_array "" = [||]
+  **)
   let of_byte_array a = init (fun i -> chr (Array.unsafe_get a i)) (Array.length a)
+  (**T
+    PreString.of_byte_array (65--|70) = "ABCDEF"
+    PreString.of_byte_array [|65|] = "A"
+    PreString.of_byte_array [||] = ""
+  **)
 
   (* Searching *)
 
@@ -4135,6 +4177,13 @@ struct
         let res = if f c then c::res else res in
         aux f s (i-1) res in
     aux f s (len s - 1) []
+  (**T
+    sfilter (even @. ord) ('0'--^'9') = "02468"
+    sfilter (odd @. ord) ('0'--^'9') = "13579"
+    sfilter (even @. ord) "1" = ""
+    sfilter (odd @. ord) "1" = "1"
+    sfilter (even @. ord) "" = ""
+  **)
 
   let filterWithIndex f s =
     let rec aux f s i res =
@@ -5257,6 +5306,9 @@ let snormalizeIndex = PreString.normalizeIndex
 let sreplicate = PreString.replicate
 let stimes = PreString.times
 let scycle = PreString.cycle
+
+let smapToList = PreString.mapToList
+let smapToArray = PreString.mapToArray
 
 let smap = PreString.map
 let smapSub = PreString.mapSub
