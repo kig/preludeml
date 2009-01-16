@@ -4930,34 +4930,293 @@ struct
   let mul_float i c = i *. float (ord c)
 
   let sum a = foldl add_int 0 a
+  (**T
+    ssum (1--^|10) = 55
+    ssum "\001\002" = 3
+    ssum "\001" = 1
+    ssum "\000" = 0
+    ssum "" = 0
+  **)
   let sumf a = foldl add_float 0. a
+  (**T
+    ssumf (1--^|10) = 55.
+    ssumf "\001\002" = 3.
+    ssumf "\001" = 1.
+    ssumf "\000" = 0.
+    ssumf "" = 0.
+  **)
   let product a = foldl mul_int 1 a
+  (**T
+    sproduct (1--^|10) = 3628800
+    sproduct "\001\002" = 2
+    sproduct "\001" = 1
+    sproduct "\000" = 0
+    sproduct "" = 1
+  **)
   let productf a = foldl mul_float 1. a
+  (**T
+    sproductf (1--^|10) = 3628800.
+    sproductf "\001\002" = 2.
+    sproductf "\001" = 1.
+    sproductf "\000" = 0.
+    sproductf "" = 1.
+  **)
   let average a = sum a / len a
+  (**T
+    saverage (1--^|10) = 5
+    saverage "\001" = 1
+    optEx Division_by_zero saverage "" = None
+  **)
   let averagef a = sumf a /. float (len a)
+  (**T
+    saveragef (1--^|10) = 5.5
+    saveragef "\001" = 1.
+    isNaN (saveragef "")
+  **)
 
   let sumSub i len a = foldlSub i len add_int 0 a
+  (**T
+    ssumSub 0 10 (1--^|10) = ssum (1--^|10)
+    ssumSub (-10) 10 (1--^|10) = ssum (1--^|10)
+    ssumSub (-20) 20 (1--^|10) = ssum (1--^|10)
+    ssumSub 0 3 (1--^|10) = ssum (1--^|3)
+    ssumSub 3 3 (1--^|10) = ssum (4--^|6)
+    ssumSub (-3) 3 (1--^|10) = ssum (8--^|10)
+    ssumSub (-1) 3 (1--^|10) = ssum (10--^|10)
+    ssumSub (-3) 1 (1--^|10) = ssum (8--^|8)
+    ssumSub 20 (-20) (1--^|10) = ssum ""
+    ssumSub (-20) 10 (1--^|10) = ssum ""
+    ssumSub 10 0 (1--^|10) = ssum ""
+    ssumSub 3 (-1) (1--^|10) = ssum ""
+
+    ssumSub 0 1 (1--^|1) = ssum (1--^|1)
+    ssumSub 0 1 "" = ssum ""
+  **)
   let sumSubf i len a = foldlSub i len add_float 0. a
+  (**T
+    ssumSubf 0 10 (1--^|10) = ssumf (1--^|10)
+    ssumSubf (-10) 10 (1--^|10) = ssumf (1--^|10)
+    ssumSubf (-20) 20 (1--^|10) = ssumf (1--^|10)
+    ssumSubf 0 3 (1--^|10) = ssumf (1--^|3)
+    ssumSubf 3 3 (1--^|10) = ssumf (4--^|6)
+    ssumSubf (-3) 3 (1--^|10) = ssumf (8--^|10)
+    ssumSubf (-1) 3 (1--^|10) = ssumf (10--^|10)
+    ssumSubf (-3) 1 (1--^|10) = ssumf (8--^|8)
+    ssumSubf 20 (-20) (1--^|10) = ssumf ""
+    ssumSubf (-20) 10 (1--^|10) = ssumf ""
+    ssumSubf 10 0 (1--^|10) = ssumf ""
+    ssumSubf 3 (-1) (1--^|10) = ssumf ""
+
+    ssumSubf 0 1 (1--^|1) = ssumf (1--^|1)
+    ssumSubf 0 1 "" = ssumf ""
+  **)
 
   let sumSlice i j a = foldlSlice i j add_int 0 a
+  (**T
+    ssumSlice 0 10 (1--^|10) = ssum (1--^|10)
+    ssumSlice 0 9 (1--^|10) = ssum (1--^|10)
+    ssumSlice 0 (-1) (1--^|10) = ssum (1--^|10)
+    ssumSlice (-10) 10 (1--^|10) = ssum (1--^|10)
+    ssumSlice (-20) 20 (1--^|10) = ssum (1--^|10)
+    ssumSlice (-20) 10 (1--^|10) = ssum (1--^|10)
+    ssumSlice 0 3 (1--^|10) = ssum (1--^|4)
+    ssumSlice 3 (-1) (1--^|10) = ssum (4--^|10)
+    ssumSlice 3 3 (1--^|10) = ssum (4--^|4)
+    ssumSlice (-1) (-1) (1--^|10) = ssum (10--^|10)
+    ssumSlice (-3) 3 (1--^|10) = ssum ""
+    ssumSlice (-3) 1 (1--^|10) = ssum ""
+    ssumSlice 20 (-20) (1--^|10) = ssum ""
+    ssumSlice 10 0 (1--^|10) = ssum ""
+
+    ssumSlice 0 1 (1--^|1) = ssum (1--^|1)
+    ssumSlice 0 1 "" = ssum ""
+  **)
   let sumSlicef i j a = foldlSlice i j add_float 0. a
+  (**T
+    ssumSlicef 0 10 (1--^|10) = ssumf (1--^|10)
+    ssumSlicef 0 9 (1--^|10) = ssumf (1--^|10)
+    ssumSlicef 0 (-1) (1--^|10) = ssumf (1--^|10)
+    ssumSlicef (-10) 10 (1--^|10) = ssumf (1--^|10)
+    ssumSlicef (-20) 20 (1--^|10) = ssumf (1--^|10)
+    ssumSlicef (-20) 10 (1--^|10) = ssumf (1--^|10)
+    ssumSlicef 0 3 (1--^|10) = ssumf (1--^|4)
+    ssumSlicef 3 (-1) (1--^|10) = ssumf (4--^|10)
+    ssumSlicef 3 3 (1--^|10) = ssumf (4--^|4)
+    ssumSlicef (-1) (-1) (1--^|10) = ssumf (10--^|10)
+    ssumSlicef (-3) 3 (1--^|10) = ssumf ""
+    ssumSlicef (-3) 1 (1--^|10) = ssumf ""
+    ssumSlicef 20 (-20) (1--^|10) = ssumf ""
+    ssumSlicef 10 0 (1--^|10) = ssumf ""
+
+    ssumSlicef 0 1 (1--^|1) = ssumf (1--^|1)
+    ssumSlicef 0 1 "" = ssumf ""
+  **)
 
   let productSub i len a = foldlSub i len mul_int 1 a
+  (**T
+    sproductSub 0 10 (1--^|10) = sproduct (1--^|10)
+    sproductSub (-10) 10 (1--^|10) = sproduct (1--^|10)
+    sproductSub (-20) 20 (1--^|10) = sproduct (1--^|10)
+    sproductSub 0 3 (1--^|10) = sproduct (1--^|3)
+    sproductSub 3 3 (1--^|10) = sproduct (4--^|6)
+    sproductSub (-3) 3 (1--^|10) = sproduct (8--^|10)
+    sproductSub (-1) 3 (1--^|10) = sproduct (10--^|10)
+    sproductSub (-3) 1 (1--^|10) = sproduct (8--^|8)
+    sproductSub 20 (-20) (1--^|10) = sproduct ""
+    sproductSub (-20) 10 (1--^|10) = sproduct ""
+    sproductSub 10 0 (1--^|10) = sproduct ""
+    sproductSub 3 (-1) (1--^|10) = sproduct ""
+
+    sproductSub 0 1 (1--^|1) = sproduct (1--^|1)
+    sproductSub 0 1 "" = sproduct ""
+  **)
   let productSubf i len a = foldlSub i len mul_float 1. a
+  (**T
+    sproductSubf 0 10 (1--^|10) = sproductf (1--^|10)
+    sproductSubf (-10) 10 (1--^|10) = sproductf (1--^|10)
+    sproductSubf (-20) 20 (1--^|10) = sproductf (1--^|10)
+    sproductSubf 0 3 (1--^|10) = sproductf (1--^|3)
+    sproductSubf 3 3 (1--^|10) = sproductf (4--^|6)
+    sproductSubf (-3) 3 (1--^|10) = sproductf (8--^|10)
+    sproductSubf (-1) 3 (1--^|10) = sproductf (10--^|10)
+    sproductSubf (-3) 1 (1--^|10) = sproductf (8--^|8)
+    sproductSubf 20 (-20) (1--^|10) = sproductf ""
+    sproductSubf (-20) 10 (1--^|10) = sproductf ""
+    sproductSubf 10 0 (1--^|10) = sproductf ""
+    sproductSubf 3 (-1) (1--^|10) = sproductf ""
+
+    sproductSubf 0 1 (1--^|1) = sproductf (1--^|1)
+    sproductSubf 0 1 "" = sproductf ""
+  **)
 
   let productSlice i j a = foldlSlice i j mul_int 1 a
-  let productSlicef i j a = foldlSlice i j mul_float 1. a
+  (**T
+    sproductSlice 0 10 (1--^|10) = sproduct (1--^|10)
+    sproductSlice 0 9 (1--^|10) = sproduct (1--^|10)
+    sproductSlice 0 (-1) (1--^|10) = sproduct (1--^|10)
+    sproductSlice (-10) 10 (1--^|10) = sproduct (1--^|10)
+    sproductSlice (-20) 20 (1--^|10) = sproduct (1--^|10)
+    sproductSlice (-20) 10 (1--^|10) = sproduct (1--^|10)
+    sproductSlice 0 3 (1--^|10) = sproduct (1--^|4)
+    sproductSlice 3 (-1) (1--^|10) = sproduct (4--^|10)
+    sproductSlice 3 3 (1--^|10) = sproduct (4--^|4)
+    sproductSlice (-1) (-1) (1--^|10) = sproduct (10--^|10)
+    sproductSlice (-3) 3 (1--^|10) = sproduct ""
+    sproductSlice (-3) 1 (1--^|10) = sproduct ""
+    sproductSlice 20 (-20) (1--^|10) = sproduct ""
+    sproductSlice 10 0 (1--^|10) = sproduct ""
 
-  let averageSub i len a = sumSub i len a / len
-  let averageSubf i len a = sumSubf i len a /. float len
+    sproductSlice 0 1 (1--^|1) = sproduct (1--^|1)
+    sproductSlice 0 1 "" = sproduct ""
+  **)
+  let productSlicef i j a = foldlSlice i j mul_float 1. a
+  (**T
+    sproductSlicef 0 10 (1--^|10) = sproductf (1--^|10)
+    sproductSlicef 0 9 (1--^|10) = sproductf (1--^|10)
+    sproductSlicef 0 (-1) (1--^|10) = sproductf (1--^|10)
+    sproductSlicef (-10) 10 (1--^|10) = sproductf (1--^|10)
+    sproductSlicef (-20) 20 (1--^|10) = sproductf (1--^|10)
+    sproductSlicef (-20) 10 (1--^|10) = sproductf (1--^|10)
+    sproductSlicef 0 3 (1--^|10) = sproductf (1--^|4)
+    sproductSlicef 3 (-1) (1--^|10) = sproductf (4--^|10)
+    sproductSlicef 3 3 (1--^|10) = sproductf (4--^|4)
+    sproductSlicef (-1) (-1) (1--^|10) = sproductf (10--^|10)
+    sproductSlicef (-3) 3 (1--^|10) = sproductf ""
+    sproductSlicef (-3) 1 (1--^|10) = sproductf ""
+    sproductSlicef 20 (-20) (1--^|10) = sproductf ""
+    sproductSlicef 10 0 (1--^|10) = sproductf ""
+
+    sproductSlicef 0 1 (1--^|1) = sproductf (1--^|1)
+    sproductSlicef 0 1 "" = sproductf ""
+  **)
+
+  let averageSub i len a =
+    let first, sub_len = sub_start_and_length i len a in
+    sumSub i len a / sub_len
+  (**T
+    saverageSub 0 10 (1--^|10) = saverage (1--^|10)
+    saverageSub (-10) 10 (1--^|10) = saverage (1--^|10)
+    saverageSub (-20) 20 (1--^|10) = saverage (1--^|10)
+    saverageSub 0 3 (1--^|10) = saverage (1--^|3)
+    saverageSub 3 3 (1--^|10) = saverage (4--^|6)
+    saverageSub (-3) 3 (1--^|10) = saverage (8--^|10)
+    saverageSub (-1) 3 (1--^|10) = saverage (10--^|10)
+    saverageSub (-3) 1 (1--^|10) = saverage (8--^|8)
+    optEx Division_by_zero (saverageSub 20 (-20)) (1--^|10) = None
+    optEx Division_by_zero (saverageSub (-20) 10) (1--^|10) = None
+    optEx Division_by_zero (saverageSub 10 0) (1--^|10) = None
+    optEx Division_by_zero (saverageSub 3 (-1)) (1--^|10) = None
+
+    saverageSub 0 1 (1--^|1) = saverage (1--^|1)
+    optEx Division_by_zero (saverageSub 0 1) "" = None
+  **)
+
+  let averageSubf i len a =
+    let first, sub_len = sub_start_and_length i len a in
+    sumSubf i len a /. float sub_len
+  (**T
+    saverageSubf 0 10 (1--^|10) = saveragef (1--^|10)
+    saverageSubf (-10) 10 (1--^|10) = saveragef (1--^|10)
+    saverageSubf (-20) 20 (1--^|10) = saveragef (1--^|10)
+    saverageSubf 0 3 (1--^|10) = saveragef (1--^|3)
+    saverageSubf 3 3 (1--^|10) = saveragef (4--^|6)
+    saverageSubf (-3) 3 (1--^|10) = saveragef (8--^|10)
+    saverageSubf (-1) 3 (1--^|10) = saveragef (10--^|10)
+    saverageSubf (-3) 1 (1--^|10) = saveragef (8--^|8)
+    isNaN (saverageSubf 20 (-20) (1--^|10))
+    isNaN  (saverageSubf (-20) 10 (1--^|10))
+    isNaN  (saverageSubf 10 0 (1--^|10))
+    isNaN  (saverageSubf 3 (-1) (1--^|10))
+
+    saverageSubf 0 1 (1--^|1) = saveragef (1--^|1)
+    isNaN  (saverageSubf 0 1 "")
+  **)
 
   let averageSlice i j s =
     let i, len = slice_to_sub i j s in
     averageSub i len s
+  (**T
+    saverageSlice 0 10 (1--^|10) = saverage (1--^|10)
+    saverageSlice 0 9 (1--^|10) = saverage (1--^|10)
+    saverageSlice 0 (-1) (1--^|10) = saverage (1--^|10)
+    saverageSlice (-10) 10 (1--^|10) = saverage (1--^|10)
+    saverageSlice (-20) 20 (1--^|10) = saverage (1--^|10)
+    saverageSlice (-20) 10 (1--^|10) = saverage (1--^|10)
+    saverageSlice 0 3 (1--^|10) = saverage (1--^|4)
+    saverageSlice 3 (-1) (1--^|10) = saverage (4--^|10)
+    saverageSlice 3 3 (1--^|10) = saverage (4--^|4)
+    saverageSlice (-1) (-1) (1--^|10) = saverage (10--^|10)
+    optEx Division_by_zero (saverageSlice (-3) 3) (1--^|10) = None
+    optEx Division_by_zero (saverageSlice (-3) 1) (1--^|10) = None
+    optEx Division_by_zero (saverageSlice 20 (-20)) (1--^|10) = None
+    optEx Division_by_zero (saverageSlice 10 0) (1--^|10) = None
+
+    saverageSlice 0 1 (1--^|1) = saverage (1--^|1)
+    optEx Division_by_zero (saverageSlice 0 1) "" = None
+  **)
 
   let averageSlicef i j s =
     let i, len = slice_to_sub i j s in
     averageSubf i len s
+  (**T
+    saverageSlicef 0 10 (1--^|10) = saveragef (1--^|10)
+    saverageSlicef 0 9 (1--^|10) = saveragef (1--^|10)
+    saverageSlicef 0 (-1) (1--^|10) = saveragef (1--^|10)
+    saverageSlicef (-10) 10 (1--^|10) = saveragef (1--^|10)
+    saverageSlicef (-20) 20 (1--^|10) = saveragef (1--^|10)
+    saverageSlicef (-20) 10 (1--^|10) = saveragef (1--^|10)
+    saverageSlicef 0 3 (1--^|10) = saveragef (1--^|4)
+    saverageSlicef 3 (-1) (1--^|10) = saveragef (4--^|10)
+    saverageSlicef 3 3 (1--^|10) = saveragef (4--^|4)
+    saverageSlicef (-1) (-1) (1--^|10) = saveragef (10--^|10)
+    isNaN @@ saverageSlicef (-3) 3 (1--^|10)
+    isNaN @@ saverageSlicef (-3) 1 (1--^|10)
+    isNaN @@ saverageSlicef 20 (-20) (1--^|10)
+    isNaN @@ saverageSlicef 10 0 (1--^|10)
+
+    saverageSlicef 0 1 (1--^|1) = saveragef (1--^|1)
+    isNaN @@ saverageSlicef 0 1 ""
+  **)
 
   (* Random access *)
 
