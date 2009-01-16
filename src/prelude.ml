@@ -5270,12 +5270,59 @@ struct
     split "#" "##foo#bar##" = [""; ""; "foo"; "bar"]
   **)
   let rsplit ?n sep s = PreList.rev (PreList.map rev (split ?n sep (rev s)))
-  let nsplit sep n s = split ~n sep s
-  let nrsplit sep n s = rsplit ~n sep s
+  (**T
+    rsplit "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    rsplit ~n:3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    rsplit ~n:2 "," "foo,bar,baz" = ["foo,bar"; "baz"]
+    rsplit ~n:1 "," "foo,bar,baz" = ["foo,bar,baz"]
+    rsplit ~n:0 "," "foo,bar,baz" = ["foo,bar,baz"]
+    rsplit ~n:(-1) "," "foo,bar,baz" = ["foo,bar,baz"]
+    rsplit ~n:min_int "," "foo,bar,baz" = ["foo,bar,baz"]
+    rsplit ~n:max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+
+    rsplit "#" "#foo#bar" = ["foo"; "bar"]
+    rsplit "#" "#######foo###bar" = ["foo"; ""; ""; "bar"]
+    rsplit "#" "foo#bar#" = ["foo"; "bar"; ""]
+    rsplit "#" "#foo#bar#" = ["foo"; "bar"; ""]
+    rsplit "#" "##foo#bar##" = ["foo"; "bar"; ""; ""]
+  **)
+  let nsplit n sep s = split ~n sep s
+  (**T
+    nsplit 3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    nsplit 2 "," "foo,bar,baz" = ["foo"; "bar,baz"]
+    nsplit 1 "," "foo,bar,baz" = ["foo,bar,baz"]
+    nsplit 0 "," "foo,bar,baz" = ["foo,bar,baz"]
+    nsplit (-1) "," "foo,bar,baz" = ["foo,bar,baz"]
+    nsplit min_int "," "foo,bar,baz" = ["foo,bar,baz"]
+    nsplit max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+  **)
+  let nrsplit n sep s = rsplit ~n sep s
+  (**T
+    nrsplit 3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    nrsplit 2 "," "foo,bar,baz" = ["foo,bar"; "baz"]
+    nrsplit 1 "," "foo,bar,baz" = ["foo,bar,baz"]
+    nrsplit 0 "," "foo,bar,baz" = ["foo,bar,baz"]
+    nrsplit (-1) "," "foo,bar,baz" = ["foo,bar,baz"]
+    nrsplit min_int "," "foo,bar,baz" = ["foo,bar,baz"]
+    nrsplit max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+  **)
 
   let rx = Pcre.regexp
+  (***
+    ignore @@ rx "foo";
+    ignore @@ rx ~study:true "foo";
+    ignore @@ rx ~limit:4 ~flags:[`MULTILINE; `UTF8; `CASELESS] "foo"
+  **)
   let rex = Pcre.regexp
+  (***
+    ignore @@ rex "foo";
+    ignore @@ rex ~study:true "foo";
+    ignore @@ rex ~limit:4 ~flags:[`MULTILINE; `UTF8; `CASELESS] "foo"
+  **)
   let escape_rex = Pcre.quote
+  (**T
+    escape_rex ".[|]foo(+*?)" = "\\.\\[\\|]foo\\(\\+\\*\\?\\)"
+  **)
 
   let rexsplit ?n rex s =
     PreList.map (function Pcre.Text s -> s | _ -> "") @@
@@ -6707,7 +6754,7 @@ let isRoot d =
   let fileDevice fn = (Unix.stat fn).Unix.st_dev in
   fileInode d = fileInode "/" && fileDevice d = fileDevice "/"
 let parentDirs d =
-  generateUntil (eq "") (nrsplit "/" 2 |>. PreList.first) (expandPath d) @ ["/"]
+  generateUntil (eq "") (nrsplit 2 "/" |>. PreList.first) (expandPath d) @ ["/"]
 
 let dirSeparator = sslice 1 (-2) ("a" ^/ "b")
 let splitPath p = match p with
