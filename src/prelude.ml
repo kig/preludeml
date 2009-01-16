@@ -5294,11 +5294,54 @@ struct
       | l -> aux [] l
 
   let rexsplit ?delete_empty ?n rex s = full_split ?delete_empty ?n ~rex s
+  (**T
+    rexsplit (rex ",") "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    rexsplit ~n:3 (rex ",") "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    rexsplit ~n:2 (rex ",") "foo,bar,baz" = ["foo"; "bar,baz"]
+    rexsplit ~n:1 (rex ",") "foo,bar,baz" = ["foo,bar,baz"]
+    rexsplit ~n:0 (rex ",") "foo,bar,baz" = ["foo,bar,baz"]
+    rexsplit ~n:(-1) (rex ",") "foo,bar,baz" = ["foo,bar,baz"]
+    rexsplit ~n:min_int (rex ",") "foo,bar,baz" = ["foo,bar,baz"]
+    rexsplit ~n:max_int (rex ",") "foo,bar,baz" = ["foo"; "bar"; "baz"]
+
+    rexsplit (rex "#") "foo#bar#" = ["foo"; "bar"; ""]
+    rexsplit (rex "[^a-z]") "foo###bar####" = ["foo"; ""; ""; "bar"; ""; ""; ""; ""]
+    rexsplit (rex "[^a-z]+") "foo###bar####" = ["foo"; "bar"; ""]
+    rexsplit (rex "#") "#foo#bar" = [""; "foo"; "bar"]
+    rexsplit (rex "#") "#foo#bar#" = [""; "foo"; "bar"; ""]
+    rexsplit (rex "#") "##foo#bar##" = [""; ""; "foo"; "bar"; ""; ""]
+
+    rexsplit ~delete_empty:true (rex "#") "##foo#bar##" = ["foo"; "bar"]
+  **)
   let rexrsplit ?delete_empty ?n rex s = PreList.rev (
     PreList.map rev (rexsplit ?delete_empty ?n rex (rev s)))
+  (**T
+    rexrsplit (rex ",") "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    rexrsplit ~n:3 (rex ",") "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    rexrsplit ~n:2 (rex ",") "foo,bar,baz" = ["foo,bar"; "baz"]
+    rexrsplit ~n:1 (rex ",") "foo,bar,baz" = ["foo,bar,baz"]
+    rexrsplit ~n:0 (rex ",") "foo,bar,baz" = ["foo,bar,baz"]
+    rexrsplit ~n:(-1) (rex ",") "foo,bar,baz" = ["foo,bar,baz"]
+    rexrsplit ~n:min_int (rex ",") "foo,bar,baz" = ["foo,bar,baz"]
+    rexrsplit ~n:max_int (rex ",") "foo,bar,baz" = ["foo"; "bar"; "baz"]
+
+    rexrsplit (rex "#") "foo#bar#" = ["foo"; "bar"; ""]
+    rexrsplit (rex "[^a-z]") "foo###bar####" = ["foo"; ""; ""; "bar"; ""; ""; ""; ""]
+    rexrsplit (rex "[^a-z]+") "foo###bar####" = ["foo"; "bar"; ""]
+    rexrsplit (rex "#") "#foo#bar" = [""; "foo"; "bar"]
+    rexrsplit (rex "#") "#foo#bar#" = [""; "foo"; "bar"; ""]
+    rexrsplit (rex "#") "##foo#bar##" = [""; ""; "foo"; "bar"; ""; ""]
+
+    rexrsplit ~delete_empty:true (rex "#") "##foo#bar##" = ["foo"; "bar"]
+  **)
 
   let split ?delete_empty ?n pat s = full_split ?delete_empty ?n ~pat s
   (**T
+    split "" "" = []
+    split "," "" = []
+    split "" "foo" = [""; "f"; "o"; "o"; ""]
+    split ~delete_empty:true "" "foo" = ["f"; "o"; "o"]
+
     split "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
     split ~n:3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
     split ~n:2 "," "foo,bar,baz" = ["foo"; "bar,baz"]
@@ -5321,6 +5364,11 @@ struct
   let rsplit ?delete_empty ?n sep s = PreList.rev (
     PreList.map rev (split ?delete_empty ?n sep (rev s)))
   (**T
+    rsplit "" "" = []
+    rsplit "," "" = []
+    rsplit "" "foo" = [""; "f"; "o"; "o"; ""]
+    rsplit ~delete_empty:true "" "foo" = ["f"; "o"; "o"]
+
     rsplit "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
     rsplit ~n:3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
     rsplit ~n:2 "," "foo,bar,baz" = ["foo,bar"; "baz"]
@@ -5340,8 +5388,14 @@ struct
 
     (let s = "###f####oo#ba##r###" in join "#" (rsplit "#" s) = s)
   **)
-  let nsplit n sep s = split ~n sep s
+  let nsplit ?delete_empty n sep s = split ?delete_empty ~n sep s
   (**T
+    nsplit 0 "" "" = []
+    nsplit 1 "," "" = []
+    nsplit 5 "" "foo" = [""; "f"; "o"; "o"; ""]
+    nsplit ~delete_empty:true 3 "" "foo" = ["f"; "o"; "o"]
+    nsplit ~delete_empty:true 2 "" "foo" = ["f"; "oo"]
+
     nsplit 3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
     nsplit 2 "," "foo,bar,baz" = ["foo"; "bar,baz"]
     nsplit 1 "," "foo,bar,baz" = ["foo,bar,baz"]
@@ -5350,8 +5404,14 @@ struct
     nsplit min_int "," "foo,bar,baz" = ["foo,bar,baz"]
     nsplit max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
   **)
-  let nrsplit n sep s = rsplit ~n sep s
+  let nrsplit ?delete_empty n sep s = rsplit ?delete_empty ~n sep s
   (**T
+    nrsplit 0 "" "" = []
+    nrsplit 1 "," "" = []
+    nrsplit 5 "" "foo" = [""; "f"; "o"; "o"; ""]
+    nrsplit ~delete_empty:true 3 "" "foo" = ["f"; "o"; "o"]
+    nrsplit ~delete_empty:true 2 "" "foo" = ["fo"; "o"]
+
     nrsplit 3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
     nrsplit 2 "," "foo,bar,baz" = ["foo,bar"; "baz"]
     nrsplit 1 "," "foo,bar,baz" = ["foo,bar,baz"]
@@ -5361,7 +5421,7 @@ struct
     nrsplit max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
   **)
 
-  let xsplit ?n rexs s = rexsplit ?n (rx rexs) s
+  let xsplit ?delete_empty ?n rexs s = rexsplit ?delete_empty ?n (rx rexs) s
   (**T
     xsplit "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
     xsplit ~n:3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
@@ -5373,12 +5433,15 @@ struct
     xsplit ~n:max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
 
     xsplit "#" "foo#bar#" = ["foo"; "bar"; ""]
-    xsplit "#" "foo###bar####" = ["foo"; ""; ""; "bar"; ""; ""; ""; ""]
+    xsplit "[^a-z]" "foo###bar####" = ["foo"; ""; ""; "bar"; ""; ""; ""; ""]
+    xsplit "[^a-z]+" "foo###bar####" = ["foo"; "bar"; ""]
     xsplit "#" "#foo#bar" = [""; "foo"; "bar"]
     xsplit "#" "#foo#bar#" = [""; "foo"; "bar"; ""]
     xsplit "#" "##foo#bar##" = [""; ""; "foo"; "bar"; ""; ""]
+
+    xsplit ~delete_empty:true "#" "##foo#bar##" = ["foo"; "bar"]
   **)
-  let xrsplit ?n rexs s = rexrsplit ?n (rx rexs) s
+  let xrsplit ?delete_empty ?n rexs s = rexrsplit ?delete_empty ?n (rx rexs) s
   (**T
     xrsplit "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
     xrsplit ~n:3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
@@ -5390,14 +5453,53 @@ struct
     xrsplit ~n:max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
 
     xrsplit "#" "foo#bar#" = ["foo"; "bar"; ""]
-    xrsplit "#" "foo###bar####" = ["foo"; ""; ""; "bar"; ""; ""; ""; ""]
+    xrsplit "[^a-z]" "foo###bar####" = ["foo"; ""; ""; "bar"; ""; ""; ""; ""]
+    xrsplit "[^a-z]+" "foo###bar####" = ["foo"; "bar"; ""]
     xrsplit "#" "#foo#bar" = [""; "foo"; "bar"]
     xrsplit "#" "#foo#bar#" = [""; "foo"; "bar"; ""]
     xrsplit "#" "##foo#bar##" = [""; ""; "foo"; "bar"; ""; ""]
+
+    xrsplit ~delete_empty:true "#" "##foo#bar##" = ["foo"; "bar"]
   **)
   
-  let xnsplit rexs n s = xsplit ~n rexs s
-  let xnrsplit rexs n s = xrsplit ~n rexs s
+  let xnsplit ?delete_empty n rexs s = xsplit ?delete_empty ~n rexs s
+  (**T
+    xnsplit 0 "" "" = []
+    xnsplit 1 "," "" = []
+    xnsplit 5 "" "foo" = [""; "f"; "o"; "o"; ""]
+    xnsplit ~delete_empty:true 3 "" "foo" = ["f"; "o"; "o"]
+    xnsplit ~delete_empty:true 2 "" "foo" = ["f"; "oo"]
+
+    xnsplit 3 "[^a-z]" "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    xnsplit 2 "[^a-z]" "foo,bar,baz" = ["foo"; "bar,baz"]
+
+    xnsplit 3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    xnsplit 2 "," "foo,bar,baz" = ["foo"; "bar,baz"]
+    xnsplit 1 "," "foo,bar,baz" = ["foo,bar,baz"]
+    xnsplit 0 "," "foo,bar,baz" = ["foo,bar,baz"]
+    xnsplit (-1) "," "foo,bar,baz" = ["foo,bar,baz"]
+    xnsplit min_int "," "foo,bar,baz" = ["foo,bar,baz"]
+    xnsplit max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+  **)
+  let xnrsplit ?delete_empty n rexs s = xrsplit ?delete_empty  ~n rexs s
+  (**T
+    xnrsplit 0 "" "" = []
+    xnrsplit 1 "," "" = []
+    xnrsplit 5 "" "foo" = [""; "f"; "o"; "o"; ""]
+    xnrsplit ~delete_empty:true 3 "" "foo" = ["f"; "o"; "o"]
+    xnrsplit ~delete_empty:true 2 "" "foo" = ["fo"; "o"]
+
+    xnrsplit 3 "[^a-z]" "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    xnrsplit 2 "[^a-z]" "foo,bar,baz" = ["foo,bar"; "baz"]
+
+    xnrsplit 3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    xnrsplit 2 "," "foo,bar,baz" = ["foo,bar"; "baz"]
+    xnrsplit 1 "," "foo,bar,baz" = ["foo,bar,baz"]
+    xnrsplit 0 "," "foo,bar,baz" = ["foo,bar,baz"]
+    xnrsplit (-1) "," "foo,bar,baz" = ["foo,bar,baz"]
+    xnrsplit min_int "," "foo,bar,baz" = ["foo,bar,baz"]
+    xnrsplit max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+  **)
 
   let rexscan rex s =
     try PreArray.to_list (Array.map PreArray.to_list (Pcre.extract_all ~rex s))
