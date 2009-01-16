@@ -5505,6 +5505,8 @@ struct
     try PreArray.to_list (Array.map PreArray.to_list (Pcre.extract_all ~rex s))
     with _ -> []
   (**T
+    rexscan (rex ".(.)(.)") "foobar" = [["foo"; "o"; "o"]; ["bar";"a";"r"]]
+
     rexscan (rex "..") "foobar" = [["fo"]; ["ob"]; ["ar"]]
     rexscan (rex "..") "foo" = [["fo"]]
     rexscan (rex "..") "fo" = [["fo"]]
@@ -5516,6 +5518,8 @@ struct
   **)
   let scan rexs s = rexscan (rx rexs) s
   (**T
+    scan ".(.)(.)" "foobar" = [["foo"; "o"; "o"]; ["bar";"a";"r"]]
+
     scan ".." "foobar" = [["fo"]; ["ob"]; ["ar"]]
     scan ".." "foo" = [["fo"]]
     scan ".." "fo" = [["fo"]]
@@ -5528,14 +5532,21 @@ struct
 
   let rexscan_nth n rex s =
     try
+      if n < 0 then raise Not_found;
       let arr = Pcre.extract_all ~rex s in
       list (Array.map (fun a ->
         if PreArray.length a <= n
-        then invalid_arg "Prelude.rexscan_nth: index out of bounds";
+        then raise Not_found;
         a.(n)
       ) arr)
     with _ -> []
   (**T
+    rexscan_nth 0 (rex ".(.)(.)") "foobar" = ["foo"; "bar"]
+    rexscan_nth 1 (rex ".(.)(.)") "foobar" = ["o"; "a"]
+    rexscan_nth 2 (rex ".(.)(.)") "foobar" = ["o"; "r"]
+    rexscan_nth 3 (rex ".(.)(.)") "foobar" = []
+    rexscan_nth (-1) (rex ".(.)(.)") "foobar" = []
+
     rexscan_nth 0 (rex "..") "foobar" = ["fo"; "ob"; "ar"]
     rexscan_nth 0 (rex "..") "foo" = ["fo"]
     rexscan_nth 0 (rex "..") "fo" = ["fo"]
@@ -5547,6 +5558,12 @@ struct
   **)
   let scan_nth n rexs s = rexscan_nth n (rx rexs) s
   (**T
+    scan_nth 0 (".(.)(.)") "foobar" = ["foo"; "bar"]
+    scan_nth 1 (".(.)(.)") "foobar" = ["o"; "a"]
+    scan_nth 2 (".(.)(.)") "foobar" = ["o"; "r"]
+    scan_nth 3 (".(.)(.)") "foobar" = []
+    scan_nth (-1) (".(.)(.)") "foobar" = []
+
     scan_nth 0 ".." "foobar" = ["fo"; "ob"; "ar"]
     scan_nth 0 ".." "foo" = ["fo"]
     scan_nth 0 ".." "fo" = ["fo"]
