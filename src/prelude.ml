@@ -5574,12 +5574,83 @@ struct
     scan_nth 0 "[0-9]+" "A 7 greetings from the 5th world of 159" = ["7";"5";"159"]
   **)
 
-  let xfind x s = PreList.first (scan_nth 0 x s)
-  let xfindOpt x s = optNF PreList.first (scan_nth 0 x s)
+  let extract rex s = list (Pcre.extract ~rex s)
+  (**T
+    extract (rex "bo(.)([a-z])") "Look, a boomerang!" = ["boom"; "o"; "m"]
+    extract (rex "") "Look, a boomerang!" = [""]
+  **)
+  let rexfind rex s = PreList.first (extract rex s)
+  (**T
+    rexfind (rex "bo.(.)") "Look, a boomerang!" = "boom"
+    rexfind (rex "") "Look, a boomerang!" = ""
+    optNF (rexfind (rex "go..")) "Look, a boomerang!" = None
+    optNF (rexfind (rex "go..")) "" = None
+    rexfind (rex "") "" = ""
+  **)
+  let rexfindOpt rex s = optNF (fun s -> PreList.first (extract rex s)) s
+  (**T
+    rexfindOpt (rex "bo.(.)") "Look, a boomerang!" = Some "boom"
+    rexfindOpt (rex "") "Look, a boomerang!" = Some ""
+    rexfindOpt (rex "go..") "Look, a boomerang!" = None
+    rexfindOpt (rex "go..") "" = None
+    rexfindOpt (rex "") "" = Some ""
+  **)
+  let xfind x s = rexfind (rex x) s
+  (**T
+    xfind ("bo.(.)") "Look, a boomerang!" = "boom"
+    xfind ("") "Look, a boomerang!" = ""
+    optNF (xfind ("go..")) "Look, a boomerang!" = None
+    optNF (xfind ("go..")) "" = None
+    xfind ("") "" = ""
+  **)
+  let xfindOpt x s = rexfindOpt (rex x) s
+  (**T
+    xfindOpt ("bo.(.)") "Look, a boomerang!" = Some "boom"
+    xfindOpt ("") "Look, a boomerang!" = Some ""
+    xfindOpt ("go..") "Look, a boomerang!" = None
+    xfindOpt ("go..") "" = None
+    xfindOpt ("") "" = Some ""
+  **)
 
-  let smatch pat = Pcre.pmatch ~pat
   let rexmatch rex = Pcre.pmatch ~rex
+  (**T
+    rexmatch (rex "") "" = true
+    rexmatch (rex "") "foo" = true
+    rexmatch (rex "foo") "" = false
+
+    rexmatch (rex "foo") "foobar" = true
+    rexmatch (rex "bar") "foobar" = true
+    rexmatch (rex "oba") "foobar" = true
+
+    rexmatch (rex "o*b") "foobar" = true
+    rexmatch (rex "x*b") "foobar" = true
+  **)
   let xmatch s = rexmatch (rx s)
+  (**T
+    xmatch "" "" = true
+    xmatch "" "foo" = true
+    xmatch "foo" "" = false
+
+    xmatch "foo" "foobar" = true
+    xmatch "bar" "foobar" = true
+    xmatch "oba" "foobar" = true
+
+    xmatch "o*b" "foobar" = true
+    xmatch "x*b" "foobar" = true
+  **)
+  let smatch pat str = xmatch (escape_rex pat) str
+  (**T
+    smatch "" "" = true
+    smatch "" "foo" = true
+    smatch "foo" "" = false
+
+    smatch "foo" "foobar" = true
+    smatch "bar" "foobar" = true
+    smatch "oba" "foobar" = true
+
+    smatch "o*b" "foobar" = false
+    smatch "x*b" "foobar" = false
+  **)
 
   let xstartsWith prefix = rexmatch (rx ("^" ^ prefix))
   (**T
@@ -6748,6 +6819,11 @@ let scan = PreString.scan
 
 let rexscan_nth = PreString.rexscan_nth
 let scan_nth = PreString.scan_nth
+
+let extract = PreString.extract
+
+let rexfind = PreString.rexfind
+let rexfindOpt = PreString.rexfindOpt
 
 let xfind = PreString.xfind
 let xfindOpt = PreString.xfindOpt
