@@ -3725,7 +3725,7 @@ struct
 
   let pick indices s =
     let l = len s in
-    if PreList.exists (gte l) indices then raise Not_found;
+    if PreList.exists (fun i -> i >= l || i < 0) indices then raise Not_found;
     PreList.map (fun i -> unsafe_get s i) indices
   (**T
     apick [2; 3] (aexplode "foobar") = ['o'; 'b']
@@ -3734,6 +3734,7 @@ struct
     apick [0; 9] (1--|10) = [1; 10]
     optNF (apick [2;3]) [|1;2;3|] = None
     optNF (apick [2;3]) [||] = None
+    optNF (apick [-2;3]) (1--|10) = None
   **)
 
   let pickWith funcs s = PreList.map (fun f -> f s) funcs
@@ -5222,10 +5223,22 @@ struct
 
   let pick indices s =
     let l = len s in
-    if PreList.exists (gte l) indices then invalid_arg "pick: Index out of bounds";
+    if PreList.exists (fun i -> i >= l || i < 0) indices then raise Not_found;
     PreList.map (fun i -> unsafe_get s i) indices
+  (**T
+    spick [2; 3] ("foobar") = ['o'; 'b']
+    spick [] ""= []
+    spick [] (1--^|10) = []
+    spick [0; 9] (1--^|10) = ['\001'; '\010']
+    optNF (spick [2;3]) "123"= None
+    optNF (spick [2;3]) ""= None
+    optNF (spick [-2;3]) (1--^|10) = None
+  **)
 
   let pickWith funcs s = PreList.map (fun f -> f s) funcs
+  (**T
+    spickWith [sfirst; slast] ("foobar") = ['f'; 'r']
+  **)
 
 
   (* String specific *)
@@ -5648,7 +5661,7 @@ struct
 
   let pick indices s =
     let l = len s in
-    if PreList.exists (gte l) indices then invalid_arg "pick: Index out of bounds";
+    if PreList.exists (fun i -> i >= l || i < 0) indices then raise Not_found;
     PreList.map (fun i -> unsafe_get s i) indices
 
   let pickWith funcs s = PreList.map (fun f -> f s) funcs
