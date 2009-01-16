@@ -5243,6 +5243,24 @@ struct
 
   (* String specific *)
 
+  let rx = Pcre.regexp
+  (***
+    ignore @@ rx "foo";
+    ignore @@ rx ~study:true "foo";
+    ignore @@ rx ~limit:4 ~flags:[`MULTILINE; `UTF8; `CASELESS] "foo"
+  **)
+  let rex = Pcre.regexp
+  (***
+    ignore @@ rex "foo";
+    ignore @@ rex ~study:true "foo";
+    ignore @@ rex ~limit:4 ~flags:[`MULTILINE; `UTF8; `CASELESS] "foo"
+  **)
+  let escape_rex = Pcre.quote
+  (**T
+    escape_rex ".[|]foo(+*?)" = "\\.\\[\\|]foo\\(\\+\\*\\?\\)"
+    escape_rex "" = ""
+  **)
+
   let strip = Pcre.replace ~rex:(Pcre.regexp "^\\s+|\\s+$") ~templ:""
   (**T
     strip "" = ""
@@ -5252,7 +5270,34 @@ struct
     strip "\t\ndude\r\n\r\n" = "dude"
   **)
 
-  let split ?n sep s = Pcre.split ?max:(optMap (max 1) n) ~pat:sep s
+  let full_split ?(delete_empty=false) ?n ?rex ?pat s =
+    let rec aux res l = match l with
+      | [] -> PreList.rev res
+      (* trailing delim *)
+      | ((Pcre.Text s) :: (Pcre.Delim _) :: []) -> aux (""::s::res) []
+      (* trailing delim *)
+      | ((Pcre.Delim _) :: (Pcre.Delim _) :: []) -> aux (""::""::res) []
+      (* multiple delims *)
+      | ((Pcre.Delim _) :: (Pcre.Delim d) :: t) -> aux (""::res) ((Pcre.Delim d) :: t)
+      (* text *)
+      | ((Pcre.Text s) :: t) -> aux (s::res) t
+      (* delim *)
+      | ((Pcre.Delim d) :: t) -> aux res t
+      | (h::t) -> aux res t in
+    let l = Pcre.full_split ?max:(optMap (max 1) n) ?rex ?pat s in
+    let l = if delete_empty
+      then PreList.filter (function Pcre.Text _ -> true | _ -> false) l
+      else l in
+    match l with
+      | ((Pcre.Delim _) :: (Pcre.Delim d) :: t) -> aux [""; ""] ((Pcre.Delim d) :: t)
+      | ((Pcre.Delim _) :: t) -> aux [""] t
+      | l -> aux [] l
+
+  let rexsplit ?delete_empty ?n rex s = full_split ?delete_empty ?n ~rex s
+  let rexrsplit ?delete_empty ?n rex s = PreList.rev (
+    PreList.map rev (rexsplit ?delete_empty ?n rex (rev s)))
+
+  let split ?delete_empty ?n pat s = full_split ?delete_empty ?n ~pat s
   (**T
     split "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
     split ~n:3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
@@ -5263,13 +5308,18 @@ struct
     split ~n:min_int "," "foo,bar,baz" = ["foo,bar,baz"]
     split ~n:max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
 
-    split "#" "foo#bar#" = ["foo"; "bar"]
-    split "#" "foo###bar#######" = ["foo"; ""; ""; "bar"]
+    split "#" "foo#bar#" = ["foo"; "bar"; ""]
+    split "#" "foo###bar##" = ["foo"; ""; ""; "bar"; ""; ""]
     split "#" "#foo#bar" = [""; "foo"; "bar"]
-    split "#" "#foo#bar#" = [""; "foo"; "bar"]
-    split "#" "##foo#bar##" = [""; ""; "foo"; "bar"]
+    split "#" "#foo#bar#" = [""; "foo"; "bar"; ""]
+    split "#" "##foo#bar##" = [""; ""; "foo"; "bar"; ""; ""]
+
+    split ~delete_empty:true "#" "##foo##bar##" = ["foo"; "bar"]
+
+    (let s = "###f####oo#ba##r###" in join "#" (split "#" s) = s)
   **)
-  let rsplit ?n sep s = PreList.rev (PreList.map rev (split ?n sep (rev s)))
+  let rsplit ?delete_empty ?n sep s = PreList.rev (
+    PreList.map rev (split ?delete_empty ?n sep (rev s)))
   (**T
     rsplit "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
     rsplit ~n:3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
@@ -5280,11 +5330,15 @@ struct
     rsplit ~n:min_int "," "foo,bar,baz" = ["foo,bar,baz"]
     rsplit ~n:max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
 
-    rsplit "#" "#foo#bar" = ["foo"; "bar"]
-    rsplit "#" "#######foo###bar" = ["foo"; ""; ""; "bar"]
     rsplit "#" "foo#bar#" = ["foo"; "bar"; ""]
-    rsplit "#" "#foo#bar#" = ["foo"; "bar"; ""]
-    rsplit "#" "##foo#bar##" = ["foo"; "bar"; ""; ""]
+    rsplit "#" "foo###bar##" = ["foo"; ""; ""; "bar"; ""; ""]
+    rsplit "#" "#foo#bar" = [""; "foo"; "bar"]
+    rsplit "#" "#foo#bar#" = [""; "foo"; "bar"; ""]
+    rsplit "#" "##foo#bar##" = [""; ""; "foo"; "bar"; ""; ""]
+
+    rsplit ~delete_empty:true "#" "##foo##bar##" = ["foo"; "bar"]
+
+    (let s = "###f####oo#ba##r###" in join "#" (rsplit "#" s) = s)
   **)
   let nsplit n sep s = split ~n sep s
   (**T
@@ -5307,31 +5361,41 @@ struct
     nrsplit max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
   **)
 
-  let rx = Pcre.regexp
-  (***
-    ignore @@ rx "foo";
-    ignore @@ rx ~study:true "foo";
-    ignore @@ rx ~limit:4 ~flags:[`MULTILINE; `UTF8; `CASELESS] "foo"
-  **)
-  let rex = Pcre.regexp
-  (***
-    ignore @@ rex "foo";
-    ignore @@ rex ~study:true "foo";
-    ignore @@ rex ~limit:4 ~flags:[`MULTILINE; `UTF8; `CASELESS] "foo"
-  **)
-  let escape_rex = Pcre.quote
-  (**T
-    escape_rex ".[|]foo(+*?)" = "\\.\\[\\|]foo\\(\\+\\*\\?\\)"
-    escape_rex "" = ""
-  **)
-
-  let rexsplit ?n rex s =
-    PreList.map (function Pcre.Text s -> s | _ -> "") @@
-    PreList.filter (function Pcre.Text _ -> true | _ -> false) @@
-    Pcre.full_split ?max:n ~rex s
-  let rexrsplit ?n rex s = PreList.rev (PreList.map rev (rexsplit ?n rex (rev s)))
   let xsplit ?n rexs s = rexsplit ?n (rx rexs) s
+  (**T
+    xsplit "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    xsplit ~n:3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    xsplit ~n:2 "," "foo,bar,baz" = ["foo"; "bar,baz"]
+    xsplit ~n:1 "," "foo,bar,baz" = ["foo,bar,baz"]
+    xsplit ~n:0 "," "foo,bar,baz" = ["foo,bar,baz"]
+    xsplit ~n:(-1) "," "foo,bar,baz" = ["foo,bar,baz"]
+    xsplit ~n:min_int "," "foo,bar,baz" = ["foo,bar,baz"]
+    xsplit ~n:max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+
+    xsplit "#" "foo#bar#" = ["foo"; "bar"; ""]
+    xsplit "#" "foo###bar####" = ["foo"; ""; ""; "bar"; ""; ""; ""; ""]
+    xsplit "#" "#foo#bar" = [""; "foo"; "bar"]
+    xsplit "#" "#foo#bar#" = [""; "foo"; "bar"; ""]
+    xsplit "#" "##foo#bar##" = [""; ""; "foo"; "bar"; ""; ""]
+  **)
   let xrsplit ?n rexs s = rexrsplit ?n (rx rexs) s
+  (**T
+    xrsplit "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    xrsplit ~n:3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    xrsplit ~n:2 "," "foo,bar,baz" = ["foo,bar"; "baz"]
+    xrsplit ~n:1 "," "foo,bar,baz" = ["foo,bar,baz"]
+    xrsplit ~n:0 "," "foo,bar,baz" = ["foo,bar,baz"]
+    xrsplit ~n:(-1) "," "foo,bar,baz" = ["foo,bar,baz"]
+    xrsplit ~n:min_int "," "foo,bar,baz" = ["foo,bar,baz"]
+    xrsplit ~n:max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+
+    xrsplit "#" "foo#bar#" = ["foo"; "bar"; ""]
+    xrsplit "#" "foo###bar####" = ["foo"; ""; ""; "bar"; ""; ""; ""; ""]
+    xrsplit "#" "#foo#bar" = [""; "foo"; "bar"]
+    xrsplit "#" "#foo#bar#" = [""; "foo"; "bar"; ""]
+    xrsplit "#" "##foo#bar##" = [""; ""; "foo"; "bar"; ""; ""]
+  **)
+  
   let xnsplit rexs n s = xsplit ~n rexs s
   let xnrsplit rexs n s = xrsplit ~n rexs s
 
@@ -6836,11 +6900,13 @@ let parentDirs d =
   generateUntil (eq "") (nrsplit 2 "/" |>. PreList.first) (expandPath d) @ ["/"]
 
 let dirSeparator = sslice 1 (-2) ("a" ^/ "b")
+let remove_trailing_dirSeps =
+  rexreplace (rex (escape_rex dirSeparator ^ "+$")) ""
 let splitPath p = match p with
-  | "/" -> ["/"]
+  | s when s = dirSeparator -> [dirSeparator]
   | p ->
-    begin match split dirSeparator p with
-      | (""::t) -> "/"::t
+    begin match split dirSeparator (remove_trailing_dirSeps p) with
+      | (""::t) -> dirSeparator::t
       | ps -> ps
     end
 let joinPath ps = foldl1 (^/) ps
