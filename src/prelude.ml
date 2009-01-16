@@ -5244,8 +5244,31 @@ struct
   (* String specific *)
 
   let strip = Pcre.replace ~rex:(Pcre.regexp "^\\s+|\\s+$") ~templ:""
+  (**T
+    strip "" = ""
+    strip " " = ""
+    strip "        " = ""
+    strip "   foo   bar  " = "foo   bar"
+    strip "\t\ndude\r\n\r\n" = "dude"
+  **)
 
-  let split ?n sep s = Pcre.split ?max:n ~pat:sep s
+  let split ?n sep s = Pcre.split ?max:(optMap (max 1) n) ~pat:sep s
+  (**T
+    split "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    split ~n:3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+    split ~n:2 "," "foo,bar,baz" = ["foo"; "bar,baz"]
+    split ~n:1 "," "foo,bar,baz" = ["foo,bar,baz"]
+    split ~n:0 "," "foo,bar,baz" = ["foo,bar,baz"]
+    split ~n:(-1) "," "foo,bar,baz" = ["foo,bar,baz"]
+    split ~n:min_int "," "foo,bar,baz" = ["foo,bar,baz"]
+    split ~n:max_int "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
+
+    split "#" "foo#bar#" = ["foo"; "bar"]
+    split "#" "foo###bar#######" = ["foo"; ""; ""; "bar"]
+    split "#" "#foo#bar" = [""; "foo"; "bar"]
+    split "#" "#foo#bar#" = [""; "foo"; "bar"]
+    split "#" "##foo#bar##" = [""; ""; "foo"; "bar"]
+  **)
   let rsplit ?n sep s = PreList.rev (PreList.map rev (split ?n sep (rev s)))
   let nsplit sep n s = split ~n sep s
   let nrsplit sep n s = rsplit ~n sep s
@@ -5314,7 +5337,7 @@ struct
   let xreplaceMulti x_rep s =
     let pat = x_rep |> PreList.map (quote "(" ")" @. fst) |> join "|" in
     frexreplace (fun p -> PreList.assocBy (fun x -> xmatch x p) x_rep) (rex pat) s
-  (**
+  (**T
     xreplaceMulti ["f.o","bar"; "b.r","foo"] "foobar" = "barfoo"
     xreplaceMulti ["f.o","bar"; "bar","foo"] "foobar" = "barfoo"
   **)
@@ -5322,9 +5345,9 @@ struct
   let replaceMulti pat_rep s =
     let pat = pat_rep |> PreList.map fst |> PreList.map escape_rex |> join "|" in
     frexreplace (flip PreList.assoc pat_rep) (rex pat) s
-  (**
-    String.replaceMulti ["foo","bar"; "bar","foo"] "foobar" = "barfoo"
-    String.replaceMulti ["f.o","bar"; "bar","foo"] "foobar" = "foofoo"
+  (**T
+    replaceMulti ["foo","bar"; "bar","foo"] "foobar" = "barfoo"
+    replaceMulti ["f.o","bar"; "bar","foo"] "foobar" = "foofoo"
   **)
 
   let words s = rexsplit (rx "\\s+") s
