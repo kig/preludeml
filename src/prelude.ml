@@ -5504,9 +5504,29 @@ struct
   let rexscan rex s =
     try PreArray.to_list (Array.map PreArray.to_list (Pcre.extract_all ~rex s))
     with _ -> []
+  (**T
+    rexscan (rex "..") "foobar" = [["fo"]; ["ob"]; ["ar"]]
+    rexscan (rex "..") "foo" = [["fo"]]
+    rexscan (rex "..") "fo" = [["fo"]]
+    rexscan (rex "..") "f" = []
+    rexscan (rex "..") "" = []
+    rexscan (rex "") "foo" = [[""]]
+    rexscan (rex "") "" = [[""]]
+    rexscan (rex "[0-9]+") "A 7 greetings from the 5th world of 159" = [["7"];["5"];["159"]]
+  **)
   let scan rexs s = rexscan (rx rexs) s
+  (**T
+    scan ".." "foobar" = [["fo"]; ["ob"]; ["ar"]]
+    scan ".." "foo" = [["fo"]]
+    scan ".." "fo" = [["fo"]]
+    scan ".." "f" = []
+    scan ".." "" = []
+    scan "" "foo" = [[""]]
+    scan "" "" = [[""]]
+    scan "[0-9]+" "A 7 greetings from the 5th world of 159" = [["7"];["5"];["159"]]
+  **)
 
-  let rexscan_nth rex n s =
+  let rexscan_nth n rex s =
     try
       let arr = Pcre.extract_all ~rex s in
       list (Array.map (fun a ->
@@ -5515,10 +5535,30 @@ struct
         a.(n)
       ) arr)
     with _ -> []
-  let scan_nth rexs n s = rexscan_nth (rx rexs) n s
+  (**T
+    rexscan_nth 0 (rex "..") "foobar" = ["fo"; "ob"; "ar"]
+    rexscan_nth 0 (rex "..") "foo" = ["fo"]
+    rexscan_nth 0 (rex "..") "fo" = ["fo"]
+    rexscan_nth 0 (rex "..") "f" = []
+    rexscan_nth 0 (rex "..") "" = []
+    rexscan_nth 0 (rex "") "foo" = [""]
+    rexscan_nth 0 (rex "") "" = [""]
+    rexscan_nth 0 (rex "[0-9]+") "A 7 greetings from the 5th world of 159" = ["7";"5";"159"]
+  **)
+  let scan_nth n rexs s = rexscan_nth n (rx rexs) s
+  (**T
+    scan_nth 0 ".." "foobar" = ["fo"; "ob"; "ar"]
+    scan_nth 0 ".." "foo" = ["fo"]
+    scan_nth 0 ".." "fo" = ["fo"]
+    scan_nth 0 ".." "f" = []
+    scan_nth 0 ".." "" = []
+    scan_nth 0 "" "foo" = [""]
+    scan_nth 0 "" "" = [""]
+    scan_nth 0 "[0-9]+" "A 7 greetings from the 5th world of 159" = ["7";"5";"159"]
+  **)
 
-  let xfind x s = PreList.first (scan_nth x 0 s)
-  let xfindOpt x s = optNF PreList.first (scan_nth x 0 s)
+  let xfind x s = PreList.first (scan_nth 0 x s)
+  let xfindOpt x s = optNF PreList.first (scan_nth 0 x s)
 
   let smatch pat = Pcre.pmatch ~pat
   let rexmatch rex = Pcre.pmatch ~rex
