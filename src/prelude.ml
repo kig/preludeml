@@ -5322,6 +5322,7 @@ struct
   let escape_rex = Pcre.quote
   (**T
     escape_rex ".[|]foo(+*?)" = "\\.\\[\\|]foo\\(\\+\\*\\?\\)"
+    escape_rex "" = ""
   **)
 
   let rexsplit ?n rex s =
@@ -5358,10 +5359,88 @@ struct
   let xmatch s = rexmatch (rx s)
 
   let xstartsWith prefix = rexmatch (rx ("^" ^ prefix))
-  let startsWith prefix = xstartsWith (escape_rex prefix)
+  (**T
+    xstartsWith "" "foo" = true
+    xstartsWith "f" "foo" = true
+    xstartsWith "f." "foo" = true
+    xstartsWith "fo" "foo" = true
+    xstartsWith "foo" "foo" = true
+    xstartsWith ".*o" "foo" = true
+    xstartsWith ".*o$" "foo" = true
+
+    xstartsWith "" "" = true
+
+    xstartsWith "foooo" "foo" = false
+    xstartsWith "foooo" "" = false
+    xstartsWith "f." "f" = false
+  **)
+  let startsWith prefix s =
+    let rec aux s p pl i =
+      if i >= pl then true
+      else if unsafe_get s i = unsafe_get p i
+      then aux s p pl (i+1)
+      else false in
+    let sl = len s
+    and pl = len prefix in
+    if pl > sl then false
+    else aux s prefix pl 0
+  (**T
+    startsWith "" "foo" = true
+    startsWith "f" "foo" = true
+    startsWith "f." "foo" = false
+    startsWith "fo" "foo" = true
+    startsWith "foo" "foo" = true
+    startsWith ".*o" "foo" = false
+    startsWith ".*o$" "foo" = false
+
+    startsWith "" "" = true
+
+    startsWith "foooo" "foo" = false
+    startsWith "foooo" "" = false
+    startsWith "f." "f" = false
+  **)
 
   let xendsWith suffix = rexmatch (rx (suffix ^ "$"))
-  let endsWith suffix = xendsWith (escape_rex suffix)
+  (**T
+    xendsWith "" "foo" = true
+    xendsWith "o" "foo" = true
+    xendsWith "o." "foo" = true
+    xendsWith "oo" "foo" = true
+    xendsWith "foo" "foo" = true
+    xendsWith ".*o" "foo" = true
+    xendsWith "^.*o" "foo" = true
+
+    xendsWith "" "" = true
+
+    xendsWith "foooo" "foo" = false
+    xendsWith "foooo" "" = false
+    xendsWith "f." "f" = false
+  **)
+  let endsWith suffix s =
+    let rec aux s p pl sl i =
+      if i >= pl then true
+      else if unsafe_get s (sl-i-1) = unsafe_get p (pl-i-1)
+      then aux s p pl sl (i+1)
+      else false in
+    let sl = len s
+    and pl = len suffix in
+    if pl > sl then false
+    else aux s suffix pl sl 0
+  (**T
+    endsWith "" "foo" = true
+    endsWith "o" "foo" = true
+    endsWith "o." "foo" = false
+    endsWith "oo" "foo" = true
+    endsWith "foo" "foo" = true
+    endsWith ".*o" "foo" = false
+    endsWith "^.*o" "foo" = false
+
+    endsWith "" "" = true
+
+    endsWith "foooo" "foo" = false
+    endsWith "foooo" "" = false
+    endsWith "f." "f" = false
+  **)
 
   let replace pat templ = Pcre.replace ~pat ~templ
   let rexreplace rex templ = Pcre.replace ~rex ~templ
