@@ -5355,24 +5355,157 @@ struct
   let par_mapReduce ?process_count ~combine ~process l =
     let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l |> par_map ~process_count process |> combine
+  (**T
+    PreString.par_mapReduce ~combine:(join "") ~process:(smap succChar) (1--^|10) = smap succChar (1--^|10)
+    PreString.par_mapReduce ~process_count:2 ~combine:(join "") ~process:(smap succChar) (1--^|10) = smap succChar (1--^|10)
+    PreString.par_mapReduce ~process_count:2 ~combine:(join "" @. reverse) ~process:(smap succChar) (1--^|10) = smap succChar ((6--^|10)^(1--^|5))
+    PreString.par_mapReduce ~process_count:2 ~combine:(join "" @. reverse) ~process:(smap succChar) "" = ""
+    PreString.par_mapReduce ~process_count:2 ~combine:(join "" @. reverse) ~process:(smap succChar) "1" = "2"
+  **)
 
   let pmapReduce combine process = par_mapReduce ~combine ~process
-
+  (**T
+    PreString.pmapReduce (join "") (smap succChar) (1--^|10) = smap succChar (1--^|10)
+    PreString.pmapReduce ~process_count:2 (join "") (smap succChar) (1--^|10) = smap succChar (1--^|10)
+    PreString.pmapReduce ~process_count:2 (join "" @. reverse) (smap succChar) (1--^|10) = smap succChar ((6--^|10)^(1--^|5))
+    PreString.pmapReduce ~process_count:2 (join "" @. reverse) (smap succChar) "" = ""
+    PreString.pmapReduce ~process_count:2 (join "" @. reverse) (smap succChar) "1" = "2"
+  **)
+  
   let pfoldl r f init = pmapReduce (PreList.foldl1 r) (foldl f init)
+  (**T
+    spfoldl (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldl ~process_count:2 (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldl ~process_count:2 (+^) (+^) '\000' "1" = chr @@ ssum "1"
+    spfoldl ~process_count:1 (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldl ~process_count:1 (+^) (+^) '\000' "1" = chr @@ ssum "1"
+    spfoldl ~process_count:0 (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldl ~process_count:0 (+^) (+^) '\000' "1" = chr @@ ssum "1"
+    spfoldl ~process_count:3 (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldl ~process_count:3 (+^) (+^) '\000' "1" = chr @@ ssum "1"
+    spfoldl ~process_count:2 (multiply) (flip (multiply @. ord)) 1 (1--^|10) = sproduct (1--^|10)
+    spfoldl ~process_count:2 (multiply) (flip (multiply @. ord)) 1 "1" = sproduct "1"
+    optNF (spfoldl ~process_count:2 (+^) (+^) '\000') "" = Some (chr 0)
+  **)
+
   let pfoldl1 f = pmapReduce (PreList.foldl1 f) (foldl1 f)
+  (**T
+    spfoldl1 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldl1 ~process_count:3 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldl1 ~process_count:2 (+^) "1" = chr @@ ssum "1"
+    spfoldl1 ~process_count:1 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldl1 ~process_count:0 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    optNF (spfoldl1 ~process_count:2 (+^)) "" = None
+  **)
+
   let pfoldr r f init = pmapReduce (PreList.foldr1 r) (foldr f init)
+  (**T
+    spfoldr ~process_count:2 (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldr ~process_count:2 (+^) (+^) '\000' "1" = chr @@ ssum "1"
+    spfoldr (+^) (+^) '\000' "1" = chr @@ ssum "1"
+    spfoldr ~process_count:1 (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldr ~process_count:1 (+^) (+^) '\000' "1" = chr @@ ssum "1"
+    spfoldr ~process_count:0 (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldr ~process_count:0 (+^) (+^) '\000' "1" = chr @@ ssum "1"
+    spfoldr ~process_count:3 (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldr ~process_count:3 (+^) (+^) '\000' "1" = chr @@ ssum "1"
+    optNF (spfoldr ~process_count:2 (+^) (+^) '\000') "" = Some (chr 0)
+  **)
+
   let pfoldr1 f = pmapReduce (PreList.foldr1 f) (foldr1 f)
+  (**T
+    spfoldr1 ~process_count:3 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldr1 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldr1 ~process_count:2 (+^) "1" = chr @@ ssum "1"
+    spfoldr1 ~process_count:1 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldr1 ~process_count:0 (+^) (1--^|10) = chr @@ ssum (1--^|10)
+    optNF (spfoldr1 ~process_count:2 (+^)) "" = None
+  **)
 
   let piter f = pmapReduce ignore (iter f)
+  (**T
+    spiter ~process_count:3 (ignore @. succChar) (1--^|10) = ()
+    spiter ~process_count:2 (ignore @. succChar) (1--^|10) = ()
+    spiter ~process_count:1 (ignore @. succChar) (1--^|10) = ()
+    spiter ~process_count:0 (ignore @. succChar) (1--^|10) = ()
+    spiter ~process_count:3 (ignore @. succChar) "1" = ()
+    spiter ~process_count:2 (ignore @. succChar) "1" = ()
+    spiter ~process_count:1 (ignore @. succChar) "1" = ()
+    spiter ~process_count:0 (ignore @. succChar) "1" = ()
+    spiter ~process_count:3 (ignore @. succChar) "" = ()
+    spiter ~process_count:2 (ignore @. succChar) "" = ()
+    spiter ~process_count:1 (ignore @. succChar) "" = ()
+    spiter ~process_count:0 (ignore @. succChar) "" = ()
+    spiter (ignore @. succChar) "" = ()
+    spiter (ignore @. succChar) (1--^|10) = ()
+    spiter (ignore @. succChar) "1" = ()
+  **)
+
   let pmap f = pmapReduce (concat "") (map f)
+  (**T
+    spmap ~process_count:3 succChar (1--^|10) = smap succChar (1--^|10)
+    spmap ~process_count:2 succChar (1--^|10) = smap succChar (1--^|10)
+    spmap ~process_count:1 succChar (1--^|10) = smap succChar (1--^|10)
+    spmap ~process_count:0 succChar (1--^|10) = smap succChar (1--^|10)
+    spmap ~process_count:3 succChar "1" = smap succChar "1"
+    spmap ~process_count:2 succChar "1" = smap succChar "1"
+    spmap ~process_count:1 succChar "1" = smap succChar "1"
+    spmap ~process_count:0 succChar "1" = smap succChar "1"
+    spmap ~process_count:3 succChar "" = smap succChar ""
+    spmap ~process_count:2 succChar "" = smap succChar ""
+    spmap ~process_count:1 succChar "" = smap succChar ""
+    spmap ~process_count:0 succChar "" = smap succChar ""
+    spmap succChar (1--^|10) = smap succChar (1--^|10)
+    spmap succChar "" = smap succChar ""
+    spmap succChar "1" = smap succChar "1"
+  **)
+
   let pfilter f = pmapReduce (concat "") (filter f)
+  (**T
+    spfilter (even @. ord) ('0'--^'9') = "02468"
+    spfilter (odd @. ord) ('0'--^'9') = "13579"
+    spfilter (even @. ord) "1" = ""
+    spfilter (odd @. ord) "1" = "1"
+    spfilter (even @. ord) "" = ""
+  **)
 
   let pfoldlSeqN ?process_count n r f init l =
     PreList.foldl (fun acc il -> r acc (pfoldl ?process_count r f init il))
           init (groupsOf n l)
+  (**T
+    spfoldlSeqN 3 (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldlSeqN ~process_count:2 3 (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldlSeqN ~process_count:2 3 (+^) (+^) '\000' "1" = chr @@ ssum "1"
+    spfoldlSeqN ~process_count:1 3 (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldlSeqN ~process_count:1 3 (+^) (+^) '\000' "1" = chr @@ ssum "1"
+    spfoldlSeqN ~process_count:0 3 (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldlSeqN ~process_count:0 3 (+^) (+^) '\000' "1" = chr @@ ssum "1"
+    spfoldlSeqN ~process_count:3 3 (+^) (+^) '\000' (1--^|10) = chr @@ ssum (1--^|10)
+    spfoldlSeqN ~process_count:3 3 (+^) (+^) '\000' "1" = chr @@ ssum "1"
+    spfoldlSeqN ~process_count:2 3 (multiply) (flip (multiply @. ord)) 1 (1--^|10) = sproduct (1--^|10)
+    spfoldlSeqN ~process_count:2 3 (multiply) (flip (multiply @. ord)) 1 "1" = sproduct "1"
+    optNF (spfoldlSeqN ~process_count:2 3 (+^) (+^) '\000') "" = Some (chr 0)
+  **)
 
   let piterSeqN ?process_count n r f l =
     PreList.iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
+  (**T
+    spiterSeqN ~process_count:3 1 ignore succChar (1--^|10) = ()
+    spiterSeqN ~process_count:2 2 ignore succChar (1--^|10) = ()
+    spiterSeqN ~process_count:1 1 ignore succChar (1--^|10) = ()
+    spiterSeqN ~process_count:0 4 ignore succChar (1--^|10) = ()
+    spiterSeqN ~process_count:3 1 ignore succChar "1" = ()
+    spiterSeqN ~process_count:2 6 ignore succChar "1" = ()
+    spiterSeqN ~process_count:1 1 ignore succChar "1" = ()
+    spiterSeqN ~process_count:0 1 ignore succChar "1" = ()
+    spiterSeqN ~process_count:3 2 ignore succChar "" = ()
+    spiterSeqN ~process_count:2 1 ignore succChar "" = ()
+    spiterSeqN ~process_count:1 3 ignore succChar "" = ()
+    spiterSeqN ~process_count:0 1 ignore succChar "" = ()
+    spiterSeqN 0 ignore succChar "" = ()
+    spiterSeqN 1 ignore succChar (1--^|10) = ()
+    spiterSeqN 1 ignore succChar "1" = ()
+  **)
 
   let pinit ?process_count f l =
     let process_count = max 1 (process_count |? !global_process_count) in
@@ -5382,6 +5515,18 @@ struct
       let len = min plen (l - start) in
       init (fun j -> f (start + j)) len in
     concat "" (par_map ~process_count process (0--(process_count-1)))
+  (**T
+    spinit (chr @. succ) 10 = (1--^|10)
+    spinit (chr @. pred @. add 2) 10 = (1--^|10)
+    spinit (chr @. succ) 0 = ""
+    spinit (chr @. succ) 1 = "\001"
+    spinit ~process_count:4 (chr @. succ) 10 = (1--^|10)
+    spinit ~process_count:3 (chr @. pred @. add 2) 10 = (1--^|10)
+    spinit ~process_count:2 (chr @. succ) 0 = ""
+    spinit ~process_count:1 (chr @. pred @. add 2) 10 = (1--^|10)
+    spinit ~process_count:1 (chr @. succ) 1 = "\001"
+    spinit ~process_count:0 (chr @. succ) 1 = "\001"
+  **)
 
   let pzipWith ?process_count f a b =
     let process_count = max 1 (process_count |? !global_process_count) in
@@ -5389,18 +5534,59 @@ struct
     pinit ~process_count (fun i ->
       f (unsafe_get a i) (unsafe_get b i)
     ) len
+  (**T
+    spzipWith (+^) (1--^|10) (1--^|10) = smap (dup (+^)) (1--^|10)
+    spzipWith (-^) (3--^|7) (3--^|1) = "\000\002\004"
+    spzipWith (-^) (5--^|7) (5--^|1) = "\000\002\004"
+    spzipWith (+^) "1" (1--^|10) = "2"
+    spzipWith (+^) (1--^|10) "1" = "2"
+    spzipWith (+^) "\001" "\001" = "\002"
+    spzipWith (+^) "" (1--^|10) = ""
+    spzipWith (+^) (1--^|10) "" = ""
+    spzipWith (+^) "" "" = ""
+    spzipWith (+^) ~process_count:3 (1--^|10) (1--^|10) = smap (dup (+^)) (1--^|10)
+    spzipWith (-^) ~process_count:2 (3--^|7) (3--^|1) = "\000\002\004"
+    spzipWith (-^) ~process_count:1 (5--^|7) (5--^|1) = "\000\002\004"
+    spzipWith (+^) ~process_count:0 "1" (1--^|10) = "2"
+  **)
 
   let par_mapReduceWithIndex ?process_count ~combine ~process l =
     let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l
       |> PreList.mapWithIndex tuple
       |> par_map  ~process_count process |> combine
+  (**T
+    PreString.par_mapReduceWithIndex ~process_count:5 ~combine:(sreverse @. join "") ~process:(fun (l, idx) -> smap succChar (if odd idx then "" else l)) ('0'--^'8') = "96521"
+    PreString.par_mapReduceWithIndex ~process_count:5 ~combine:(sreverse @. join "") ~process:(fun (l, idx) -> smap succChar (if odd idx then "" else l)) "" = ""
+    PreString.par_mapReduceWithIndex ~process_count:5 ~combine:(sreverse @. join "") ~process:(fun (l, idx) -> smap succChar (if odd idx then "" else l)) "0" = "1"
+    PreString.par_mapReduceWithIndex ~process_count:0 ~combine:(sreverse @. join "") ~process:(fun (l, idx) -> smap succChar (if odd idx then "" else l)) "0" = "1"
+    PreString.par_mapReduceWithIndex ~process_count:0 ~combine:(sreverse @. join "") ~process:(fun (l, idx) -> smap succChar (if odd idx then "" else l)) "" = ""
+    PreString.par_mapReduceWithIndex ~process_count:0 ~combine:(sreverse @. join "") ~process:(fun (l, idx) -> smap succChar (if odd idx then "" else l)) (0--^|9) = (10--^|1)
+  **)
 
   let pmapReduceWithIndex combine process =
     par_mapReduceWithIndex ~combine ~process
+  (**T
+    spmapReduceWithIndex ~process_count:5 (sreverse @. join "") (fun (l, idx) -> smap succChar (if odd idx then "" else l)) ('0'--^'8') = "96521"
+    spmapReduceWithIndex ~process_count:5 (sreverse @. join "") (fun (l, idx) -> smap succChar (if odd idx then "" else l)) "" = ""
+    spmapReduceWithIndex ~process_count:5 (sreverse @. join "") (fun (l, idx) -> smap succChar (if odd idx then "" else l)) "0" = "1"
+    spmapReduceWithIndex ~process_count:0 (sreverse @. join "") (fun (l, idx) -> smap succChar (if odd idx then "" else l)) "0" = "1"
+    spmapReduceWithIndex ~process_count:0 (sreverse @. join "") (fun (l, idx) -> smap succChar (if odd idx then "" else l)) "" = ""
+    spmapReduceWithIndex ~process_count:0 (sreverse @. join "") (fun (l, idx) -> smap succChar (if odd idx then "" else l)) (0--^|9) = (10--^|1)
+  **)
 
   let pmapWithInit init f =
     pmapReduceWithIndex (concat "") (fun (sublist, idx) -> map f (init sublist idx))
+  (**T
+    spmapWithInit ~process_count:2 (fun l i -> if odd i then sreverse l else l) succChar (0--^|9) = (1--^|5) ^ (10--^|6)
+    spmapWithInit ~process_count:2 (fun l i -> if odd i then sreverse l else l) succChar "0" = "1"
+    spmapWithInit ~process_count:2 (fun l i -> if odd i then sreverse l else l) succChar "" = ""
+    spmapWithInit ~process_count:1 (fun l i -> if odd i then sreverse l else l) succChar "0" = "1"
+    spmapWithInit ~process_count:1 (fun l i -> if odd i then sreverse l else l) succChar "" = ""
+    spmapWithInit ~process_count:(-1) (fun l i -> if odd i then sreverse l else l) succChar "0" = "1"
+    spmapWithInit ~process_count:0 (fun l i -> if odd i then sreverse l else l) succChar "" = ""
+  **)
+
 end
 
 
