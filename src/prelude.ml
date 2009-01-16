@@ -5270,7 +5270,7 @@ struct
     strip "\t\ndude\r\n\r\n" = "dude"
   **)
 
-  let full_split ?(delete_empty=false) ?n ?rex ?pat s =
+  let split' ?(delete_empty=false) ?n ?rex s =
     let rec aux res l = match l with
       | [] -> PreList.rev res
       (* trailing delim *)
@@ -5284,16 +5284,17 @@ struct
       (* delim *)
       | ((Pcre.Delim d) :: t) -> aux res t
       | (h::t) -> aux res t in
-    let l = Pcre.full_split ?max:(optMap (max 1) n) ?rex ?pat s in
+    let l = Pcre.full_split ?max:(optMap (max 1) n) ?rex s in
     let l = if delete_empty
       then PreList.filter (function Pcre.Text _ -> true | _ -> false) l
       else l in
     match l with
+      | ((Pcre.Delim _) :: []) -> [""; ""]
       | ((Pcre.Delim _) :: (Pcre.Delim d) :: t) -> aux [""; ""] ((Pcre.Delim d) :: t)
       | ((Pcre.Delim _) :: t) -> aux [""] t
       | l -> aux [] l
 
-  let rexsplit ?delete_empty ?n rex s = full_split ?delete_empty ?n ~rex s
+  let rexsplit ?delete_empty ?n rex s = split' ?delete_empty ?n ~rex s
   (**T
     rexsplit (rex ",") "foo,bar,baz" = ["foo"; "bar"; "baz"]
     rexsplit ~n:3 (rex ",") "foo,bar,baz" = ["foo"; "bar"; "baz"]
@@ -5335,12 +5336,15 @@ struct
     rexrsplit ~delete_empty:true (rex "#") "##foo#bar##" = ["foo"; "bar"]
   **)
 
-  let split ?delete_empty ?n pat s = full_split ?delete_empty ?n ~pat s
+  let split ?delete_empty ?n pat s =
+    split' ?delete_empty ?n ~rex:(rex (escape_rex pat)) s
   (**T
     split "" "" = []
     split "," "" = []
     split "" "foo" = [""; "f"; "o"; "o"; ""]
     split ~delete_empty:true "" "foo" = ["f"; "o"; "o"]
+
+    split "foo" "foo" = [""; ""]
 
     split "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
     split ~n:3 "," "foo,bar,baz" = ["foo"; "bar"; "baz"]
@@ -5736,9 +5740,53 @@ struct
     endsWith "f." "f" = false
   **)
 
-  let replace pat templ = Pcre.replace ~pat ~templ
-  let rexreplace rex templ = Pcre.replace ~rex ~templ
-  let xreplace s = rexreplace (rx s)
+  let replace pat rep s = concat rep (split pat s)
+  (**T
+    replace "foob" "nub" "foobar" = "nubar"
+    replace "foo" "bar" "foo" = "bar"
+    replace "" " " "foo" = " f o o "
+    replace "" "foo" "" = ""
+    replace "foo" "bar" "" = ""
+    replace "foo" "" "" = ""
+    replace "foo" "" "foobar" = "bar"
+    replace "f.*b" "nub" "foobar" = "foobar"
+    replace "foob" "n$0b" "foobar" = "n$0bar"
+
+    replace "#" " " "##foo###bar####" = join " " (split "#" "##foo###bar####")
+  **)
+  let rexreplace rex templ s = Pcre.replace ~rex ~templ s
+  (**T
+    rexreplace (rex "foob") "nub" "foobar" = "nubar"
+    rexreplace (rex "foo") "bar" "foo" = "bar"
+    rexreplace (rex "") " " "foo" = " f o o "
+    rexreplace (rex "") "foo" "" = "foo"
+    rexreplace (rex "foo") "bar" "" = ""
+    rexreplace (rex "foo") "" "" = ""
+    rexreplace (rex "foo") "" "foobar" = "bar"
+    rexreplace (rex "f.*b") "nub" "foobar" = "nubar"
+    rexreplace (rex "f(.+)b") "n$1b" "foobar" = "noobar"
+    rexreplace (rex "f(.+)b") "n$1b" "foobar" = "noobar"
+    optE (rexreplace (rex "f(.+)b") "n$2b") "foobar" = None
+
+    rexreplace (rex "#") " " "##foo###bar####" = join " " (split "#" "##foo###bar####")
+  **)
+  let xreplace x templ s = rexreplace (rx x) templ s
+  (**T
+    xreplace "foob" "nub" "foobar" = "nubar"
+    xreplace "foo" "bar" "foo" = "bar"
+    xreplace "" " " "foo" = " f o o "
+    xreplace "" "foo" "" = "foo"
+    xreplace "foo" "bar" "" = ""
+    xreplace "foo" "" "" = ""
+    xreplace "foo" "" "foobar" = "bar"
+    xreplace "f.*b" "nub" "foobar" = "nubar"
+    xreplace "f(.+)b" "n$&b" "foobar" = "nfoobbar"
+    xreplace "f(.+)b" "n$1b" "foobar" = "noobar"
+    xreplace "f(.+)b" "n$1b" "foobar" = "noobar"
+    optE (xreplace "f(.+)b" "n$2b") "foobar" = None
+
+    xreplace "#" " " "##foo###bar####" = join " " (split "#" "##foo###bar####")
+  **)
 
   let frexreplace f rex s =
     let split = Pcre.full_split ~rex s in
