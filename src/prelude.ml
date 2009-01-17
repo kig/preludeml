@@ -547,6 +547,24 @@ let rgbColor r g b = sprintf "rgb:%02X/%02X/%02X" (clamp8 r) (clamp8 g) (clamp8 
   rgbColor (-1) (-90300) 56684 = "rgb:00/00/FF"
 **)
 
+let bashResetStyle = "\027[0m"
+let bashColor = function
+  | `Black -> "\027[0;30m"
+  | `BoldBlack -> "\027[1;30m"
+  | `Blue -> "\027[0;34m"
+  | `BoldBlue -> "\027[1;34m"
+  | `Green -> "\027[0;32m"
+  | `BoldGreen -> "\027[1;32m"
+  | `Cyan -> "\027[0;36m"
+  | `BoldCyan -> "\027[1;36m"
+  | `Red -> "\027[0;31m"
+  | `BoldRed -> "\027[1;31m"
+  | `Purple -> "\027[0;35m"
+  | `BoldPurple -> "\027[1;35m"
+  | `Brown -> "\027[0;33m"
+  | `Yellow -> "\027[1;33m"
+  | `LightGray -> "\027[0;37m"
+  | `White -> "\027[1;37m"
 
 (* Unfolds and recursion *)
 
