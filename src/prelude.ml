@@ -354,7 +354,6 @@ let int = int_of_float
 let char = char_of_int
 let parseInt = int_of_string
 let parseFloat = float_of_string
-let showInt = string_of_int
 let showFloat f =
   match string_of_float f with
     | "inf" -> "infinity"
@@ -390,7 +389,7 @@ let char_of_string s =
 **)
 
 let base_default_alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-let base ?(alphabet=base_default_alphabet) n i =
+let showIntInBase ?(alphabet=base_default_alphabet) n i =
   let rec aux a n sg i l =
     if i == 0
     then
@@ -416,29 +415,59 @@ let base ?(alphabet=base_default_alphabet) n i =
     s
   else aux alphabet n sg i []
 (**T
-  base 0 0 = ""
-  optEx Division_by_zero (base 0) 47 = None
-  base 1 45 = sreplicate 45 '0'
-  base 1 0 = ""
-  base 1 (-4) = "-0000"
-  base 2 0 = "0"
-  base 2 1 = "1"
-  base 2 2 = "10"
-  base 2 (-1) = "-1"
-  base 2 (-2) = "-10"
-  base 10 8489 = string_of_int 8489
-  base 16 255 = "FF"
-  base 16 (-255) = "-FF"
-  base 16 (-1) = "-1"
-  base ~alphabet:(lowercase base_default_alphabet) 16 255 = "ff"
-  base 17 16 = "G"
-  base 17 17 = "10"
-  base 32 31 = "V"
-  base 32 (-31) = "-V"
-  base 32 32 = "10"
+  showIntInBase 0 0 = ""
+  optEx Division_by_zero (showIntInBase 0) 47 = None
+  showIntInBase 1 45 = sreplicate 45 '0'
+  showIntInBase 1 0 = ""
+  showIntInBase 1 (-4) = "-0000"
+  showIntInBase 2 0 = "0"
+  showIntInBase 2 1 = "1"
+  showIntInBase 2 2 = "10"
+  showIntInBase 2 (-1) = "-1"
+  showIntInBase 2 (-2) = "-10"
+  showIntInBase 10 8489 = string_of_int 8489
+  showIntInBase 16 255 = "FF"
+  showIntInBase 16 (-255) = "-FF"
+  showIntInBase 16 (-1) = "-1"
+  showIntInBase ~alphabet:(lowercase base_default_alphabet) 16 255 = "ff"
+  showIntInBase 17 16 = "G"
+  showIntInBase 17 17 = "10"
+  showIntInBase 32 31 = "V"
+  showIntInBase 32 (-31) = "-V"
+  showIntInBase 32 32 = "10"
 
-  optE (base 80) 92 = None
-  optE (base (-1)) 73 = None
+  optE (showIntInBase 80) 92 = None
+  optE (showIntInBase (-1)) 73 = None
+**)
+let showInt ?base ?alphabet i = match base with
+  | None -> string_of_int i
+  | Some b -> showIntInBase ?alphabet b i 
+(**T
+  showInt 0 = "0"
+  showInt 8489 = "8489"
+  showInt (-1) = "-1"
+  showInt ~base:0 0 = ""
+  optEx Division_by_zero (showInt ~base:0) 47 = None
+  showInt ~base:1 45 = sreplicate 45 '0'
+  showInt ~base:1 0 = ""
+  showInt ~base:1 (-4) = "-0000"
+  showInt ~base:2 0 = "0"
+  showInt ~base:2 1 = "1"
+  showInt ~base:2 2 = "10"
+  showInt ~base:2 (-1) = "-1"
+  showInt ~base:2 (-2) = "-10"
+  showInt ~base:16 255 = "FF"
+  showInt ~base:16 (-255) = "-FF"
+  showInt ~base:16 (-1) = "-1"
+  showInt ~base:16 ~alphabet:(lowercase base_default_alphabet) 255 = "ff"
+  showInt ~base:17 16 = "G"
+  showInt ~base:17 17 = "10"
+  showInt ~base:32 31 = "V"
+  showInt ~base:32 (-31) = "-V"
+  showInt ~base:32 32 = "10"
+
+  optE (showInt ~base:80) 92 = None
+  optE (showInt ~base:(-1)) 73 = None
 **)
 
 let binary i =
