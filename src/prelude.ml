@@ -389,6 +389,164 @@ let char_of_string s =
   char_of_string "f" = Some 'f'
 **)
 
+let base_default_alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+let base ?(alphabet=base_default_alphabet) n i =
+  let rec aux a n sg i l =
+    if i == 0
+    then
+      let l = if l = [] && n > 0 then [a.[0]] else l in
+      let len = List.length l + if sg < 0 then 1 else 0 in
+      let s = String.create len in
+      if sg < 0 then s.[0] <- '-';
+      let () = ignore (List.fold_right (fun i c -> s.[c-1] <- i; c-1) l len) in
+      s
+    else
+      let quot = (i / n) in
+      let rem = sg * (i - (quot*n)) in
+      aux a n sg quot (a.[rem] :: l)
+  in
+  if String.length alphabet < n
+    then invalid_arg (sprintf "Prelude.base: too short alphabet for base (%d, %S)" n alphabet);
+  if n < 0
+    then invalid_arg "Prelude.base: negative base is not allowed";
+  let sg = if i < 0 then -1 else 1 in
+  if n == 1 then
+    let s = String.make (if sg < 0 then -i+1 else i) alphabet.[0] in
+    let () = if sg < 0 then s.[0] <- '-' else () in
+    s
+  else aux alphabet n sg i []
+(**T
+  base 0 0 = ""
+  optEx Division_by_zero (base 0) 47 = None
+  base 1 45 = sreplicate 45 '0'
+  base 1 0 = ""
+  base 1 (-4) = "-0000"
+  base 2 0 = "0"
+  base 2 1 = "1"
+  base 2 2 = "10"
+  base 2 (-1) = "-1"
+  base 2 (-2) = "-10"
+  base 10 8489 = string_of_int 8489
+  base 16 255 = "FF"
+  base 16 (-255) = "-FF"
+  base 16 (-1) = "-1"
+  base ~alphabet:(lowercase base_default_alphabet) 16 255 = "ff"
+  base 17 16 = "G"
+  base 17 17 = "10"
+  base 32 31 = "V"
+  base 32 (-31) = "-V"
+  base 32 32 = "10"
+
+  optE (base 80) 92 = None
+  optE (base (-1)) 73 = None
+**)
+
+let binary i =
+  let rec aux s i c =
+    if i == 0
+    then s
+    else (
+      s.[Sys.word_size-2-c] <- if i land 1 == 0 then '0' else '1';
+      aux s (i lsr 1) (c+1)
+    ) in
+  let s = String.make (Sys.word_size-1) '0' in
+  aux s i 0
+(**T
+  binary 0 = sreplicate (Sys.word_size-1) '0'
+  binary 1 = sreplicate (Sys.word_size-2) '0' ^ "1"
+  binary 2 = sreplicate (Sys.word_size-3) '0' ^ "10"
+  binary (-1) = sreplicate (Sys.word_size-2) '1' ^ "1"
+  binary (-2) = sreplicate (Sys.word_size-3) '1' ^ "10"
+  binary (-3) = sreplicate (Sys.word_size-3) '1' ^ "01"
+  binary min_int = "1" ^ sreplicate (Sys.word_size-2) '0'
+  binary max_int = "0" ^ sreplicate (Sys.word_size-2) '1'
+**)
+
+let hex i = sprintf "%02X" i
+(**T
+  hex 0 = "00"
+  hex 1 = "01"
+  hex 15 = "0F"
+  hex 16 = "10"
+  hex 255 = "FF"
+  hex 256 = "100"
+
+  xmatch "^7FFFFF+$" (hex (-1))
+  xmatch "^3FFFFF+$" (hex max_int)
+  xmatch "^400000+$" (hex min_int)
+**)
+
+let octal i = sprintf "%o" i
+(**T
+  octal 0 = "0"
+  octal 1 = "1"
+  octal 7 = "7"
+  octal 8 = "10"
+  octal 63 = "77"
+  octal 64 = "100"
+
+  xmatch "^777777+$" (octal (-1))
+  xmatch "^377777+$" (octal max_int)
+  xmatch "^400000+$" (octal min_int)
+**)
+
+let clamp1f c = min 1.0 (max 0.0 c)
+(**T
+  clamp1f 0.0 = 0.0
+  clamp1f 0.5 = 0.5
+  clamp1f 1.0 = 1.0
+  clamp1f (-1.0) = 0.0
+  clamp1f 2.0 = 1.0
+**)
+
+let clamp8 c = min 255 (max 0 c)
+(**T
+  clamp8 0 = 0
+  clamp8 125 = 125
+  clamp8 255 = 255
+  clamp8 (-1) = 0
+  clamp8 256 = 255
+**)
+
+let clamp16 c = min 65535 (max 0 c)
+(**T
+  clamp16 0 = 0
+  clamp16 125 = 125
+  clamp16 65535 = 65535
+  clamp16 (-1) = 0
+  clamp16 65536 = 65535
+**)
+
+let htmlColor r g b =
+  sprintf "#%02X%02X%02X" (clamp8 r) (clamp8 g) (clamp8 b)
+(**T
+  htmlColor 0 0 0 = "#000000"
+  htmlColor 255 255 255 = "#FFFFFF"
+  htmlColor 255 0 127 = "#FF007F"
+  htmlColor 0 255 0 = "#00FF00"
+
+  htmlColor (-1) (-90300) 56684 = "#0000FF"
+**)
+let htmlRgbaColor r g b a =
+  sprintf "rgba(%d,%d,%d,%s)" (clamp8 r) (clamp8 g) (clamp8 b) (showFloat (clamp1f a))
+(**T
+  htmlRgbaColor 0 0 0 0. = "rgba(0,0,0,0.0)"
+  htmlRgbaColor 255 255 255 1.0 = "rgba(255,255,255,1.0)"
+  htmlRgbaColor 255 0 127 0.5 = "rgba(255,0,127,0.5)"
+
+  htmlRgbaColor (-1) (-90300) 56684 72.0 = "rgba(0,0,255,1.0)"
+  htmlRgbaColor (-1) (-90300) 56684 (-72.0) = "rgba(0,0,255,0.0)"
+**)
+let rgbColor r g b = sprintf "rgb:%02X/%02X/%02X" (clamp8 r) (clamp8 g) (clamp8 b)
+(**T
+  rgbColor 0 0 0 = "rgb:00/00/00"
+  rgbColor 255 255 255 = "rgb:FF/FF/FF"
+  rgbColor 255 0 127 = "rgb:FF/00/7F"
+  rgbColor 0 255 0 = "rgb:00/FF/00"
+
+  rgbColor (-1) (-90300) 56684 = "rgb:00/00/FF"
+**)
+
 
 (* Unfolds and recursion *)
 
