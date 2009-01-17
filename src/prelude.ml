@@ -2,6 +2,8 @@
 Prelude.ml: OCaml utility functions
 
 Copyright (C) 2007-2008  Ilmari Heikkinen <ilmari.heikkinen@gmail.com>
+              Boyer-Moore string search:
+                2007 Mauricio Fernandez <mfp@acm.org> http//eigenclass.org
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
@@ -6376,10 +6378,25 @@ module Bytestring =
 struct
   include PreString
 
+  (* Basic operations *)
+
   let unsafe_get s i = ord (String.unsafe_get s i)
+  (**T
+    buget "ABCD" 0 = 65
+    buget "ABCD" 1 = 66
+    buget "ABCD" 2 = 67
+    buget "ABCD" 3 = 68
+  **)
   let unsafe_set s i c = String.unsafe_set s i (chr c)
+  (**T
+    (let s = "a" in buset s 0 65; s = "A")
+  **)
 
   let make l i = make l (chr i)
+  (**T
+    bmake 0 65 = ""
+    bmake 3 65 = "AAA"
+  **)
 
   let init f l =
     let s = create l in
@@ -6396,27 +6413,79 @@ struct
     brange 69 65 = "EDCBA"
   **)
 
+  let replicate n v = make (max 0 n) v
+  (**T
+    Bytestring.replicate 5 65 = "AAAAA"
+    Bytestring.replicate 1 65 = "A"
+    breplicate 0 65 = ""
+    Bytestring.replicate (-1) 65 = ""
+  **)
+
   (* Iterators *)
 
   let iter f s =
     let l = len s in
     for i = 0 to l - 1 do f (unsafe_get s i) done
+  (**T
+    mapWith biter id (sreplicate 100000 '.') = replicate 100000 (ord '.')
+    mapWith biter id (1--^|10) = (1--10)
+    mapWith biter succ (1--^|10) = (2--11)
+    mapWith biter succ (1--^|1) = [2]
+    mapWith biter succ "" = []
+  **)
   let iterWithIndex f s =
     let l = len s in
     for i = 0 to l - 1 do f (unsafe_get s i) i done
+  (**T
+    mapWith (fun f -> biterWithIndex (fun s i -> f (s,i))) (uncurry (+)) (0--^|10) = map (multiply 2) (0--10)
+    (let i = ref 0 and j = ref 0 in biterWithIndex (fun a b -> i:=a; j:=b) (20--^|30); !i = 30 && !j = 10)
+    biterWithIndex (ignore @.. add) "1" = ()
+    biterWithIndex (ignore @.. add) "" = ()
+  **)
 
   let map f s = init (fun i -> f (unsafe_get s i)) (len s)
+  (**T
+    bmap succ (1--^|10) = (2--^|11)
+    bmap succ "" = ""
+    bmap succ "1" = "2"
+  **)
   let mapWithIndex f s = init (fun i -> f (unsafe_get s i) i) (len s)
+  (**T
+    bmapWithIndex (fun s i -> s + i) (0--^|10) = bmap (multiply 2) (0--^|10)
+    bmapWithIndex ((-)) (10--^|20) = breplicate 11 10
+    bmapWithIndex ((+)) "" = ""
+    bmapWithIndex ((+)) "1" = "1"
+  **)
 
   (* Conversions *)
 
   let to_array s = PreArray.init (unsafe_get s) (len s)
+  (**T
+    Bytestring.to_array "ABCDEF" = (65--|70)
+    Bytestring.to_array "A" = [|65|]
+    Bytestring.to_array "" = [||]
+  **)
   let of_array arr = init (Array.unsafe_get arr) (Array.length arr)
+  (**T
+    Bytestring.of_array (65--|70) = "ABCDEF"
+    Bytestring.of_array [|65|] = "A"
+    Bytestring.of_array [||] = ""
+  **)
 
   let to_list s = PreList.init (unsafe_get s) (len s)
+  (**T
+    Bytestring.to_list "ABCDEF" = (65--70)
+    Bytestring.to_list "A" = [65]
+    Bytestring.to_list "" = []
+  **)
   let of_list l = of_array (Array.of_list l)
 
   (* Searching *)
+  (**T
+    Bytestring.of_list (65--70) = "ABCDEF"
+    Bytestring.of_list [65] = "A"
+    Bytestring.of_list [] = ""
+  **)
 
   let filter f s =
     let rec aux f s i res =
@@ -6426,6 +6495,13 @@ struct
         let res = if f c then c::res else res in
         aux f s (i-1) res in
     aux f s (len s - 1) []
+  (**T
+    bfilter even (1--^|10) = bmap (dup (+)) (1--^|5)
+    bfilter odd (1--^|10) = bmap (subtract 1 @. multiply 2) (1--^|5)
+    bfilter even "1" = ""
+    bfilter odd "1" = "1"
+    bfilter even "" = ""
+  **)
 
   let filterWithIndex f s =
     let rec aux f s i res =
@@ -6435,6 +6511,12 @@ struct
         let res = if f c i then c::res else res in
         aux f s (i-1) res in
     aux f s (len s - 1) []
+  (**T
+    bfilterWithIndex (fun e i -> e > 5) (1--^|9) = (6--^|9)
+    bfilterWithIndex (fun _ i -> i > 5) (1--^|9) = (7--^|9)
+    bfilterWithIndex (fun _ i -> i > 10) (1--^|9) = ""
+    bfilterWithIndex (fun _ i -> i > 10) "" = ""
+  **)
 
   let findWithIndex f s =
     let rec aux f s i len =
@@ -6444,11 +6526,32 @@ struct
         if f v i then (v, i)
         else aux f s (i+1) len in
     aux f s 0 (len s)
+  (**T
+    bfindWithIndex (fun v _ -> v > 4) (2--^|9) = (5,3)
+    bfindWithIndex (fun _ i -> i > 4) (2--^|9) = (7,5)
+    optNF (bfindWithIndex (const (gt 4))) (0--^|3) = None
+    optNF (bfindWithIndex (const (gt 4))) "" = None
+  **)
 
   let find f s = fst (findWithIndex (fun v _ -> f v) s)
+  (**T
+    bfind (gt 5) (1--^|9) = 6
+    optNF (bfind (gt 4)) (0--^|3) = None
+    optNF (bfind (gt 4)) "" = None
+  **)
   let findIndex f s = snd (findWithIndex (fun v _ -> f v) s)
+  (**T
+    bfindIndex (gt 5) (1--^|9) = 5
+    optNF (bfindIndex (gt 4)) (0--^|3) = None
+    optNF (bfindIndex (gt 4)) "" = None
+  **)
 
   let indexOf v s = findIndex ((=) v) s
+  (**T
+    bindexOf 14 (10--^|20) = 4
+    optNF (bindexOf 1) (10--^|20) = None
+    bindexOf 97 ("foobar") = 4
+  **)
 
   (* Zipping *)
 
@@ -6456,11 +6559,37 @@ struct
     let len = min (len a) (len b) in
     init (fun i -> f (unsafe_get a i) (unsafe_get b i) ) len
   let map2 = zipWith
+  (**T
+    bzipWith (+) (1--^|10) (1--^|10) = bmap (dup (+)) (1--^|10)
+    bzipWith (+) "1" (1--^|10) = "2"
+    bzipWith (+) (1--^|10) "1" = "2"
+    bzipWith (+) "\001" "1" = "2"
+    bzipWith (+) "" (1--^|10) = ""
+    bzipWith (+) (1--^|10) "" = ""
+    bzipWith (+) "" "" = ""
+  **)
 
   let zipWith3 f a b c =
     let len = min (min (len a) (len b)) (len c) in
     init (fun i -> f (unsafe_get a i) (unsafe_get b i) (unsafe_get c i) ) len
   let map3 = zipWith3
+  (**T
+    bzipWith3 (fun a b c -> a + b + c) (1--^|50) (1--^|50) (1--^|50) = bmap (multiply 3) (1--^|50)
+    bzipWith3 (fun a b c -> a + b + c) "1" (1--^|10) (1--^|10) = "3"
+    bzipWith3 (fun a b c -> a + b + c) (1--^|10) "1" (1--^|10) = "3"
+    bzipWith3 (fun a b c -> a + b + c) (1--^|10) (1--^|10) "1" = "3"
+    bzipWith3 (fun a b c -> a + b + c) "1" (1--^|10) "\001" = "3"
+    bzipWith3 (fun a b c -> a + b + c) "1" "\001" (1--^|10) = "3"
+    bzipWith3 (fun a b c -> a + b + c) (1--^|10) "" "1" = ""
+    bzipWith3 (fun a b c -> a + b + c) (1--^|10) "1" "" = ""
+    bzipWith3 (fun a b c -> a + b + c) (1--^|10) "" "" = ""
+    bzipWith3 (fun a b c -> a + b + c) "" "1" "1" = ""
+    bzipWith3 (fun a b c -> a + b + c) "" "" "1" = ""
+    bzipWith3 (fun a b c -> a + b + c) "" "1" "" = ""
+    bzipWith3 (fun a b c -> a + b + c) "1" "" "" = ""
+    bzipWith3 (fun a b c -> a + b + c) "" "" "" = ""
+  **)
+
 
   (* Folds *)
 
@@ -7220,6 +7349,7 @@ let bconcat = Bytestring.concat
 let breverse = Bytestring.reverse
 let brev = breverse
 let bnormalizeIndex = Bytestring.normalizeIndex
+let breplicate = Bytestring.replicate
 
 let bmap = Bytestring.map
 let bmapSub = Bytestring.mapSub
@@ -7234,6 +7364,7 @@ let bfilterWithIndex = Bytestring.filterWithIndex
 let bfind = Bytestring.find
 let bfindWithIndex = Bytestring.findWithIndex
 let bfindIndex = Bytestring.findIndex
+let bindexOf = Bytestring.indexOf
 
 let bfoldl = Bytestring.foldl
 let bfoldl1 = Bytestring.foldl1
@@ -7839,3 +7970,98 @@ end)
 
 module SMap = Map.Make(String)
 module IMap = Map.Make(struct type t = int let compare = (-) end)
+
+
+module type STRINGSEARCH =
+  sig
+    type t
+
+    val make : string -> t
+    val find : t -> string -> int -> int
+    val find_end : t -> string -> int -> int
+  end
+
+module BoyerMoore : STRINGSEARCH =
+struct
+  exception Done of int
+
+  let memcmp a o1 b o2 len =
+    let rec loop a b o1 o2 i =
+      if i < len then
+        if a.[o1] = b.[o2] then
+          loop a b (o1 + 1) (o2 + 1) (i + 1)
+        else false
+      else true
+    in loop a b o1 o2 0
+
+  let boyermoore_needlematch needle nlen portion offset =
+    let virtual_begin = ref (nlen - offset - portion) in
+    let ignore = ref 0 in
+      if !virtual_begin < 0 then begin
+        ignore := - !virtual_begin;
+        virtual_begin := 0
+      end;
+
+      if !virtual_begin > 0 &&
+        needle.[!virtual_begin - 1] == needle.[nlen - portion - 1] then
+        false
+      else
+        memcmp
+          needle (nlen - portion + !ignore)
+          needle !virtual_begin
+          (portion - !ignore)
+
+  let max_i (a : int) (b : int) = if a > b then a else b
+
+  type t = {
+    skip : int array;
+    occ : int array;
+    needle : string;
+    nlen : int
+  }
+
+  let make needle =
+    let nlen = String.length needle in
+    let skip = Array.make nlen 0 in
+    let occ = Array.make 256 (-1) in
+
+      for a = 0 to nlen - 1 - 1 do
+        occ.(Char.code needle.[a]) <- a;
+      done;
+
+      for a = 0 to nlen - 1 do
+        let value = ref 0 in
+          while !value < nlen &&
+                not (boyermoore_needlematch needle nlen a !value) do
+            incr value
+          done;
+          skip.(nlen - a - 1) <- !value
+      done;
+
+      { skip = skip; occ = occ; needle = needle; nlen = nlen }
+
+  let boyermoore_search t haystack start hlen =
+    let skip = t.skip and occ = t.occ and needle = t.needle and nlen = t.nlen in
+      if nlen > hlen || nlen <= 0 then raise Not_found;
+      try
+        let hpos = ref start in
+        let lim = hlen - nlen in
+          while !hpos <= lim do
+            let npos = ref (nlen - 1) in
+              while needle.[!npos] = haystack.[!npos + !hpos] do
+                if !npos = 0 then raise (Done !hpos);
+                decr npos
+              done;
+              hpos := !hpos +
+              max_i skip.(!npos)
+                (!npos - occ.(Char.code (haystack.[!npos + !hpos])))
+          done;
+          raise Not_found
+      with Done m -> m
+
+  let find t haystack start =
+    boyermoore_search t haystack start (String.length haystack)
+
+  let find_end t haystack start = find t haystack start + t.nlen
+
+end
