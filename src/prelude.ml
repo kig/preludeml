@@ -4580,16 +4580,16 @@ struct
   **)
 
   let maximumByWith f lst = PreArray.maximumBy snd (mapToArray (fupler f) lst)
-  (*T
-    smaximumByWith square (-3 --^| 2) = (-3, 9)
-    smaximumByWith square (-1 --^| 2) = (2, 4)
-    optNF (smaximumByWith square) "" = None
+  (**T
+    smaximumByWith (square @. subtract 3 @. ord) (0 --^| 5) = (chr 0, 9)
+    smaximumByWith (square @. subtract 2 @. ord) (0 --^| 5) = (chr 5, 9)
+    optNF (smaximumByWith (square @. ord)) "" = None
   **)
   let minimumByWith f lst = PreArray.minimumBy snd (mapToArray (fupler f) lst)
-  (*T
-    sminimumByWith square (-3 --^| (-1)) = (-1, 1)
-    sminimumByWith square (-1 --^| 2) = (0, 0)
-    optNF (sminimumByWith square) "" = None
+  (**T
+    sminimumByWith (square @. subtract 3 @. ord) (0 --^| 5) = (chr 3, 0)
+    sminimumByWith (square @. subtract 3 @. ord) (0 --^| 1) = (chr 1, 4)
+    optNF (sminimumByWith (square @. ord)) "" = None
   **)
 
   (* Subsequences *)
@@ -6457,6 +6457,21 @@ struct
     bmapWithIndex ((+)) "1" = "1"
   **)
 
+  let mapToList f s = PreList.init (fun i -> f (unsafe_get s i)) (len s)
+  (**T
+    bmapToList id "ABC" = (65--67)
+    bmapToList succ "ABC" = (66--68)
+    bmapToList id "a" = [97]
+    bmapToList id "" = []
+  **)
+  let mapToArray f s = PreArray.init (fun i -> f (unsafe_get s i)) (len s)
+  (**T
+    bmapToArray id "ABC" = (65--|67)
+    bmapToArray succ "ABC" = (66--|68)
+    bmapToArray id "a" = [|97|]
+    bmapToArray id "" = [||]
+  **)
+
   (* Conversions *)
 
   let to_array s = PreArray.init (unsafe_get s) (len s)
@@ -6597,6 +6612,12 @@ struct
     let rec aux f s len v i =
       if i >= len then v else aux f s len (f v (unsafe_get s i)) (i+1) in
     aux f s (len s) init 0
+  (**T
+    bfoldl (+) 0 (1--^|10) = 55
+    bfoldl (fun s b -> s ^ (string_of_int b)) "--" (1--^|3) = "--123"
+    bfoldl (+) 1 "" = 1
+    bfoldl (+) 1 "\001" = 2
+  **)
 
   let foldl1 f a =
     let rec aux f i acc len a =
@@ -6605,11 +6626,22 @@ struct
     let len = len a in
     if len < 1 then raise Not_found;
     aux f 1 (unsafe_get a 0) len a
+  (**T
+    bfoldl1 (+) (1--^|10) = 55
+    optNF (bfoldl1 (+)) "" = None
+    bfoldl1 (+) "\001" = 1
+  **)
 
   let foldr f init s =
     let rec aux f s v i =
       if i < 0 then v else aux f s (f (unsafe_get s i) v) (i-1) in
     aux f s init (len s - 1)
+  (**T
+    bfoldr (+) 0 (1--^|10) = 55
+    bfoldr (fun a s -> s ^ (string_of_int a)) "--^|" (1--^|3) = "--^|321"
+    bfoldr (+) 1 "" = 1
+    bfoldr (+) 1 "\001" = 2
+  **)
 
   let foldr1 f a =
     let rec aux f i acc a =
@@ -6618,46 +6650,172 @@ struct
     let len = len a in
     if len < 1 then raise Not_found;
     aux f (len-2) (unsafe_get a (len-1)) a
+  (**T
+    bfoldr1 (+) (1--^|10) = 55
+    optNF (bfoldr1 (+)) "" = None
+    bfoldr1 (+) "\001" = 1
+  **)
 
-  let maximum = foldl1 max
-  let minimum = foldl1 min
+
+  let maximum a = foldl1 max a
+  (**T
+    bmaximum "12301431" = ord '4'
+    bmaximum "\001" = 1
+    optNF bmaximum "" = None
+  **)
+  let minimum a = foldl1 min a
+  (**T
+    bminimum "12301431" = ord '0'
+    bminimum "\001" = 1
+    optNF bminimum "" = None
+  **)
 
   let maximumBy f = foldl1 (fun s i -> if (f s) < (f i) then i else s)
+  (**T
+    bmaximumBy (square @. subtract 3) (0 --^| 5) = 0
+    bmaximumBy (square @. subtract 2) (0 --^| 5) = 5
+    optNF (bmaximumBy square) "" = None
+  **)
   let minimumBy f = foldl1 (fun s i -> if (f s) > (f i) then i else s)
+  (**T
+    bminimumBy (square @. subtract 3) (0 --^| 5) = 3
+    bminimumBy (square @. subtract 3) (0 --^| 1) = 1
+    optNF (bminimumBy square) "" = None
+  **)
+
+  let maximumByWith f lst = PreArray.maximumBy snd (mapToArray (fupler f) lst)
+  (**T
+    bmaximumByWith (square @. subtract 3) (0 --^| 5) = (0, 9)
+    bmaximumByWith (square @. subtract 2) (0 --^| 5) = (5, 9)
+    optNF (bmaximumByWith (square)) "" = None
+  **)
+  let minimumByWith f lst = PreArray.minimumBy snd (mapToArray (fupler f) lst)
+  (**T
+    bminimumByWith (square @. subtract 3) (0 --^| 5) = (3, 0)
+    bminimumByWith (square @. subtract 3) (0 --^| 1) = (1, 4)
+    optNF (bminimumByWith (square)) "" = None
+  **)
 
 
   (* List-like interface *)
 
   let first a = if len a = 0 then raise Not_found else unsafe_get a 0
   let head = first
-  let tail = slice 1 (-1)
+  (**T
+    bfirst (2--^|10) = ord '\002'
+    optNF bhead "" = None
+    optNF bhead "1" = Some (ord '1')
+    optNF bhead "123456789" = Some (ord '1')
+  **)
 
   let last a = if len a = 0 then raise Not_found else unsafe_get a (len a - 1)
-  let popped = slice 0 (-2)
+  (**T
+    blast "123" = ord '3'
+    blast "1" = ord '1'
+    optNF blast "" = None
+  **)
 
   let pop a = (popped a, last a)
+  (**T
+    bpop "123" = ("12", ord '3')
+    optNF bpop "" = None
+    optNF bpop "1" = Some ("", ord '1')
+    optNF bpop "12" = Some ("1", ord '2')
+  **)
   let push v a = append a (string_of_char (chr v))
+  (**T
+    bpush 10 (1--^|9) = (1--^|10)
+    bpush 1 "\000" = (0--^|1)
+    bpush 0 "" = "\000"
+  **)
 
   let shift a = (tail a, first a)
+  (**T
+    bshift (1--^|10) = ((2--^|10), 1)
+    optNF bshift "" = None
+    optNF bshift "1" = Some ("", ord '1')
+  **)
   let unshift v a = append (string_of_char (chr v)) a
+  (**T
+    bunshift 0 (1--^|10) = (0--^|10)
+    bunshift 0 "\001" = (0--^|1)
+    bunshift 0 "" = "\000"
+  **)
 
-  let take n s = sub 0 n s
-  let takeWhile f s = take (maybeNF (len s-1) (findIndex (fun v -> not (f v))) s + 1) s
+  let takeWhile f s = take (maybeNF (len s) (findIndex (fun v -> not (f v))) s) s
+  (**T
+    btakeWhile (lt 5) (1--^|10) = (1--^|4)
+    btakeWhile (lt 5) (6--^|10) = ""
+    btakeWhile (lt 5) "" = ""
+    btakeWhile (lt 5) (1--^|3) = (1--^|3)
+  **)
+  let takeUntil f s = take (maybeNF (len s) (findIndex (fun v -> f v)) s) s
+  (**T
+    btakeUntil (gte 5) (1--^|10) = (1--^|4)
+    btakeUntil (gte 5) (6--^|10) = ""
+    btakeUntil (gte 5) "" = ""
+    btakeUntil (gte 5) (1--^|3) = (1--^|3)
+  **)
 
-  let drop n s = sub (-n) (len s - n) s
   let dropWhile f s = drop (maybeNF (len s) (findIndex (fun v -> not (f v))) s) s
-
-  let splitAt n xs = (take n xs, drop n xs)
+  (**T
+    bdropWhile (lt 5) (1--^|10) = (5--^|10)
+    bdropWhile (lt 5) (6--^|10) = (6--^|10)
+    bdropWhile (lt 5) "" = ""
+    bdropWhile (lt 5) (1--^|3) = ""
+  **)
+  let dropUntil f s = drop (maybeNF (len s) (findIndex (fun v -> f v)) s) s
+  (**T
+    bdropUntil (gte 5) (1--^|10) = (5--^|10)
+    bdropUntil (gte 5) (6--^|10) = (6--^|10)
+    bdropUntil (gte 5) "" = ""
+    bdropUntil (gte 5) (1--^|3) = ""
+  **)
 
   let break f s = splitAt (maybeNF (len s) (findIndex f) s) s
+  (**T
+    bbreak (gt 5) "\004\003\006\002" = ("\004\003", "\006\002")
+    bbreak (gt 5) (1--^|10) = ((1--^|5), (6--^|10))
+  **)
   let span f s = break (fun v -> not (f v)) s
+  (**T
+    bspan (gt (ord '5')) "6006" = ("6", "006")
+    bspan (lessOrEqualTo (ord '5')) ('0'--^'9') = ("012345", "6789")
+    bspan (gt (ord '5')) "" = ("", "")
+    bspan (gt (ord '5')) "6" = ("6", "")
+    bspan (gt (ord '5')) "0" = ("", "0")
+    bspan (gt (ord '5')) "06" = ("", "06")
+    bspan (gt (ord '5')) "60" = ("6", "0")
+    bspan (gt (ord '5')) "66" = ("66", "")
+    bspan (gt (ord '5')) "00" = ("", "00")
+  **)
 
   let interlace elem s =
-    init (fun i -> if i mod 2 = 0 then unsafe_get s (i/2) else elem) (2 * len s - 1)
+    init (fun i -> if i mod 2 = 0 then unsafe_get s (i/2) else elem) (max 0 (2 * len s - 1))
+  (**T
+    binterlace (ord '0') "123" = "10203"
+    binterlace (ord '-') "abcde" = "a-b-c-d-e"
+    binterlace (ord '0') "" = ""
+    binterlace (ord '0') "1" = "1"
+    binterlace (ord '0') "12" = "102"
+  **)
+
 
   let reject f s = filter (fun v -> not (f v)) s
+ (**T
+    breject (gt 4) (1--^|5) = (1--^|4)
+    breject (gt 4) "" = ""
+    breject (gt 0) (1--^|5) = ""
+    breject (gt 5) (1--^|5) = (1--^|5)
+    breject (gt 3) (5--^|1) = (3--^|1)
+  **)
   let without v s = filter ((<>) v) s
-
+  (**T
+    bwithout (ord '4') "124124" = "1212"
+    bwithout (ord '4') "" = ""
+    bwithout (ord '4') "4" = ""
+    bwithout (ord '4') "1" = "1"
+  **)
 
 (* Subsequence iterators *)
 
@@ -7351,6 +7509,9 @@ let brev = breverse
 let bnormalizeIndex = Bytestring.normalizeIndex
 let breplicate = Bytestring.replicate
 
+let bmapToArray = Bytestring.mapToArray
+let bmapToList = Bytestring.mapToList
+
 let bmap = Bytestring.map
 let bmapSub = Bytestring.mapSub
 let bmapSlice = Bytestring.mapSlice
@@ -7379,6 +7540,14 @@ let bfoldrSub = Bytestring.foldrSub
 let bfoldr1Sub = Bytestring.foldr1Sub
 let bfoldrSlice = Bytestring.foldrSlice
 let bfoldr1Slice = Bytestring.foldr1Slice
+
+let bmaximum = Bytestring.maximum
+let bmaximumBy = Bytestring.maximumBy
+let bmaximumByWith = Bytestring.maximumByWith
+
+let bminimum = Bytestring.minimum
+let bminimumBy = Bytestring.minimumBy
+let bminimumByWith = Bytestring.minimumByWith
 
 let bsum = Bytestring.sum
 let bsumSub = Bytestring.sumSub
@@ -7431,9 +7600,11 @@ let bunshift = Bytestring.unshift
 
 let btake = Bytestring.take
 let btakeWhile = Bytestring.takeWhile
+let btakeUntil = Bytestring.takeUntil
 
 let bdrop = Bytestring.drop
 let bdropWhile = Bytestring.dropWhile
+let bdropUntil = Bytestring.dropUntil
 
 let bsplitAt = Bytestring.splitAt
 
