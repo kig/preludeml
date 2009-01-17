@@ -5795,19 +5795,62 @@ struct
       | Pcre.Delim s -> f s
       | _ -> "") split in
     String.concat "" processed
+  (**T
+    frexreplace (fun s -> if s.[0] = 'f' then "Go" else "!") (rex ".oo") "foohoohoo" = "Go!!"
+    frexreplace (fun s -> if s.[0] = 'f' then "G" else "") (rex ".oo") "" = ""
+    frexreplace (fun s -> "G") (rex "") "..." = "G.G.G.G"
+    frexreplace (fun s -> "G") (rex "") "" = ""
+    frexreplace (fun s -> srev s) (rex "...") "" = ""
+    frexreplace (fun s -> srev s) (rex "...") "foobar" = "oofrab"
+  **)
   let fxreplace f s = frexreplace f (rx s)
+  (**T
+    fxreplace (fun s -> if s.[0] = 'f' then "Go" else "!") ( ".oo") "foohoohoo" = "Go!!"
+    fxreplace (fun s -> if s.[0] = 'f' then "G" else "") ( ".oo") "" = ""
+    fxreplace (fun s -> "G") ( "") "..." = "G.G.G.G"
+    fxreplace (fun s -> "G") ( "") "" = ""
+    fxreplace (fun s -> srev s) ( "...") "" = ""
+    fxreplace (fun s -> srev s) ( "...") "foobar" = "oofrab"
+  **)
 
-  let quote l r s = l ^ s ^ r
+  let quote l r s = concat "" [l; s; r]
+  (**T
+    quote "`" "'" "foo" = "`foo'"
+    quote "`" "'" "" = "`'"
+    quote "" "" "" = ""
+    quote "a" "" "" = "a"
+    quote "" "b" "" = "b"
+    quote "" "" "c" = "c"
+    quote "a" "b" "c" = "acb"
+  **)
 
   let join = String.concat
-  let join_array s a = join s (Array.to_list a)
+  (**T
+    join ", " ["1"; "2"; "3"] = "1, 2, 3"
+    join ", " ["1"] = "1"
+    join ", " [] = ""
+  **)
+  let joinArray s a = join s (Array.to_list a)
+  (**T
+    joinArray ", " [|"1"; "2"; "3"|] = "1, 2, 3"
+    joinArray ", " [|"1"|] = "1"
+    joinArray ", " [||] = ""
+  **)
 
   let xreplaceMulti x_rep s =
-    let pat = x_rep |> PreList.map (quote "(" ")" @. fst) |> join "|" in
-    frexreplace (fun p -> PreList.assocBy (fun x -> xmatch x p) x_rep) (rex pat) s
+    let pat = x_rep |> PreList.map (fun (k,v) -> quote "(" ")" k) |> join "|" in
+    frexreplace (fun p ->
+      let k,v = PreList.find (fun (x,_) -> xmatch x p) x_rep in
+      xreplace k v p
+    ) (rex pat) s
   (**T
     xreplaceMulti ["f.o","bar"; "b.r","foo"] "foobar" = "barfoo"
     xreplaceMulti ["f.o","bar"; "bar","foo"] "foobar" = "barfoo"
+    xreplaceMulti ["f.o","bar"; "bar","foo"] "" = ""
+    xreplaceMulti ["f(o+)","b$1r"; "bar","foo"] "foo" = "boor"
+    xreplaceMulti ["","bar"; "bar","foo"] "" = ""
+    xreplaceMulti ["f","-"; "o","+"; ""," "] "foo" = "-++ "
+    xreplaceMulti [""," "; "f","-"; "o","+"] "foo" = " f   o   o  "
   **)
 
   let replaceMulti pat_rep s =
@@ -5816,13 +5859,40 @@ struct
   (**T
     replaceMulti ["foo","bar"; "bar","foo"] "foobar" = "barfoo"
     replaceMulti ["f.o","bar"; "bar","foo"] "foobar" = "foofoo"
+    replaceMulti ["f.o","bar"; "bar","foo"] "" = ""
+    replaceMulti ["f.o","bar"; "bar","foo"] "f.o" = "bar"
+    replaceMulti ["","bar"; "bar","foo"] "" = ""
+    replaceMulti [""," "; "f","-"; "o","+"] "foo" = "- + + "
   **)
 
-  let words s = rexsplit (rx "\\s+") s
+  let words s = rexsplit ~delete_empty:true (rx "\\s+") s
+  (**T
+    words "  foo\nbar baz\tqux  \n  bob  " = ["foo"; "bar"; "baz"; "qux"; "bob"]
+    words "" = []
+    words "1" = ["1"]
+    words " " = []
+  **)
   let unwords a = join " " a
+  (**T
+    unwords ["foo"; "bar"; "baz"; "qux"; "bob"] = "foo bar baz qux bob"
+    unwords [] = ""
+    unwords ["1"] = "1"
+  **)
 
   let lines s = split "\n" s
-  let unlines a = join "\n" a ^ "\n"
+  (**T
+    lines "  foo\nbar\n\nbaz\tqux  \n  bob  " = ["  foo"; "bar"; ""; "baz\tqux  "; "  bob  "]
+    lines "" = []
+    lines "1" = ["1"]
+    lines "\n" = ["";  ""]
+  **)
+  let unlines a = join "\n" a
+  (**T
+    unlines ["  foo"; "bar"; ""; "baz\tqux  "; "  bob  "] = "  foo\nbar\n\nbaz\tqux  \n  bob  "
+    unlines [] = ""
+    unlines ["1"] = "1"
+    unlines ["";  ""] = "\n"
+  **)
 
   let rexsplitPartition rex s =
     let rec aux splits l = match splits with
@@ -5838,7 +5908,21 @@ struct
     let string_split =
       PreList.map (function Pcre.Text s | Pcre.Delim s -> s | _ -> "") padded_split in
     aux string_split []
+  (**T
+    rexsplitPartition (rex "f.o") "foobarfnobu" = (["","foo" ; "bar","fno"], Some "bu")
+    rexsplitPartition (rex "f.o") "foobarfno" = (["","foo" ; "bar","fno"], None)
+    rexsplitPartition (rex "f") "bar" = ([], Some "bar")
+    rexsplitPartition (rex "") "fo" = (["","" ; "f","" ; "o",""], None)
+    rexsplitPartition (rex "") "" = ([], None)
+  **)
   let xsplitPartition x s = rexsplitPartition (rex x) s
+  (**T
+    xsplitPartition "f.o" "foobarfnobu" = (["","foo" ; "bar","fno"], Some "bu")
+    xsplitPartition "f.o" "foobarfno" = (["","foo" ; "bar","fno"], None)
+    xsplitPartition "f" "bar" = ([], Some "bar")
+    xsplitPartition "" "fo" = (["","" ; "f","" ; "o",""], None)
+    xsplitPartition "" "" = ([], None)
+  **)
 
 
   (* Parallel operations *)
@@ -6890,7 +6974,7 @@ let fxreplace = PreString.fxreplace
 let quote = PreString.quote
 
 let join = PreString.join
-let join_array = PreString.join_array
+let joinArray = PreString.joinArray
 
 let xreplaceMulti = PreString.xreplaceMulti
 let replaceMulti = PreString.replaceMulti
