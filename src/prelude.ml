@@ -548,23 +548,23 @@ let rgbColor r g b = sprintf "rgb:%02X/%02X/%02X" (clamp8 r) (clamp8 g) (clamp8 
 **)
 
 let bashResetStyle = "\027[0m"
-let bashColor = function
-  | `Black -> "\027[0;30m"
-  | `BoldBlack -> "\027[1;30m"
-  | `Blue -> "\027[0;34m"
-  | `BoldBlue -> "\027[1;34m"
-  | `Green -> "\027[0;32m"
-  | `BoldGreen -> "\027[1;32m"
-  | `Cyan -> "\027[0;36m"
-  | `BoldCyan -> "\027[1;36m"
-  | `Red -> "\027[0;31m"
-  | `BoldRed -> "\027[1;31m"
-  | `Purple -> "\027[0;35m"
-  | `BoldPurple -> "\027[1;35m"
-  | `Brown -> "\027[0;33m"
-  | `Yellow -> "\027[1;33m"
-  | `LightGray -> "\027[0;37m"
-  | `White -> "\027[1;37m"
+let bashBlack = "\027[0;30m"
+let bashBoldBlack = "\027[1;30m"
+let bashBlue = "\027[0;34m"
+let bashBoldBlue = "\027[1;34m"
+let bashGreen = "\027[0;32m"
+let bashBoldGreen = "\027[1;32m"
+let bashCyan = "\027[0;36m"
+let bashBoldCyan = "\027[1;36m"
+let bashRed = "\027[0;31m"
+let bashBoldRed = "\027[1;31m"
+let bashPurple = "\027[0;35m"
+let bashBoldPurple = "\027[1;35m"
+let bashBrown = "\027[0;33m"
+let bashYellow = "\027[1;33m"
+let bashLightGray = "\027[0;37m"
+let bashWhite = "\027[1;37m"
+
 
 (* Unfolds and recursion *)
 
