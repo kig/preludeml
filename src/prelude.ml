@@ -8198,7 +8198,8 @@ let (--^|) = Bytestring.range
 
 
 
-(* File opening wrappers *)
+(** File opening wrappers *)
+(* testing priority = low, wrappers of tested functions *)
 
 let open_append = open_out_gen [Open_wronly; Open_creat; Open_append; Open_text] 0o666
 let open_append_bin = open_out_gen [Open_wronly; Open_creat; Open_append; Open_binary] 0o666
@@ -8217,7 +8218,38 @@ let withUnixFileAppend ?(flags=[Unix.O_APPEND;Unix.O_CREAT]) ?(perm=0o644) fn f 
   finally Unix.close f (Unix.openfile fn flags perm)
 
 
-(* Common filesystem operations *)
+(** Common filesystem operations *)
+
+let stat = Unix.lstat
+
+let fileSize filename = (stat filename).Unix.st_size
+
+let fileKind fn = (stat fn).Unix.st_kind
+let isKind kind fn = fileKind fn = kind
+let isDir = isKind Unix.S_DIR
+let isFile = isKind Unix.S_REG
+let isLink = isKind Unix.S_LNK
+let isFIFO = isKind Unix.S_FIFO
+let isSocket = isKind Unix.S_SOCK
+let isCharDev = isKind Unix.S_CHR
+let isBlockDev = isKind Unix.S_BLK
+
+let fileInode fn = (stat fn).Unix.st_ino
+let filePermissions fn = (stat fn).Unix.st_perm
+let fileDevice fn = (stat fn).Unix.st_dev
+let fileUid fn = (stat fn).Unix.st_uid
+let fileOwner fn = userName (fileUid fn)
+let fileGid fn = (stat fn).Unix.st_gid
+let fileGroup fn = groupName (fileGid fn)
+
+let isReadable fn = try Unix.access fn [Unix.R_OK]; true with _ -> false
+let isWritable fn = try Unix.access fn [Unix.W_OK]; true with _ -> false
+let isExecutable fn = try Unix.access fn [Unix.X_OK]; true with _ -> false
+
+let atime fn = (stat fn).Unix.st_atime
+let mtime fn = (stat fn).Unix.st_mtime
+let ctime fn = (stat fn).Unix.st_ctime
+
 
 let rename = Sys.rename
 (***
@@ -8244,12 +8276,28 @@ let ls d = PreArray.to_list (Sys.readdir d)
   iter (ignoreE rm) full_fns
 **)
 let rm = Sys.remove
+(***
+  let fn = Tests.data_dir ^/ "foo" in
+  touch fn;
+  "fn exists" @? (fileExists fn);
+  rm fn;
+  "fn doesn't exist" @? (not (fileExists fn))
+**)
 let ln_s = Unix.symlink
 let ln = Unix.link
 let mkdir ?(perm=0o755) s = Unix.mkdir s perm
 let rmdir = Unix.rmdir
 
 let touch fn = withFileOut fn (fun _ -> Unix.utimes fn 0.0 0.0)
+(***
+  let fn = Tests.data_dir ^/ "foo" in
+  ignoreE rm fn;
+  "fn doesn't exist" @? (not (fileExists fn));
+  touch fn;
+  "fn exists" @? (fileExists fn);
+  rm fn;
+  "fn doesn't exist" @? (not (fileExists fn))
+**)
 
 let getcwd = Sys.getcwd
 let pwd = Sys.getcwd
@@ -8257,6 +8305,22 @@ let chdir = Unix.chdir
 let cd = Unix.chdir
 
 let chmod perm filename = Unix.chmod filename perm
+(***
+  let fn = Tests.data_dir ^/ "foo" in
+  touch fn;
+  chmod 0o600 fn;
+  "readable" @? (isReadable fn);
+  "writable" @? (isWritable fn);
+  chmod 0o400 fn;
+  "readable" @? (isReadable fn);
+  "not writable" @? (not @@ isWritable fn);
+  "not executable" @? (not @@ isExecutable fn);
+  chmod 0o500 fn;
+  "readable" @? (isReadable fn);
+  "not writable" @? (not @@ isWritable fn);
+  "executable" @? (isExecutable fn);
+  rm fn
+**)
 
 let fileUid fn = (Unix.stat fn).Unix.st_uid
 let fileGid fn = (Unix.stat fn).Unix.st_gid
@@ -8451,32 +8515,6 @@ let readAll ch =
   let ret = Buffer.create 4096 in
   let buf = String.create 4096 in
   aux ch ret buf
-
-let stat = Unix.lstat
-
-let fileSize filename = (stat filename).Unix.st_size
-
-let fileKind fn = (stat fn).Unix.st_kind
-let isKind kind fn = fileKind fn = kind
-let isDir = isKind Unix.S_DIR
-let isFile = isKind Unix.S_REG
-let isLink = isKind Unix.S_LNK
-let isFIFO = isKind Unix.S_FIFO
-let isSocket = isKind Unix.S_SOCK
-let isCharDev = isKind Unix.S_CHR
-let isBlockDev = isKind Unix.S_BLK
-
-let fileInode fn = (stat fn).Unix.st_ino
-let filePermissions fn = (stat fn).Unix.st_perm
-let fileDevice fn = (stat fn).Unix.st_dev
-let fileUid fn = (stat fn).Unix.st_uid
-let fileOwner fn = userName (fileUid fn)
-let fileGid fn = (stat fn).Unix.st_gid
-let fileGroup fn = groupName (fileGid fn)
-
-let atime fn = (stat fn).Unix.st_atime
-let mtime fn = (stat fn).Unix.st_mtime
-let ctime fn = (stat fn).Unix.st_ctime
 
 let readFile filename = withFile filename readAll
 let writeFile filename str = withFileOut filename (flip output_string str)

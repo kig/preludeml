@@ -12,3 +12,28 @@ When writing tests, try to write the following cases:
 7. in-order checks for iterators where possible and sensible
    e.g. (let i = ref 0 in ignore (map (fun j -> i:=j;j) (1--10)); !i = 10)
         mapWith iter id (1--10) = (1--10)
+
+
+Testing priorities:
+
+  1. High impact of bugs
+    - filesystem operations
+    - unsafe_set and unsafe_get
+
+  2. High probability of bugs
+    - lots of new code
+    - complicated implementation
+    - subtle implementation
+    - indexing
+    - imperative code
+
+  3. Combinators
+
+  4. Normal code
+
+  5. Combinator-created utility one-liners
+
+  6. Infix aliases
+    - argument order
+
+  7. Aliases
