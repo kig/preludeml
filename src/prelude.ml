@@ -6819,61 +6819,272 @@ struct
 
 (* Subsequence iterators *)
 
+
   let iterSub i len f s =
     let first, sub_len = sub_start_and_length i len s in
     for j=first to first+sub_len-1 do f (unsafe_get s j) done
+  (**T
+    mapWith (biterSub 0 10) id (1--^|10) = ((1--10))
+    mapWith (biterSub 2 6) id (1--^|10) = ((3--8))
+    mapWith (biterSub (-2) 10) id (1--^|10) = ((9--10))
+    mapWith (biterSub (-18) 10) id (1--^|10) = [1; 2]
+    mapWith (biterSub (-10) 10) id (1--^|10) = ((1--10))
+    mapWith (biterSub (-12) 1) id (1--^|10) = []
+    mapWith (biterSub 9 10) id (1--^|10) = [10]
+    mapWith (biterSub (-19) 10) id (1--^|10) = [1]
+    mapWith (biterSub (-20) 10) id (1--^|10) = []
+    mapWith (biterSub (-20) 20) id (1--^|10) = ((1--10))
+    mapWith (biterSub (-20) 50) id "" = []
+    mapWith (biterSub (-20) 50) id "\001" = [1]
+  **)
 
   let iterSlice i j f s =
     let i, len = slice_to_sub i j s in
     iterSub i len f s
+  (**T
+    mapWith (biterSlice 0 9) id (1--^|10) = ((1--10))
+    mapWith (biterSlice 2 6) id (1--^|10) = ((3--7))
+    mapWith (biterSlice 6 2) id (1--^|10) = []
+    mapWith (biterSlice 0 0) id (1--^|10) = [1]
+    mapWith (biterSlice 1 0) id (1--^|10) = []
+    mapWith (biterSlice 9 9) id (1--^|10) = [10]
+    mapWith (biterSlice 9 8) id (1--^|10) = []
+    mapWith (biterSlice (-2) (-1)) id (1--^|10) = [9; 10]
+    mapWith (biterSlice (-12) 0) id (1--^|10) = [1]
+    mapWith (biterSlice (-12) (-1)) id (1--^|10) = ((1--10))
+    mapWith (biterSlice (-12) (-11)) id (1--^|10) = []
+    mapWith (biterSlice (-5) (-1)) id (1--^|10) = ((6--10))
+    mapWith (biterSlice (-20) 20) id (1--^|10) = ((1--10))
+    mapWith (biterSlice (-20) 50) id "" = []
+    mapWith (biterSlice (-20) 50) id "\001" = [1]
+  **)
 
   let mapSub i len f s =
     let first, sub_len = sub_start_and_length i len s in
     init (fun j -> f (unsafe_get s (first+j))) sub_len
+  (**T
+    bmapSub 0 10 succ (1--^|10) = (2--^|11)
+    bmapSub 2 6 id (1--^|10) = (3--^|8)
+    bmapSub (-2) 10 id (1--^|10) = (9--^|10)
+    bmapSub (-18) 10 id (1--^|10) = "\001\002"
+    bmapSub (-10) 10 id (1--^|10) = (1--^|10)
+    bmapSub (-12) 1 id (1--^|10) = ""
+    bmapSub 9 10 id (1--^|10) = "\010"
+    bmapSub (-19) 10 id (1--^|10) = "\001"
+    bmapSub (-20) 10 id (1--^|10) = ""
+    bmapSub (-20) 20 id (1--^|10) = (1--^|10)
+    bmapSub (-20) 50 id "" = ""
+    bmapSub (-20) 50 id "\001" = "\001"
+  **)
 
   let mapSlice i j f s =
     let i, len = slice_to_sub i j s in
     mapSub i len f s
+  (**T
+    bmapSlice 0 9 id (1--^|10) = (1--^|10)
+    bmapSlice 2 6 id (1--^|10) = (3--^|7)
+    bmapSlice 6 2 id (1--^|10) = ""
+    bmapSlice 0 0 id (1--^|10) = "\001"
+    bmapSlice 1 0 id (1--^|10) = ""
+    bmapSlice 9 9 id (1--^|10) = "\010"
+    bmapSlice 9 8 id (1--^|10) = ""
+    bmapSlice (-2) (-1) id (1--^|10) = "\009\010"
+    bmapSlice (-12) 0 id (1--^|10) = "\001"
+    bmapSlice (-12) (-1) id (1--^|10) = (1--^|10)
+    bmapSlice (-12) (-11) id (1--^|10) = ""
+    bmapSlice (-5) (-1) id (1--^|10) = (6--^|10)
+    bmapSlice (-20) 20 id (1--^|10) = (1--^|10)
+    bmapSlice (-20) 50 id "" = ""
+    bmapSlice (-20) 50 id "\001" = "\001"
+  **)
 
   let foldlSub i len f init s =
     let rec aux f s v i j =
       if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
     let first, sub_len = sub_start_and_length i len s in
     aux f s init first (first+sub_len-1)
+  (**T
+    bfoldlSub 0 10 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldlSub (-10) 10 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldlSub (-20) 20 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldlSub 0 3 (+) 0 (1--^|10) = bsum (1--^|3)
+    bfoldlSub 3 3 (+) 0 (1--^|10) = bsum (4--^|6)
+    bfoldlSub (-3) 3 (+) 0 (1--^|10) = bsum (8--^|10)
+    bfoldlSub (-1) 3 (+) 0 (1--^|10) = bsum (10--^|10)
+    bfoldlSub (-3) 1 (+) 0 (1--^|10) = bsum (8--^|8)
+    bfoldlSub 20 (-20) (+) 0 (1--^|10) = bsum ""
+    bfoldlSub (-20) 10 (+) 0 (1--^|10) = bsum ""
+    bfoldlSub 10 0 (+) 0 (1--^|10) = bsum ""
+    bfoldlSub 3 (-1) (+) 0 (1--^|10) = bsum ""
+
+    bfoldlSub 0 1 (+) 0 (1--^|1) = bsum (1--^|1)
+    bfoldlSub 0 1 (+) 0 "" = bsum ""
+  **)
 
   let foldl1Sub i len f s =
-    let i = normalizeIndex i s in
-    if i < 0 || i >= length s then raise Not_found;
-    foldlSub (i+1) (len-1) f (unsafe_get s i) s
+    let rec aux f s v i j =
+      if i > j then v else aux f s (f v (unsafe_get s i)) (i+1) j in
+    let first, sub_len = sub_start_and_length i len s in
+    if sub_len <= 0 || first < 0 || first >= length s
+    then raise Not_found
+    else aux f s (unsafe_get s first) (first+1) (first+sub_len-1)
+  (**T
+    bfoldl1Sub 0 10 (+) (1--^|10) = bsum (1--^|10)
+    bfoldl1Sub (-10) 10 (+) (1--^|10) = bsum (1--^|10)
+    bfoldl1Sub (-20) 20 (+) (1--^|10) = bsum (1--^|10)
+    bfoldl1Sub 0 3 (+) (1--^|10) = bsum (1--^|3)
+    bfoldl1Sub 3 3 (+) (1--^|10) = bsum (4--^|6)
+    bfoldl1Sub (-3) 3 (+) (1--^|10) = bsum (8--^|10)
+    bfoldl1Sub (-1) 3 (+) (1--^|10) = bsum (10--^|10)
+    bfoldl1Sub (-3) 1 (+) (1--^|10) = bsum (8--^|8)
+    optNF (bfoldl1Sub 20 (-20) (+)) (1--^|10) = None
+    optNF (bfoldl1Sub (-20) 10 (+)) (1--^|10) = None
+    optNF (bfoldl1Sub 10 0 (+)) (1--^|10) = None
+    optNF (bfoldl1Sub 3 (-1) (+)) (1--^|10) = None
+
+    bfoldl1Sub 0 1 (+) (1--^|1) = bsum (1--^|1)
+    optNF (bfoldl1Sub 0 1 (+)) "" = None
+  **)
 
   let foldrSub i len f init s =
     let rec aux f s v i j =
       if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
     let first, sub_len = sub_start_and_length i len s in
     aux f s init first (first+sub_len-1)
+  (**T
+    bfoldrSub 0 10 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldrSub (-10) 10 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldrSub (-20) 20 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldrSub 0 3 (+) 0 (1--^|10) = bsum (1--^|3)
+    bfoldrSub 3 3 (+) 0 (1--^|10) = bsum (4--^|6)
+    bfoldrSub (-3) 3 (+) 0 (1--^|10) = bsum (8--^|10)
+    bfoldrSub (-1) 3 (+) 0 (1--^|10) = bsum (10--^|10)
+    bfoldrSub (-3) 1 (+) 0 (1--^|10) = bsum (8--^|8)
+    bfoldrSub 20 (-20) (+) 0 (1--^|10) = bsum ""
+    bfoldrSub (-20) 10 (+) 0 (1--^|10) = bsum ""
+    bfoldrSub 10 0 (+) 0 (1--^|10) = bsum ""
+    bfoldrSub 3 (-1) (+) 0 (1--^|10) = bsum ""
+
+    bfoldrSub 0 1 (+) 0 (1--^|1) = bsum (1--^|1)
+    bfoldrSub 0 1 (+) 0 "" = bsum ""
+  **)
 
   let foldr1Sub i len f s =
-    let i = normalizeIndex i s in
-    let j = i + len - 1 in
-    if j < 0 || j >= length s then raise Not_found;
-    foldrSub i (len-1) f (unsafe_get s j) s
+    let rec aux f s v i j =
+      if j < i then v else aux f s (f v (unsafe_get s j)) i (j-1) in
+    let first, sub_len = sub_start_and_length i len s in
+    if sub_len <= 0 || first < 0 || first >= length s
+    then raise Not_found
+    else aux f s (unsafe_get s first) (first+1) (first+sub_len-1)
+  (**T
+    bfoldr1Sub 0 10 (+) (1--^|10) = bsum (1--^|10)
+    bfoldr1Sub (-10) 10 (+) (1--^|10) = bsum (1--^|10)
+    bfoldr1Sub (-20) 20 (+) (1--^|10) = bsum (1--^|10)
+    bfoldr1Sub 0 3 (+) (1--^|10) = bsum (1--^|3)
+    bfoldr1Sub 3 3 (+) (1--^|10) = bsum (4--^|6)
+    bfoldr1Sub (-3) 3 (+) (1--^|10) = bsum (8--^|10)
+    bfoldr1Sub (-1) 3 (+) (1--^|10) = bsum (10--^|10)
+    bfoldr1Sub (-3) 1 (+) (1--^|10) = bsum (8--^|8)
+    optNF (bfoldr1Sub 20 (-20) (+)) (1--^|10) = None
+    optNF (bfoldr1Sub (-20) 10 (+)) (1--^|10) = None
+    optNF (bfoldr1Sub 10 0 (+)) (1--^|10) = None
+    optNF (bfoldr1Sub 3 (-1) (+)) (1--^|10) = None
 
+    bfoldr1Sub 0 1 (+) (1--^|1) = bsum (1--^|1)
+    optNF (bfoldr1Sub 0 1 (+)) "" = None
+  **)
 
   let foldlSlice i j f init s =
     let i, len = slice_to_sub i j s in
     foldlSub i len f init s
+  (**T
+    bfoldlSlice 0 10 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldlSlice 0 9 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldlSlice 0 (-1) (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldlSlice (-10) 10 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldlSlice (-20) 20 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldlSlice (-20) 10 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldlSlice 0 3 (+) 0 (1--^|10) = bsum (1--^|4)
+    bfoldlSlice 3 (-1) (+) 0 (1--^|10) = bsum (4--^|10)
+    bfoldlSlice 3 3 (+) 0 (1--^|10) = bsum (4--^|4)
+    bfoldlSlice (-1) (-1) (+) 0 (1--^|10) = bsum (10--^|10)
+    bfoldlSlice (-3) 3 (+) 0 (1--^|10) = bsum ""
+    bfoldlSlice (-3) 1 (+) 0 (1--^|10) = bsum ""
+    bfoldlSlice 20 (-20) (+) 0 (1--^|10) = bsum ""
+    bfoldlSlice 10 0 (+) 0 (1--^|10) = bsum ""
+
+    bfoldlSlice 0 1 (+) 0 (1--^|1) = bsum (1--^|1)
+    bfoldlSlice 0 1 (+) 0 "" = bsum ""
+  **)
 
   let foldl1Slice i j f s =
     let i, len = slice_to_sub i j s in
     foldl1Sub i len f s
+  (**T
+    bfoldl1Slice 0 10 (+) (1--^|10) = bsum (1--^|10)
+    bfoldl1Slice 0 9 (+) (1--^|10) = bsum (1--^|10)
+    bfoldl1Slice 0 (-1) (+) (1--^|10) = bsum (1--^|10)
+    bfoldl1Slice (-10) 10 (+) (1--^|10) = bsum (1--^|10)
+    bfoldl1Slice (-20) 20 (+) (1--^|10) = bsum (1--^|10)
+    bfoldl1Slice (-20) 10 (+) (1--^|10) = bsum (1--^|10)
+    bfoldl1Slice 0 3 (+) (1--^|10) = bsum (1--^|4)
+    bfoldl1Slice 3 (-1) (+) (1--^|10) = bsum (4--^|10)
+    bfoldl1Slice 3 3 (+) (1--^|10) = bsum (4--^|4)
+    bfoldl1Slice (-1) (-1) (+) (1--^|10) = bsum (10--^|10)
+    optNF (bfoldl1Slice (-3) 3 (+)) (1--^|10) = None
+    optNF (bfoldl1Slice (-3) 1 (+)) (1--^|10) = None
+    optNF (bfoldl1Slice 20 (-20) (+)) (1--^|10) = None
+    optNF (bfoldl1Slice 10 0 (+)) (1--^|10) = None
+
+    bfoldl1Slice 0 1 (+) (1--^|1) = bsum (1--^|1)
+    optNF (bfoldl1Slice 0 1 (+)) "" = None
+  **)
 
   let foldrSlice i j f init s =
     let i, len = slice_to_sub i j s in
     foldrSub i len f init s
+  (**T
+    bfoldrSlice 0 10 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldrSlice 0 9 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldrSlice 0 (-1) (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldrSlice (-10) 10 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldrSlice (-20) 20 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldrSlice (-20) 10 (+) 0 (1--^|10) = bsum (1--^|10)
+    bfoldrSlice 0 3 (+) 0 (1--^|10) = bsum (1--^|4)
+    bfoldrSlice 3 (-1) (+) 0 (1--^|10) = bsum (4--^|10)
+    bfoldrSlice 3 3 (+) 0 (1--^|10) = bsum (4--^|4)
+    bfoldrSlice (-1) (-1) (+) 0 (1--^|10) = bsum (10--^|10)
+    bfoldrSlice (-3) 3 (+) 0 (1--^|10) = bsum ""
+    bfoldrSlice (-3) 1 (+) 0 (1--^|10) = bsum ""
+    bfoldrSlice 20 (-20) (+) 0 (1--^|10) = bsum ""
+    bfoldrSlice 10 0 (+) 0 (1--^|10) = bsum ""
+
+    bfoldrSlice 0 1 (+) 0 (1--^|1) = bsum (1--^|1)
+    bfoldrSlice 0 1 (+) 0 "" = bsum ""
+  **)
 
   let foldr1Slice i j f s =
     let i, len = slice_to_sub i j s in
     foldr1Sub i len f s
+  (**T
+    bfoldr1Slice 0 10 (+) (1--^|10) = bsum (1--^|10)
+    bfoldr1Slice 0 9 (+) (1--^|10) = bsum (1--^|10)
+    bfoldr1Slice 0 (-1) (+) (1--^|10) = bsum (1--^|10)
+    bfoldr1Slice (-10) 10 (+) (1--^|10) = bsum (1--^|10)
+    bfoldr1Slice (-20) 20 (+) (1--^|10) = bsum (1--^|10)
+    bfoldr1Slice (-20) 10 (+) (1--^|10) = bsum (1--^|10)
+    bfoldr1Slice 0 3 (+) (1--^|10) = bsum (1--^|4)
+    bfoldr1Slice 3 (-1) (+) (1--^|10) = bsum (4--^|10)
+    bfoldr1Slice 3 3 (+) (1--^|10) = bsum (4--^|4)
+    bfoldr1Slice (-1) (-1) (+) (1--^|10) = bsum (10--^|10)
+    optNF (bfoldr1Slice (-3) 3 (+)) (1--^|10) = None
+    optNF (bfoldr1Slice (-3) 1 (+)) (1--^|10) = None
+    optNF (bfoldr1Slice 20 (-20) (+)) (1--^|10) = None
+    optNF (bfoldr1Slice 10 0 (+)) (1--^|10) = None
+
+    bfoldr1Slice 0 1 (+) (1--^|1) = bsum (1--^|1)
+    optNF (bfoldr1Slice 0 1 (+)) "" = None
+  **)
 
   let add_int = (+)
   let add_float i c = i +. float c
