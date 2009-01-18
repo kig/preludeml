@@ -8307,6 +8307,7 @@ let cd = Unix.chdir
 let chmod perm filename = Unix.chmod filename perm
 (***
   let fn = Tests.data_dir ^/ "foo" in
+  ignoreE rm fn;
   touch fn;
   chmod 0o600 fn;
   "readable" @? (isReadable fn);
@@ -8323,6 +8324,13 @@ let chmod perm filename = Unix.chmod filename perm
 **)
 
 let fileUid fn = (Unix.stat fn).Unix.st_uid
+(***
+  let fn = Tests.data_dir ^/ "foo" in
+  ignoreE rm fn;
+  touch fn;
+  "fileUid fn = currentUid ()" @? (fileUid fn = currentUid ());
+  rm fn
+**)
 let fileGid fn = (Unix.stat fn).Unix.st_gid
 
 let chownUid ?gid uid fn =
