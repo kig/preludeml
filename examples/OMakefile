@@ -1,0 +1,17 @@
+NATIVE_ENABLED = true
+BYTE_ENABLED = true
+
+USE_OCAMLFIND = true
+
+OCAMLPACKS[] = unix pcre netstring bigarray graphics
+OCAMLINCLUDES += $(ROOT)/src
+
+OCamlProgram(blurred_mandelbrot, blurred_mandelbrot $(ROOT)/src/prelude)
+
+.DEFAULT: blurred_mandelbrot
+
+.PHONY: clean
+
+clean:
+  rm -f $(filter-proper-targets $(ls R, .))
+
