@@ -7092,34 +7092,293 @@ struct
   let mul_float i c = i *. float c
 
   let sum a = foldl add_int 0 a
+  (**T
+    bsum (1--^|10) = 55
+    bsum "\001\002" = 3
+    bsum "\001" = 1
+    bsum "\000" = 0
+    bsum "" = 0
+  **)
   let sumf a = foldl add_float 0. a
+  (**T
+    bsumf (1--^|10) = 55.
+    bsumf "\001\002" = 3.
+    bsumf "\001" = 1.
+    bsumf "\000" = 0.
+    bsumf "" = 0.
+  **)
   let product a = foldl mul_int 1 a
+  (**T
+    bproduct (1--^|10) = 3628800
+    bproduct "\001\002" = 2
+    bproduct "\001" = 1
+    bproduct "\000" = 0
+    bproduct "" = 1
+  **)
   let productf a = foldl mul_float 1. a
+  (**T
+    bproductf (1--^|10) = 3628800.
+    bproductf "\001\002" = 2.
+    bproductf "\001" = 1.
+    bproductf "\000" = 0.
+    bproductf "" = 1.
+  **)
   let average a = sum a / len a
+  (**T
+    baverage (1--^|10) = 5
+    baverage "\001" = 1
+    optEx Division_by_zero baverage "" = None
+  **)
   let averagef a = sumf a /. float (len a)
+  (**T
+    baveragef (1--^|10) = 5.5
+    baveragef "\001" = 1.
+    isNaN (baveragef "")
+  **)
 
   let sumSub i len a = foldlSub i len add_int 0 a
+  (**T
+    bsumSub 0 10 (1--^|10) = bsum (1--^|10)
+    bsumSub (-10) 10 (1--^|10) = bsum (1--^|10)
+    bsumSub (-20) 20 (1--^|10) = bsum (1--^|10)
+    bsumSub 0 3 (1--^|10) = bsum (1--^|3)
+    bsumSub 3 3 (1--^|10) = bsum (4--^|6)
+    bsumSub (-3) 3 (1--^|10) = bsum (8--^|10)
+    bsumSub (-1) 3 (1--^|10) = bsum (10--^|10)
+    bsumSub (-3) 1 (1--^|10) = bsum (8--^|8)
+    bsumSub 20 (-20) (1--^|10) = bsum ""
+    bsumSub (-20) 10 (1--^|10) = bsum ""
+    bsumSub 10 0 (1--^|10) = bsum ""
+    bsumSub 3 (-1) (1--^|10) = bsum ""
+
+    bsumSub 0 1 (1--^|1) = bsum (1--^|1)
+    bsumSub 0 1 "" = bsum ""
+  **)
   let sumSubf i len a = foldlSub i len add_float 0. a
+  (**T
+    bsumSubf 0 10 (1--^|10) = bsumf (1--^|10)
+    bsumSubf (-10) 10 (1--^|10) = bsumf (1--^|10)
+    bsumSubf (-20) 20 (1--^|10) = bsumf (1--^|10)
+    bsumSubf 0 3 (1--^|10) = bsumf (1--^|3)
+    bsumSubf 3 3 (1--^|10) = bsumf (4--^|6)
+    bsumSubf (-3) 3 (1--^|10) = bsumf (8--^|10)
+    bsumSubf (-1) 3 (1--^|10) = bsumf (10--^|10)
+    bsumSubf (-3) 1 (1--^|10) = bsumf (8--^|8)
+    bsumSubf 20 (-20) (1--^|10) = bsumf ""
+    bsumSubf (-20) 10 (1--^|10) = bsumf ""
+    bsumSubf 10 0 (1--^|10) = bsumf ""
+    bsumSubf 3 (-1) (1--^|10) = bsumf ""
+
+    bsumSubf 0 1 (1--^|1) = bsumf (1--^|1)
+    bsumSubf 0 1 "" = bsumf ""
+  **)
 
   let sumSlice i j a = foldlSlice i j add_int 0 a
+  (**T
+    bsumSlice 0 10 (1--^|10) = bsum (1--^|10)
+    bsumSlice 0 9 (1--^|10) = bsum (1--^|10)
+    bsumSlice 0 (-1) (1--^|10) = bsum (1--^|10)
+    bsumSlice (-10) 10 (1--^|10) = bsum (1--^|10)
+    bsumSlice (-20) 20 (1--^|10) = bsum (1--^|10)
+    bsumSlice (-20) 10 (1--^|10) = bsum (1--^|10)
+    bsumSlice 0 3 (1--^|10) = bsum (1--^|4)
+    bsumSlice 3 (-1) (1--^|10) = bsum (4--^|10)
+    bsumSlice 3 3 (1--^|10) = bsum (4--^|4)
+    bsumSlice (-1) (-1) (1--^|10) = bsum (10--^|10)
+    bsumSlice (-3) 3 (1--^|10) = bsum ""
+    bsumSlice (-3) 1 (1--^|10) = bsum ""
+    bsumSlice 20 (-20) (1--^|10) = bsum ""
+    bsumSlice 10 0 (1--^|10) = bsum ""
+
+    bsumSlice 0 1 (1--^|1) = bsum (1--^|1)
+    bsumSlice 0 1 "" = bsum ""
+  **)
   let sumSlicef i j a = foldlSlice i j add_float 0. a
+  (**T
+    bsumSlicef 0 10 (1--^|10) = bsumf (1--^|10)
+    bsumSlicef 0 9 (1--^|10) = bsumf (1--^|10)
+    bsumSlicef 0 (-1) (1--^|10) = bsumf (1--^|10)
+    bsumSlicef (-10) 10 (1--^|10) = bsumf (1--^|10)
+    bsumSlicef (-20) 20 (1--^|10) = bsumf (1--^|10)
+    bsumSlicef (-20) 10 (1--^|10) = bsumf (1--^|10)
+    bsumSlicef 0 3 (1--^|10) = bsumf (1--^|4)
+    bsumSlicef 3 (-1) (1--^|10) = bsumf (4--^|10)
+    bsumSlicef 3 3 (1--^|10) = bsumf (4--^|4)
+    bsumSlicef (-1) (-1) (1--^|10) = bsumf (10--^|10)
+    bsumSlicef (-3) 3 (1--^|10) = bsumf ""
+    bsumSlicef (-3) 1 (1--^|10) = bsumf ""
+    bsumSlicef 20 (-20) (1--^|10) = bsumf ""
+    bsumSlicef 10 0 (1--^|10) = bsumf ""
+
+    bsumSlicef 0 1 (1--^|1) = bsumf (1--^|1)
+    bsumSlicef 0 1 "" = bsumf ""
+  **)
 
   let productSub i len a = foldlSub i len mul_int 1 a
+  (**T
+    bproductSub 0 10 (1--^|10) = bproduct (1--^|10)
+    bproductSub (-10) 10 (1--^|10) = bproduct (1--^|10)
+    bproductSub (-20) 20 (1--^|10) = bproduct (1--^|10)
+    bproductSub 0 3 (1--^|10) = bproduct (1--^|3)
+    bproductSub 3 3 (1--^|10) = bproduct (4--^|6)
+    bproductSub (-3) 3 (1--^|10) = bproduct (8--^|10)
+    bproductSub (-1) 3 (1--^|10) = bproduct (10--^|10)
+    bproductSub (-3) 1 (1--^|10) = bproduct (8--^|8)
+    bproductSub 20 (-20) (1--^|10) = bproduct ""
+    bproductSub (-20) 10 (1--^|10) = bproduct ""
+    bproductSub 10 0 (1--^|10) = bproduct ""
+    bproductSub 3 (-1) (1--^|10) = bproduct ""
+
+    bproductSub 0 1 (1--^|1) = bproduct (1--^|1)
+    bproductSub 0 1 "" = bproduct ""
+  **)
   let productSubf i len a = foldlSub i len mul_float 1. a
+  (**T
+    bproductSubf 0 10 (1--^|10) = bproductf (1--^|10)
+    bproductSubf (-10) 10 (1--^|10) = bproductf (1--^|10)
+    bproductSubf (-20) 20 (1--^|10) = bproductf (1--^|10)
+    bproductSubf 0 3 (1--^|10) = bproductf (1--^|3)
+    bproductSubf 3 3 (1--^|10) = bproductf (4--^|6)
+    bproductSubf (-3) 3 (1--^|10) = bproductf (8--^|10)
+    bproductSubf (-1) 3 (1--^|10) = bproductf (10--^|10)
+    bproductSubf (-3) 1 (1--^|10) = bproductf (8--^|8)
+    bproductSubf 20 (-20) (1--^|10) = bproductf ""
+    bproductSubf (-20) 10 (1--^|10) = bproductf ""
+    bproductSubf 10 0 (1--^|10) = bproductf ""
+    bproductSubf 3 (-1) (1--^|10) = bproductf ""
+
+    bproductSubf 0 1 (1--^|1) = bproductf (1--^|1)
+    bproductSubf 0 1 "" = bproductf ""
+  **)
 
   let productSlice i j a = foldlSlice i j mul_int 1 a
-  let productSlicef i j a = foldlSlice i j mul_float 1. a
+  (**T
+    bproductSlice 0 10 (1--^|10) = bproduct (1--^|10)
+    bproductSlice 0 9 (1--^|10) = bproduct (1--^|10)
+    bproductSlice 0 (-1) (1--^|10) = bproduct (1--^|10)
+    bproductSlice (-10) 10 (1--^|10) = bproduct (1--^|10)
+    bproductSlice (-20) 20 (1--^|10) = bproduct (1--^|10)
+    bproductSlice (-20) 10 (1--^|10) = bproduct (1--^|10)
+    bproductSlice 0 3 (1--^|10) = bproduct (1--^|4)
+    bproductSlice 3 (-1) (1--^|10) = bproduct (4--^|10)
+    bproductSlice 3 3 (1--^|10) = bproduct (4--^|4)
+    bproductSlice (-1) (-1) (1--^|10) = bproduct (10--^|10)
+    bproductSlice (-3) 3 (1--^|10) = bproduct ""
+    bproductSlice (-3) 1 (1--^|10) = bproduct ""
+    bproductSlice 20 (-20) (1--^|10) = bproduct ""
+    bproductSlice 10 0 (1--^|10) = bproduct ""
 
-  let averageSub i len a = sumSub i len a / len
-  let averageSubf i len a = sumSubf i len a /. float len
+    bproductSlice 0 1 (1--^|1) = bproduct (1--^|1)
+    bproductSlice 0 1 "" = bproduct ""
+  **)
+  let productSlicef i j a = foldlSlice i j mul_float 1. a
+  (**T
+    bproductSlicef 0 10 (1--^|10) = bproductf (1--^|10)
+    bproductSlicef 0 9 (1--^|10) = bproductf (1--^|10)
+    bproductSlicef 0 (-1) (1--^|10) = bproductf (1--^|10)
+    bproductSlicef (-10) 10 (1--^|10) = bproductf (1--^|10)
+    bproductSlicef (-20) 20 (1--^|10) = bproductf (1--^|10)
+    bproductSlicef (-20) 10 (1--^|10) = bproductf (1--^|10)
+    bproductSlicef 0 3 (1--^|10) = bproductf (1--^|4)
+    bproductSlicef 3 (-1) (1--^|10) = bproductf (4--^|10)
+    bproductSlicef 3 3 (1--^|10) = bproductf (4--^|4)
+    bproductSlicef (-1) (-1) (1--^|10) = bproductf (10--^|10)
+    bproductSlicef (-3) 3 (1--^|10) = bproductf ""
+    bproductSlicef (-3) 1 (1--^|10) = bproductf ""
+    bproductSlicef 20 (-20) (1--^|10) = bproductf ""
+    bproductSlicef 10 0 (1--^|10) = bproductf ""
+
+    bproductSlicef 0 1 (1--^|1) = bproductf (1--^|1)
+    bproductSlicef 0 1 "" = bproductf ""
+  **)
+
+  let averageSub i len a =
+    let first, sub_len = sub_start_and_length i len a in
+    sumSub i len a / sub_len
+  (**T
+    baverageSub 0 10 (1--^|10) = baverage (1--^|10)
+    baverageSub (-10) 10 (1--^|10) = baverage (1--^|10)
+    baverageSub (-20) 20 (1--^|10) = baverage (1--^|10)
+    baverageSub 0 3 (1--^|10) = baverage (1--^|3)
+    baverageSub 3 3 (1--^|10) = baverage (4--^|6)
+    baverageSub (-3) 3 (1--^|10) = baverage (8--^|10)
+    baverageSub (-1) 3 (1--^|10) = baverage (10--^|10)
+    baverageSub (-3) 1 (1--^|10) = baverage (8--^|8)
+    optEx Division_by_zero (baverageSub 20 (-20)) (1--^|10) = None
+    optEx Division_by_zero (baverageSub (-20) 10) (1--^|10) = None
+    optEx Division_by_zero (baverageSub 10 0) (1--^|10) = None
+    optEx Division_by_zero (baverageSub 3 (-1)) (1--^|10) = None
+
+    baverageSub 0 1 (1--^|1) = baverage (1--^|1)
+    optEx Division_by_zero (baverageSub 0 1) "" = None
+  **)
+
+  let averageSubf i len a =
+    let first, sub_len = sub_start_and_length i len a in
+    sumSubf i len a /. float sub_len
+  (**T
+    baverageSubf 0 10 (1--^|10) = baveragef (1--^|10)
+    baverageSubf (-10) 10 (1--^|10) = baveragef (1--^|10)
+    baverageSubf (-20) 20 (1--^|10) = baveragef (1--^|10)
+    baverageSubf 0 3 (1--^|10) = baveragef (1--^|3)
+    baverageSubf 3 3 (1--^|10) = baveragef (4--^|6)
+    baverageSubf (-3) 3 (1--^|10) = baveragef (8--^|10)
+    baverageSubf (-1) 3 (1--^|10) = baveragef (10--^|10)
+    baverageSubf (-3) 1 (1--^|10) = baveragef (8--^|8)
+    isNaN (baverageSubf 20 (-20) (1--^|10))
+    isNaN  (baverageSubf (-20) 10 (1--^|10))
+    isNaN  (baverageSubf 10 0 (1--^|10))
+    isNaN  (baverageSubf 3 (-1) (1--^|10))
+
+    baverageSubf 0 1 (1--^|1) = baveragef (1--^|1)
+    isNaN  (baverageSubf 0 1 "")
+  **)
 
   let averageSlice i j s =
     let i, len = slice_to_sub i j s in
     averageSub i len s
+  (**T
+    baverageSlice 0 10 (1--^|10) = baverage (1--^|10)
+    baverageSlice 0 9 (1--^|10) = baverage (1--^|10)
+    baverageSlice 0 (-1) (1--^|10) = baverage (1--^|10)
+    baverageSlice (-10) 10 (1--^|10) = baverage (1--^|10)
+    baverageSlice (-20) 20 (1--^|10) = baverage (1--^|10)
+    baverageSlice (-20) 10 (1--^|10) = baverage (1--^|10)
+    baverageSlice 0 3 (1--^|10) = baverage (1--^|4)
+    baverageSlice 3 (-1) (1--^|10) = baverage (4--^|10)
+    baverageSlice 3 3 (1--^|10) = baverage (4--^|4)
+    baverageSlice (-1) (-1) (1--^|10) = baverage (10--^|10)
+    optEx Division_by_zero (baverageSlice (-3) 3) (1--^|10) = None
+    optEx Division_by_zero (baverageSlice (-3) 1) (1--^|10) = None
+    optEx Division_by_zero (baverageSlice 20 (-20)) (1--^|10) = None
+    optEx Division_by_zero (baverageSlice 10 0) (1--^|10) = None
+
+    baverageSlice 0 1 (1--^|1) = baverage (1--^|1)
+    optEx Division_by_zero (baverageSlice 0 1) "" = None
+  **)
 
   let averageSlicef i j s =
     let i, len = slice_to_sub i j s in
     averageSubf i len s
+  (**T
+    baverageSlicef 0 10 (1--^|10) = baveragef (1--^|10)
+    baverageSlicef 0 9 (1--^|10) = baveragef (1--^|10)
+    baverageSlicef 0 (-1) (1--^|10) = baveragef (1--^|10)
+    baverageSlicef (-10) 10 (1--^|10) = baveragef (1--^|10)
+    baverageSlicef (-20) 20 (1--^|10) = baveragef (1--^|10)
+    baverageSlicef (-20) 10 (1--^|10) = baveragef (1--^|10)
+    baverageSlicef 0 3 (1--^|10) = baveragef (1--^|4)
+    baverageSlicef 3 (-1) (1--^|10) = baveragef (4--^|10)
+    baverageSlicef 3 3 (1--^|10) = baveragef (4--^|4)
+    baverageSlicef (-1) (-1) (1--^|10) = baveragef (10--^|10)
+    isNaN @@ baverageSlicef (-3) 3 (1--^|10)
+    isNaN @@ baverageSlicef (-3) 1 (1--^|10)
+    isNaN @@ baverageSlicef 20 (-20) (1--^|10)
+    isNaN @@ baverageSlicef 10 0 (1--^|10)
+
+    baverageSlicef 0 1 (1--^|1) = baveragef (1--^|1)
+    isNaN @@ baverageSlicef 0 1 ""
+  **)
 
   (* Random access *)
 
@@ -7127,10 +7386,26 @@ struct
     let l = len s in
     if PreList.exists (fun i -> i >= l || i < 0) indices then raise Not_found;
     PreList.map (fun i -> unsafe_get s i) indices
+  (**T
+    bpick [2; 3] ("foobar") = [ord 'o'; ord 'b']
+    bpick [] "" = []
+    bpick [] (1--^|10) = []
+    bpick [0; 9] (1--^|10) = [1;  10]
+    optNF (bpick [2;3]) "123"= None
+    optNF (bpick [2;3]) ""= None
+    optNF (bpick [-2;3]) (1--^|10) = None
+  **)
 
   let pickWith funcs s = PreList.map (fun f -> f s) funcs
+  (**T
+    bpickWith [bfirst; blast] ("foobar") = [ord 'f'; ord 'r']
+  **)
 
   let concat = String.concat ""
+  (**T
+    bconcat [] = ""
+    bconcat [1--^|5; 6--^|10] = 1--^|10
+  **)
 
 
   (* Parallel combinators *)
@@ -7138,24 +7413,157 @@ struct
   let par_mapReduce ?process_count ~combine ~process l =
     let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l |> par_map ~process_count process |> combine
+  (**T
+    Bytestring.par_mapReduce ~combine:(bconcat) ~process:(bmap succ) (1--^|10) = bmap succ (1--^|10)
+    Bytestring.par_mapReduce ~process_count:2 ~combine:(bconcat) ~process:(bmap succ) (1--^|10) = bmap succ (1--^|10)
+    Bytestring.par_mapReduce ~process_count:2 ~combine:(bconcat @. reverse) ~process:(bmap succ) (1--^|10) = bmap succ ((6--^|10)^(1--^|5))
+    Bytestring.par_mapReduce ~process_count:2 ~combine:(bconcat @. reverse) ~process:(bmap succ) "" = ""
+    Bytestring.par_mapReduce ~process_count:2 ~combine:(bconcat @. reverse) ~process:(bmap succ) "1" = "2"
+  **)
 
   let pmapReduce combine process = par_mapReduce ~combine ~process
+  (**T
+    Bytestring.pmapReduce (bconcat) (bmap succ) (1--^|10) = bmap succ (1--^|10)
+    Bytestring.pmapReduce ~process_count:2 (bconcat) (bmap succ) (1--^|10) = bmap succ (1--^|10)
+    Bytestring.pmapReduce ~process_count:2 (bconcat @. reverse) (bmap succ) (1--^|10) = bmap succ ((6--^|10)^(1--^|5))
+    Bytestring.pmapReduce ~process_count:2 (bconcat @. reverse) (bmap succ) "" = ""
+    Bytestring.pmapReduce ~process_count:2 (bconcat @. reverse) (bmap succ) "1" = "2"
+  **)
 
   let pfoldl r f init = pmapReduce (PreList.foldl1 r) (foldl f init)
+  (**T
+    bpfoldl (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldl ~process_count:2 (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldl ~process_count:2 (+) (+) 0 "1" = bsum "1"
+    bpfoldl ~process_count:1 (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldl ~process_count:1 (+) (+) 0 "1" = bsum "1"
+    bpfoldl ~process_count:0 (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldl ~process_count:0 (+) (+) 0 "1" = bsum "1"
+    bpfoldl ~process_count:3 (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldl ~process_count:3 (+) (+) 0 "1" = bsum "1"
+    bpfoldl ~process_count:2 (multiply) (flip (multiply)) 1 (1--^|10) = bproduct (1--^|10)
+    bpfoldl ~process_count:2 (multiply) (flip (multiply)) 1 "1" = bproduct "1"
+    optNF (bpfoldl ~process_count:2 (+) (+) 0) "" = Some (0)
+  **)
+
   let pfoldl1 f = pmapReduce (PreList.foldl1 f) (foldl1 f)
+  (**T
+    bpfoldl1 (+) (1--^|10) = bsum (1--^|10)
+    bpfoldl1 ~process_count:3 (+) (1--^|10) = bsum (1--^|10)
+    bpfoldl1 ~process_count:2 (+) "1" = bsum "1"
+    bpfoldl1 ~process_count:1 (+) (1--^|10) = bsum (1--^|10)
+    bpfoldl1 ~process_count:0 (+) (1--^|10) = bsum (1--^|10)
+    optNF (bpfoldl1 ~process_count:2 (+)) "" = None
+  **)
+
   let pfoldr r f init = pmapReduce (PreList.foldr1 r) (foldr f init)
+  (**T
+    bpfoldr ~process_count:2 (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldr ~process_count:2 (+) (+) 0 "1" = bsum "1"
+    bpfoldr (+) (+) 0 "1" = bsum "1"
+    bpfoldr ~process_count:1 (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldr ~process_count:1 (+) (+) 0 "1" = bsum "1"
+    bpfoldr ~process_count:0 (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldr ~process_count:0 (+) (+) 0 "1" = bsum "1"
+    bpfoldr ~process_count:3 (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldr ~process_count:3 (+) (+) 0 "1" = bsum "1"
+    optNF (bpfoldr ~process_count:2 (+) (+) 0) "" = Some (0)
+  **)
+
   let pfoldr1 f = pmapReduce (PreList.foldr1 f) (foldr1 f)
+  (**T
+    bpfoldr1 ~process_count:3 (+) (1--^|10) = bsum (1--^|10)
+    bpfoldr1 (+) (1--^|10) = bsum (1--^|10)
+    bpfoldr1 ~process_count:2 (+) "1" = bsum "1"
+    bpfoldr1 ~process_count:1 (+) (1--^|10) = bsum (1--^|10)
+    bpfoldr1 ~process_count:0 (+) (1--^|10) = bsum (1--^|10)
+    optNF (bpfoldr1 ~process_count:2 (+)) "" = None
+  **)
 
   let piter f = pmapReduce ignore (iter f)
-  let pmap f = pmapReduce concat (map f)
-  let pfilter f = pmapReduce concat (filter f)
+  (**T
+    bpiter ~process_count:3 (ignore @. succ) (1--^|10) = ()
+    bpiter ~process_count:2 (ignore @. succ) (1--^|10) = ()
+    bpiter ~process_count:1 (ignore @. succ) (1--^|10) = ()
+    bpiter ~process_count:0 (ignore @. succ) (1--^|10) = ()
+    bpiter ~process_count:3 (ignore @. succ) "1" = ()
+    bpiter ~process_count:2 (ignore @. succ) "1" = ()
+    bpiter ~process_count:1 (ignore @. succ) "1" = ()
+    bpiter ~process_count:0 (ignore @. succ) "1" = ()
+    bpiter ~process_count:3 (ignore @. succ) "" = ()
+    bpiter ~process_count:2 (ignore @. succ) "" = ()
+    bpiter ~process_count:1 (ignore @. succ) "" = ()
+    bpiter ~process_count:0 (ignore @. succ) "" = ()
+    bpiter (ignore @. succ) "" = ()
+    bpiter (ignore @. succ) (1--^|10) = ()
+    bpiter (ignore @. succ) "1" = ()
+  **)
+
+  let pmap f = pmapReduce (concat) (map f)
+  (**T
+    bpmap ~process_count:3 succ (1--^|10) = bmap succ (1--^|10)
+    bpmap ~process_count:2 succ (1--^|10) = bmap succ (1--^|10)
+    bpmap ~process_count:1 succ (1--^|10) = bmap succ (1--^|10)
+    bpmap ~process_count:0 succ (1--^|10) = bmap succ (1--^|10)
+    bpmap ~process_count:3 succ "1" = bmap succ "1"
+    bpmap ~process_count:2 succ "1" = bmap succ "1"
+    bpmap ~process_count:1 succ "1" = bmap succ "1"
+    bpmap ~process_count:0 succ "1" = bmap succ "1"
+    bpmap ~process_count:3 succ "" = bmap succ ""
+    bpmap ~process_count:2 succ "" = bmap succ ""
+    bpmap ~process_count:1 succ "" = bmap succ ""
+    bpmap ~process_count:0 succ "" = bmap succ ""
+    bpmap succ (1--^|10) = bmap succ (1--^|10)
+    bpmap succ "" = bmap succ ""
+    bpmap succ "1" = bmap succ "1"
+  **)
+
+  let pfilter f = pmapReduce (concat) (filter f)
+  (**T
+    bpfilter (even) ('0'--^'9') = "02468"
+    bpfilter (odd) ('0'--^'9') = "13579"
+    bpfilter (even) "1" = ""
+    bpfilter (odd) "1" = "1"
+    bpfilter (even) "" = ""
+  **)
 
   let pfoldlSeqN ?process_count n r f init l =
     PreList.foldl (fun acc il -> r acc (pfoldl ?process_count r f init il))
           init (groupsOf n l)
+  (**T
+    bpfoldlSeqN 3 (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldlSeqN ~process_count:2 3 (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldlSeqN ~process_count:2 3 (+) (+) 0 "1" = bsum "1"
+    bpfoldlSeqN ~process_count:1 3 (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldlSeqN ~process_count:1 3 (+) (+) 0 "1" = bsum "1"
+    bpfoldlSeqN ~process_count:0 3 (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldlSeqN ~process_count:0 3 (+) (+) 0 "1" = bsum "1"
+    bpfoldlSeqN ~process_count:3 3 (+) (+) 0 (1--^|10) = bsum (1--^|10)
+    bpfoldlSeqN ~process_count:3 3 (+) (+) 0 "1" = bsum "1"
+    bpfoldlSeqN ~process_count:2 3 (multiply) (flip (multiply)) 1 (1--^|10) = bproduct (1--^|10)
+    bpfoldlSeqN ~process_count:2 3 (multiply) (flip (multiply)) 1 "1" = bproduct "1"
+    optNF (bpfoldlSeqN ~process_count:2 3 (+) (+) 0) "" = Some (0)
+  **)
 
   let piterSeqN ?process_count n r f l =
     PreList.iter (fun l -> iter r (pmap ?process_count f l)) (groupsOf n l)
+  (**T
+    bpiterSeqN ~process_count:3 1 ignore succ (1--^|10) = ()
+    bpiterSeqN ~process_count:2 2 ignore succ (1--^|10) = ()
+    bpiterSeqN ~process_count:1 1 ignore succ (1--^|10) = ()
+    bpiterSeqN ~process_count:0 4 ignore succ (1--^|10) = ()
+    bpiterSeqN ~process_count:3 1 ignore succ "1" = ()
+    bpiterSeqN ~process_count:2 6 ignore succ "1" = ()
+    bpiterSeqN ~process_count:1 1 ignore succ "1" = ()
+    bpiterSeqN ~process_count:0 1 ignore succ "1" = ()
+    bpiterSeqN ~process_count:3 2 ignore succ "" = ()
+    bpiterSeqN ~process_count:2 1 ignore succ "" = ()
+    bpiterSeqN ~process_count:1 3 ignore succ "" = ()
+    bpiterSeqN ~process_count:0 1 ignore succ "" = ()
+    bpiterSeqN 0 ignore succ "" = ()
+    bpiterSeqN 1 ignore succ (1--^|10) = ()
+    bpiterSeqN 1 ignore succ "1" = ()
+  **)
 
   let pinit ?process_count f l =
     let process_count = max 1 (process_count |? !global_process_count) in
@@ -7165,6 +7573,18 @@ struct
       let len = min plen (l - start) in
       init (fun j -> f (start + j)) len in
     concat (par_map ~process_count process (0--(process_count-1)))
+  (**T
+    bpinit (succ) 10 = (1--^|10)
+    bpinit (pred @. add 2) 10 = (1--^|10)
+    bpinit (succ) 0 = ""
+    bpinit (succ) 1 = "\001"
+    bpinit ~process_count:4 (succ) 10 = (1--^|10)
+    bpinit ~process_count:3 (pred @. add 2) 10 = (1--^|10)
+    bpinit ~process_count:2 (succ) 0 = ""
+    bpinit ~process_count:1 (pred @. add 2) 10 = (1--^|10)
+    bpinit ~process_count:1 (succ) 1 = "\001"
+    bpinit ~process_count:0 (succ) 1 = "\001"
+  **)
 
   let pzipWith ?process_count f a b =
     let process_count = max 1 (process_count |? !global_process_count) in
@@ -7172,18 +7592,59 @@ struct
     pinit ~process_count (fun i ->
       f (unsafe_get a i) (unsafe_get b i)
     ) len
+  (**T
+    bpzipWith (+) (1--^|10) (1--^|10) = bmap (dup (+)) (1--^|10)
+    bpzipWith (-) (3--^|7) (3--^|1) = "\000\002\004"
+    bpzipWith (-) (5--^|7) (5--^|1) = "\000\002\004"
+    bpzipWith (+) "1" (1--^|10) = "2"
+    bpzipWith (+) (1--^|10) "1" = "2"
+    bpzipWith (+) "\001" "\001" = "\002"
+    bpzipWith (+) "" (1--^|10) = ""
+    bpzipWith (+) (1--^|10) "" = ""
+    bpzipWith (+) "" "" = ""
+    bpzipWith (+) ~process_count:3 (1--^|10) (1--^|10) = bmap (dup (+)) (1--^|10)
+    bpzipWith (-) ~process_count:2 (3--^|7) (3--^|1) = "\000\002\004"
+    bpzipWith (-) ~process_count:1 (5--^|7) (5--^|1) = "\000\002\004"
+    bpzipWith (+) ~process_count:0 "1" (1--^|10) = "2"
+  **)
 
   let par_mapReduceWithIndex ?process_count ~combine ~process l =
     let process_count = max 1 (process_count |? !global_process_count) in
     splitInto process_count l
       |> PreList.mapWithIndex tuple
       |> par_map  ~process_count process |> combine
+  (**T
+    Bytestring.par_mapReduceWithIndex ~process_count:5 ~combine:(breverse @. bconcat) ~process:(fun (l, idx) -> bmap succ (if odd idx then "" else l)) ('0'--^'8') = "96521"
+    Bytestring.par_mapReduceWithIndex ~process_count:5 ~combine:(breverse @. bconcat) ~process:(fun (l, idx) -> bmap succ (if odd idx then "" else l)) "" = ""
+    Bytestring.par_mapReduceWithIndex ~process_count:5 ~combine:(breverse @. bconcat) ~process:(fun (l, idx) -> bmap succ (if odd idx then "" else l)) "0" = "1"
+    Bytestring.par_mapReduceWithIndex ~process_count:0 ~combine:(breverse @. bconcat) ~process:(fun (l, idx) -> bmap succ (if odd idx then "" else l)) "0" = "1"
+    Bytestring.par_mapReduceWithIndex ~process_count:0 ~combine:(breverse @. bconcat) ~process:(fun (l, idx) -> bmap succ (if odd idx then "" else l)) "" = ""
+    Bytestring.par_mapReduceWithIndex ~process_count:0 ~combine:(breverse @. bconcat) ~process:(fun (l, idx) -> bmap succ (if odd idx then "" else l)) (0--^|9) = (10--^|1)
+  **)
 
   let pmapReduceWithIndex combine process =
     par_mapReduceWithIndex ~combine ~process
+  (**T
+    bpmapReduceWithIndex ~process_count:5 (breverse @. bconcat) (fun (l, idx) -> bmap succ (if odd idx then "" else l)) ('0'--^'8') = "96521"
+    bpmapReduceWithIndex ~process_count:5 (breverse @. bconcat) (fun (l, idx) -> bmap succ (if odd idx then "" else l)) "" = ""
+    bpmapReduceWithIndex ~process_count:5 (breverse @. bconcat) (fun (l, idx) -> bmap succ (if odd idx then "" else l)) "0" = "1"
+    bpmapReduceWithIndex ~process_count:0 (breverse @. bconcat) (fun (l, idx) -> bmap succ (if odd idx then "" else l)) "0" = "1"
+    bpmapReduceWithIndex ~process_count:0 (breverse @. bconcat) (fun (l, idx) -> bmap succ (if odd idx then "" else l)) "" = ""
+    bpmapReduceWithIndex ~process_count:0 (breverse @. bconcat) (fun (l, idx) -> bmap succ (if odd idx then "" else l)) (0--^|9) = (10--^|1)
+  **)
 
   let pmapWithInit init f =
-    pmapReduceWithIndex concat (fun (sublist, idx) -> map f (init sublist idx))
+    pmapReduceWithIndex (concat) (fun (sublist, idx) -> map f (init sublist idx))
+  (**T
+    bpmapWithInit ~process_count:2 (fun l i -> if odd i then breverse l else l) succ (0--^|9) = (1--^|5) ^ (10--^|6)
+    bpmapWithInit ~process_count:2 (fun l i -> if odd i then breverse l else l) succ "0" = "1"
+    bpmapWithInit ~process_count:2 (fun l i -> if odd i then breverse l else l) succ "" = ""
+    bpmapWithInit ~process_count:1 (fun l i -> if odd i then breverse l else l) succ "0" = "1"
+    bpmapWithInit ~process_count:1 (fun l i -> if odd i then breverse l else l) succ "" = ""
+    bpmapWithInit ~process_count:(-1) (fun l i -> if odd i then breverse l else l) succ "0" = "1"
+    bpmapWithInit ~process_count:0 (fun l i -> if odd i then breverse l else l) succ "" = ""
+  **)
+
 end
 
 
