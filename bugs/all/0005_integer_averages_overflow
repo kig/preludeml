@@ -1,0 +1,20 @@
+title: integer averages overflow
+status: OPEN
+reported by: 
+date: 2009-01-18 22:15:47+0200
+author: Ilmari Heikkinen <ilmari.heikkinen@gmail.com>
+assigned to: 
+
+
+-- opened by Ilmari Heikkinen <ilmari.heikkinen@gmail.com> on 2009-01-18 22:15:47+0200
+
+Problem description:
+The integer average aggregate functions for lists and arrays are overflow-prone
+as they work by (sum lst / length lst)
+
+How to reproduce:
+average [max_int; max_int];;
+- : int = -1
+
+Proposed solution:
+Either use bignums through Num or fold with a running float average.
