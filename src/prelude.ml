@@ -187,6 +187,11 @@ let maybeE v f o = try f o with _ -> v
   maybeE 0 last [] = 0
   maybeE 0 last [1] = 1
 **)
+let ignoreE f o = maybeE () (fun i -> ignore (f i)) o
+(**T
+  ignoreE last [] = ()
+  ignoreE last [1] = ()
+**)
 let maybeEx ex v f o = try f o with e when ex = e -> v
 (**T
   maybeEx Not_found 0 last [] = 0
@@ -8193,16 +8198,58 @@ let (--^|) = Bytestring.range
 
 
 
+(* File opening wrappers *)
+
+let open_append = open_out_gen [Open_wronly; Open_creat; Open_append; Open_text] 0o666
+let open_append_bin = open_out_gen [Open_wronly; Open_creat; Open_append; Open_binary] 0o666
+
+let fileExists = Sys.file_exists
+
+let withFile filename f = finally close_in f (open_in_bin filename)
+let withFileOut filename f = finally close_out f (open_out_bin filename)
+let withFileAppend filename f = finally close_out f (open_append_bin filename)
+
+let withUnixFile ?(flags=[Unix.O_RDONLY]) ?(perm=0o644) fn f =
+  finally Unix.close f (Unix.openfile fn flags perm)
+let withUnixFileOut ?(flags=[Unix.O_WRONLY;Unix.O_TRUNC;Unix.O_CREAT]) ?(perm=0o644) fn f =
+  finally Unix.close f (Unix.openfile fn flags perm)
+let withUnixFileAppend ?(flags=[Unix.O_APPEND;Unix.O_CREAT]) ?(perm=0o644) fn f =
+  finally Unix.close f (Unix.openfile fn flags perm)
+
+
 (* Common filesystem operations *)
 
 let rename = Sys.rename
+(***
+  let f = Tests.data_dir ^/ "renameSrc" in
+  let g = Tests.data_dir ^/ "renameDst" in
+  touch f;
+  ignoreE rm g;
+  "f exists" @? (fileExists f);
+  "g doesn't" @? (not (fileExists g));
+  rename f g;
+  "g exists" @? (fileExists g);
+  "f doesn't" @? (not (fileExists f));
+  rm g
+**)
 
 let ls d = PreArray.to_list (Sys.readdir d)
+(***
+  let fns = ["foo"; "bar"; "baz"] in
+  let full_fns = map ((^/) Tests.data_dir) fns in
+  iter (ignoreE rm) full_fns;
+  "ls doesn't contain fns" @? (diff fns (ls Tests.data_dir) = fns);
+  iter touch full_fns;
+  "ls contains fns" @? (diff fns (ls Tests.data_dir) = []);
+  iter (ignoreE rm) full_fns
+**)
 let rm = Sys.remove
 let ln_s = Unix.symlink
 let ln = Unix.link
 let mkdir ?(perm=0o755) s = Unix.mkdir s perm
 let rmdir = Unix.rmdir
+
+let touch fn = withFileOut fn (fun _ -> Unix.utimes fn 0.0 0.0)
 
 let getcwd = Sys.getcwd
 let pwd = Sys.getcwd
@@ -8319,6 +8366,8 @@ end
 **)
 
 let (^/) = Filename.concat
+let dirSeparator = sslice 1 (-2) ("a" ^/ "b")
+
 let lsFull d = map ((^/) (expandPath d)) (ls d)
 let dirExists d = Sys.file_exists d && Sys.is_directory d
 let isRoot d =
@@ -8328,14 +8377,13 @@ let isRoot d =
 let parentDirs d =
   generateUntil (eq "") (nrsplit 2 "/" |>. PreList.first) (expandPath d) @ ["/"]
 
-let dirSeparator = sslice 1 (-2) ("a" ^/ "b")
-let remove_trailing_dirSeps =
-  rexreplace (rex (escape_rex dirSeparator ^ "+$")) ""
+let remove_trailing_slashes =
+  rexreplace (rex (escape_rex "/" ^ "+$")) ""
 let splitPath p = match p with
-  | s when s = dirSeparator -> [dirSeparator]
+  | s when s = "/" -> ["/"]
   | p ->
-    begin match split dirSeparator (remove_trailing_dirSeps p) with
-      | (""::t) -> dirSeparator::t
+    begin match split "/" (remove_trailing_slashes p) with
+      | (""::t) -> "/"::t
       | ps -> ps
     end
 let joinPath ps = foldl1 (^/) ps
@@ -8375,23 +8423,6 @@ let readChar = input_char
 let readByte = input_byte
 let readInt = readLine |>. parseInt
 let readFloat = readLine |>. parseFloat
-
-let open_append = open_out_gen [Open_wronly; Open_creat; Open_append; Open_text] 0o666
-let open_append_bin = open_out_gen [Open_wronly; Open_creat; Open_append; Open_binary] 0o666
-
-let fileExists = Sys.file_exists
-
-let withFile filename f = finally close_in f (open_in_bin filename)
-let withFileOut filename f = finally close_out f (open_out_bin filename)
-let withFileAppend filename f = finally close_out f (open_append_bin filename)
-
-let withUnixFile ?(flags=[Unix.O_RDONLY]) ?(perm=0o644) fn f =
-  finally Unix.close f (Unix.openfile fn flags perm)
-let withUnixFileOut ?(flags=[Unix.O_WRONLY;Unix.O_TRUNC;Unix.O_CREAT]) ?(perm=0o644) fn f =
-  finally Unix.close f (Unix.openfile fn flags perm)
-let withUnixFileAppend ?(flags=[Unix.O_APPEND;Unix.O_CREAT]) ?(perm=0o644) fn f =
-  finally Unix.close f (Unix.openfile fn flags perm)
-
 
 let read ?buf bytes ch =
   let rec aux ch bytes c buf =
