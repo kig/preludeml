@@ -11,4 +11,4 @@
 *.results
 test/unit/auto_t*
 test/run_unit_tests*
-examples/blurred_mandelbrot
+examples/*_mandelbrot

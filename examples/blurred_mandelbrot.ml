@@ -27,6 +27,9 @@ let draw_fractal xoff yoff w h =
   Blur the bytestring image a using a two-pass box blur.
   The size of the box is controlled by the image b.
   Both passes are done with a parallel bytestring init.
+
+  The time here seems to be dominated by IPC,
+  so expect very small speedups (<10%.)
 *)
 let blend a b w h =
   let c = bpinit (fun i ->

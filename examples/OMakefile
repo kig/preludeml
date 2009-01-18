@@ -7,8 +7,9 @@ OCAMLPACKS[] = unix pcre netstring bigarray graphics
 OCAMLINCLUDES += $(ROOT)/src
 
 OCamlProgram(blurred_mandelbrot, blurred_mandelbrot $(ROOT)/src/prelude)
+OCamlProgram(bounded_space_mandelbrot, bounded_space_mandelbrot $(ROOT)/src/prelude)
 
-.DEFAULT: blurred_mandelbrot
+.DEFAULT: blurred_mandelbrot bounded_space_mandelbrot
 
 .PHONY: clean
 
