@@ -47,6 +47,38 @@ where filename.ml contains comments like
   assert_equal "bar" "bar"
 **)
 
+(**Q
+  (* Quickcheck laws *)
+  Q.int (fun i -> i + i = i * 2)
+  Q.list Q.uig (fun l -> l = reverse (reverse l))
+  Q.list Q.uig (fun l -> length l = length (reverse l))
+  Q.list Q.uig (fun l -> let len = length l and rl = reverse l in (all id @@ mapWithIndex (fun e i -> rl !! (len-i-1) = e) l))
+**)
+
+The following Quickcheck generators are available:
+  Q.int
+  Q.uint
+  Q.float
+  Q.ufloat
+  Q.char
+  Q.string
+  Q.list
+  Q.array
+
+The Quickcheck laws are expanded like this:
+    The expression
+  Q.list Q.uig (fun l -> reverse (reverse l) = l)
+    Becomes
+  Q.list "Q.list Q.uig (fun l -> reverse (reverse l) = l)" Q.uig (fun l -> reverse (reverse l) = l)
+
+You can pass an optional count argument to all laws to control the amount of
+test cases to generate:
+  Q.int ~count:default_count (fun i -> i + i = i * 2)
+
+List, string and array can additionally take a size_gen function to control
+the size of the generated collection:
+  Q.list ~size_gen:(fun () -> 1) (fun l -> reverse l = l)
+
 =end
 
 verbose = ARGV.delete("-v") != nil
@@ -62,11 +94,12 @@ mod = File.basename(file)[/[^.]+/].capitalize
 
 puts <<EOF
 open OUnit
+module Q = Quickcheck
 open #{mod}
 
 let _iteri f l = ignore (List.fold_left (fun i v -> f v i; i + 1) 0 l)
-let _TL = _iteri (fun b i ->
-  OUnit.assert_bool ("Line " ^ string_of_int (i+1) ^ " of bool test") b)
+let _TL = _iteri (fun (n,b) i ->
+  OUnit.assert_bool ("Line " ^ string_of_int (i+1) ^ " of bool test: " ^ n) b)
 
 EOF
 
@@ -78,10 +111,27 @@ data = data.gsub(/\(\*\*\T(.*?)\*\*\)/m){ |match|
   lines = match.split(/\n/)
   head = "_TL [ "
   tail = "] "
-  lines[1..-1].each{|l|
-    l << ";" if !l.strip.empty? and not l.strip =~ /^\(\*.*?\*\)$/
+  lines[1..-2] = lines[1..-2].map{|l|
+    if !l.strip.empty? and not l.strip =~ /^\(\*.*?\*\)$/
+      "(#{l.strip.dump}, (#{l}));"
+    else
+      l
+    end
   }
   [ lines[0], head + lines[1..-2].map{|l| l.strip}.join("\n      ") + tail, lines[-1] ].join("\n")
+}
+
+data = data.gsub(/\(\*\*\Q(.*?)\*\*\)/m){ |match|
+  match[0,4] = "(***"
+  lines = match.split(/\n/)
+  lines[1..-2] = lines[1..-2].map{|l|
+    if !l.strip.empty? and not l.strip =~ /^\(\*.*?\*\)$/
+      l.sub(/\S+/){|m| m + " #{l.strip.dump}"} + ";"
+    else
+      l
+    end
+  }
+  [ lines[0], lines[1..-2].map{|l| l.strip}.join("\n      ") + "()", lines[-1] ].join("\n")
 }
 
 auto_name = File.basename(file).downcase.

@@ -33,8 +33,8 @@ ExtractTests(file, deps) =
 
 ExtractTests(src/prelude, \ )
 
-OCamlProgram(run_unit_tests, tests $(FILES) $(EXTRACTED_TESTS) test_runner)
-OCamlProgram(run_unit_tests_v, tests $(FILES) $(EXTRACTED_TESTS_V) test_runner)
+OCamlProgram(run_unit_tests, tests $(FILES) $(EXTRACTED_TESTS) quickcheck test_runner)
+OCamlProgram(run_unit_tests_v, tests $(FILES) $(EXTRACTED_TESTS_V) quickcheck test_runner)
 
 unit_tests.results: run_unit_tests
 	./run_unit_tests | tee $@

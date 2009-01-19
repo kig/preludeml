@@ -8629,7 +8629,14 @@ let shell_escape =
   let re = Pcre.regexp "(?=[^a-zA-Z0-9._+/-])" in
   Pcre.replace ~rex:re ~templ:"\\"
 (**T
-  (* FIXME *)
+  shell_escape "" = ""
+  shell_escape " " = "\\ "
+  shell_escape "foo" = "foo"
+  shell_escape "foo's" = "foo\\'s"
+  shell_escape "foo is fan/cy+some!" = "foo\\ is\\ fan/cy+some\\!"
+**)
+(**Q
+  Q.string (fun s -> slen (shell_escape s) >= slen s)
 **)
 let escape_cmd args = String.concat " " (PreList.map shell_escape args)
 (**T
