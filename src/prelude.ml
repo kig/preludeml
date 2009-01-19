@@ -8470,14 +8470,20 @@ let relativePath path =
   let pp = splitPath (expandPath path) in
   let cp, pp = dropWhile2 (=) cp pp in
   joinPath (replicate (len cp) ".." @ pp)
-
+(**T
+  (* FIXME *)
+  true
+**)
 let dirname = Filename.dirname
 let basename = Filename.basename
 
 let mkdir_p ?(perm=0o755) s =
   let nex, ex = span (not @. Sys.file_exists) (parentDirs s) in
   PreList.iter (mkdir ~perm) (reverse nex)
-
+(***
+  (* FIXME *)
+  ()
+**)
 
 (* File and IO operations *)
 
@@ -8493,8 +8499,8 @@ let output_line oc line =
 let readLine = input_line
 let readChar = input_char
 let readByte = input_byte
-let readInt = readLine |>. parseInt
-let readFloat = readLine |>. parseFloat
+let readInt ic = parseInt (readLine ic)
+let readFloat ic = parseFloat (readLine ic)
 
 let read ?buf bytes ch =
   let rec aux ch bytes c buf =
@@ -8511,7 +8517,10 @@ let read ?buf bytes ch =
                         "Prelude.read: buffer size %d differs from read size %d"
                         (slen s) bytes) in
   aux ch bytes 0 buf
-
+(***
+  (* FIXME *)
+  ()
+**)
 let write = output_string
 
 let readAll ch =
@@ -8523,6 +8532,10 @@ let readAll ch =
   let ret = Buffer.create 4096 in
   let buf = String.create 4096 in
   aux ch ret buf
+(***
+  (* FIXME *)
+  ()
+**)
 
 let readFile filename = withFile filename readAll
 let writeFile filename str = withFileOut filename (flip output_string str)
@@ -8606,13 +8619,22 @@ let prependFile filename str =
     withFileOut fn (fun oc -> write oc str; appendFileTo oc filename);
     mv fn filename)
   else writeFile filename (str ^ readFile filename)
+(***
+  (* FIXME *)
+  ()
+**)
 
 
 let shell_escape =
   let re = Pcre.regexp "(?=[^a-zA-Z0-9._+/-])" in
   Pcre.replace ~rex:re ~templ:"\\"
-
+(**T
+  (* FIXME *)
+**)
 let escape_cmd args = String.concat " " (PreList.map shell_escape args)
+(**T
+  (* FIXME *)
+**)
 
 exception Command_error of int * string
 let command args =
@@ -8622,6 +8644,9 @@ let command args =
     raise (Command_error (retcode, (sprintf "Command failed with %d: %S" retcode cmd)))
   else
     ()
+(**T
+  (* FIXME *)
+**)
 
 
 (* Shell commands *)
