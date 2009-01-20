@@ -50,34 +50,44 @@ where filename.ml contains comments like
 (**Q
   (* Quickcheck laws *)
   Q.int (fun i -> i + i = i * 2)
-  Q.list Q.uig (fun l -> l = reverse (reverse l))
-  Q.list Q.uig (fun l -> length l = length (reverse l))
-  Q.list Q.uig (fun l -> let len = length l and rl = reverse l in (all id @@ mapWithIndex (fun e i -> rl !! (len-i-1) = e) l))
+  (Q.list Q.int) (fun l -> l = reverse (reverse l))
+  (Q.list Q.int) (fun l -> length l = length (reverse l))
+  (Q.list Q.int) (fun l -> let len = length l and rl = reverse l in (all id @@ mapWithIndex (fun e i -> rl !! (len-i-1) = e) l))
 **)
 
 The following Quickcheck generators are available:
+  Q.bool
   Q.int
-  Q.uint
+  Q.pos_int
+  Q.neg_int
   Q.float
-  Q.ufloat
+  Q.pos_float
+  Q.neg_float
   Q.char
-  Q.string
-  Q.list
-  Q.array
+  Q.printable_char
+  Q.numeral_char
+  Q.string_gen [_of_size]
+  Q.string [_of_size]
+  Q.printable_string [_of_size]
+  Q.numeral_string [_of_size]
+  Q.list [_of_size]
+  Q.array [_of_size]
+  Q.pair
+  Q.triple 
 
 The Quickcheck laws are expanded like this:
     The expression
-  Q.list Q.uig (fun l -> reverse (reverse l) = l)
+  (Q.list Q.int) (fun l -> reverse (reverse l) = l)
     Becomes
-  Q.list "Q.list Q.uig (fun l -> reverse (reverse l) = l)" Q.uig (fun l -> reverse (reverse l) = l)
+  laws_exn "(Q.list Q.int) (fun l -> reverse (reverse l) = l)" (Q.list Q.int) (fun l -> reverse (reverse l) = l)
 
 You can pass an optional count argument to all laws to control the amount of
 test cases to generate:
   Q.int ~count:default_count (fun i -> i + i = i * 2)
 
-List, string and array can additionally take a size_gen function to control
+List, string and array can additionally take a size function to control
 the size of the generated collection:
-  Q.list ~size_gen:(fun () -> 1) (fun l -> reverse l = l)
+  (Q.list_of_size (fun () -> Random.int 2) Q.int) (fun l -> reverse l = l)
 
 =end
 
@@ -126,7 +136,7 @@ data = data.gsub(/\(\*\*\Q(.*?)\*\*\)/m){ |match|
   lines = match.split(/\n/)
   lines[1..-2] = lines[1..-2].map{|l|
     if !l.strip.empty? and not l.strip =~ /^\(\*.*?\*\)$/
-      l.sub(/\S+/){|m| m + " #{l.strip.dump}"} + ";"
+      l.sub(/\S+/){|m| "Quickcheck.laws_exn #{l.strip.dump} "+m } + ";"
     else
       l
     end
