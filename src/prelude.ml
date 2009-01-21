@@ -8484,13 +8484,21 @@ let splitPath p = match p with
       | (""::t) -> "/"::t
       | ps -> ps
     end
-let joinPath ps = match ps with [] -> "." | l -> foldl1 (^/) l
+(**T
+  splitPath "" = []
+  splitPath "/" = ["/"]
+  splitPath "/home/foo/derr/" = ["/"; "home"; "foo"; "derr"]
+**)
+let joinPath ps = match ps with [] -> "" | l -> foldl1 (^/) l
 (**T
   joinPath (splitPath "/foo/bar/baz") = "/foo/bar/baz"
   joinPath (splitPath "/foo/") = "/foo"
   joinPath (splitPath "/foo") = "/foo"
   joinPath (splitPath "/") = "/"
-  joinPath [] = "."
+  joinPath [] = ""
+
+  joinPath (splitPath "/foo//bar/baz") = "/foo/bar/baz"
+  joinPath (splitPath "/foo/../bar/baz") = "/foo/../bar/baz"
 **)
 let relativePath path =
   let cp = splitPath (expandPath ".") in
@@ -8498,7 +8506,8 @@ let relativePath path =
   let cp, pp = dropWhile2 (=) cp pp in
   joinPath (replicate (len cp) ".." @ pp)
 (**T
-  relativePath "." = "."
+  relativePath "" = ""
+  relativePath "." = ""
   relativePath "test" = "test"
   xmatch "^(\\.\\./)+" (relativePath "/")
   xmatch "^(\\.\\./)+tmp$" (relativePath "/tmp")

@@ -108,6 +108,7 @@ open OUnit
 module Q = Quickcheck
 open #{mod}
 
+let (==>) = Q.(==>)
 let _iteri f l = ignore (List.fold_left (fun i v -> f v i; i + 1) 0 l)
 let _TL = _iteri (fun (n,b) i ->
   OUnit.assert_bool ("Line " ^ string_of_int (i+1) ^ " of bool test: " ^ n) b)

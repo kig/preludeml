@@ -105,7 +105,7 @@ let char = (cg, sprintf "%C")
 let printable_char = (printable, sprintf "%C")
 let numeral_char = (numeral, sprintf "%C")
 
-let string_gen_of_size size gen = (sg_size ~gen, sprintf "%S")
+let string_gen_of_size size gen = (sg_size ~gen size, sprintf "%S")
 let string_gen gen = (sg ~gen, sprintf "%S")
 
 let string = string_gen cg
