@@ -8467,13 +8467,29 @@ let (^/) = Filename.concat
 let dirSeparator = sslice 1 (-2) ("a" ^/ "b")
 
 let lsFull d = map ((^/) (expandPath d)) (ls d)
+(**T
+  all (startsWith (getcwd ())) (lsFull ".")
+**)
 let dirExists d = Sys.file_exists d && Sys.is_directory d
+(**T
+  dirExists "unit" = true
+  dirExists "no_exist" = false
+**)
 let isRoot d =
   let fileInode fn = (Unix.stat fn).Unix.st_ino in
   let fileDevice fn = (Unix.stat fn).Unix.st_dev in
   fileInode d = fileInode "/" && fileDevice d = fileDevice "/"
+(**T
+  isRoot "/" = true
+  isRoot "/tmp" = false
+**)
 let parentDirs d =
   generateUntil (eq "") (nrsplit 2 "/" |>. PreList.first) (expandPath d) @ ["/"]
+(**T
+  parentDirs "/tmp/foo/bar" = ["/tmp/foo/bar"; "/tmp/foo"; "/tmp"; "/"]
+  parentDirs "/" = ["/"; "/"]
+  parentDirs "" = parentDirs (getcwd ())
+**)
 
 let remove_trailing_slashes =
   rexreplace (rex (escape_rex "/" ^ "+$")) ""
