@@ -56,6 +56,7 @@ where filename.ml contains comments like
 **)
 
 The following Quickcheck generators are available:
+  Q.unit
   Q.bool
   Q.int
   Q.pos_int
@@ -153,7 +154,7 @@ data.scan(/\(\*\*\*(.*?)\*\*\)/m).each do |a|
   lines = a[0].split(/\n/)
   name, desc = lines.shift.strip.split(/\s+/)
   s = data_lines[current_line_num..-1].join("\n")
-  index = s.index(a[0])
+  index = s.index(a[0].strip)
   line_num = current_line_num + s[0...index].split(/\n/).size
   current_line_num = line_num + lines.size + 1
   name = "#{name ? name : "test"}_#{auto_name}_line_#{line_num}"

@@ -3954,6 +3954,14 @@ struct
     apickWith [afirst; alast] (aexplode "foobar") = ['f'; 'r']
   **)
 
+  let count f s = foldl (fun s i -> s + if f i then 1 else 0) 0 s
+  (**T
+    acount ((=) '/') [||] = 0
+    acount ((=) '/') (aexplode "/foooo/bar//baz") = 4
+  **)
+  (**Q
+    (Q.pair (Q.int) (Q.array Q.int)) (fun (i,a) -> acount (gt i) a = alen (afilter (gt i) a))
+  **)
 
   (* Parallel operations *)
 
@@ -5452,6 +5460,12 @@ struct
     spickWith [sfirst; slast] ("foobar") = ['f'; 'r']
   **)
 
+
+  let count f s = foldl (fun s i -> s + if f i then 1 else 0) 0 s
+  (**T
+    scount ((=) '/') "" = 0
+    scount ((=) '/') "/foooo/bar//baz" = 4
+  **)
 
   (* String specific *)
 
@@ -7406,6 +7420,12 @@ struct
     bpickWith [bfirst; blast] ("foobar") = [ord 'f'; ord 'r']
   **)
 
+  let count f s = foldl (fun s i -> s + if f i then 1 else 0) 0 s
+  (**T
+    bcount ((=) (ord '/')) "" = 0
+    bcount ((=) (ord '/')) "/foooo/bar//baz" = 4
+  **)
+
   let concat = String.concat ""
   (**T
     bconcat [] = ""
@@ -7780,6 +7800,8 @@ let awithout = PreArray.without
 let apick = PreArray.pick
 let apickWith = PreArray.pickWith
 
+let acount = PreArray.count
+
 let apmap = PreArray.pmap
 let apiter = PreArray.piter
 let apinit = PreArray.pinit
@@ -7949,6 +7971,8 @@ let swithout = PreString.without
 
 let spick = PreString.pick
 let spickWith = PreString.pickWith
+
+let scount = PreString.count
 
 let spmap = PreString.pmap
 let spiter = PreString.piter
@@ -8178,6 +8202,8 @@ let bwithout = Bytestring.without
 
 let bpick = Bytestring.pick
 let bpickWith = Bytestring.pickWith
+
+let bcount = Bytestring.count
 
 let bpmap = Bytestring.pmap
 let bpiter = Bytestring.piter
@@ -8458,12 +8484,13 @@ let splitPath p = match p with
       | (""::t) -> "/"::t
       | ps -> ps
     end
-let joinPath ps = foldl1 (^/) ps
+let joinPath ps = match ps with [] -> "." | l -> foldl1 (^/) l
 (**T
   joinPath (splitPath "/foo/bar/baz") = "/foo/bar/baz"
   joinPath (splitPath "/foo/") = "/foo"
   joinPath (splitPath "/foo") = "/foo"
   joinPath (splitPath "/") = "/"
+  joinPath [] = "."
 **)
 let relativePath path =
   let cp = splitPath (expandPath ".") in
@@ -8471,8 +8498,10 @@ let relativePath path =
   let cp, pp = dropWhile2 (=) cp pp in
   joinPath (replicate (len cp) ".." @ pp)
 (**T
-  (* FIXME *)
-  true
+  relativePath "." = "."
+  relativePath "test" = "test"
+  xmatch "^(\\.\\./)+" (relativePath "/")
+  xmatch "^(\\.\\./)+tmp$" (relativePath "/tmp")
 **)
 let dirname = Filename.dirname
 let basename = Filename.basename
