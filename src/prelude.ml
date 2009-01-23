@@ -220,6 +220,13 @@ let maybeNF v f o = maybeEx Not_found v f o
   optE (fun _ -> maybeNF 0 (fun _ -> raise Exit) []) 0 = None
 **)
 
+type 'a catch_result = Result of 'a | Error of exn
+
+let catch f o = try Result (f o) with e -> Error e
+(**T
+  catch last [] = Error Not_found
+  catch last [1;2;3] = Result 3
+**)
 
 (* Exceptions to options *)
 
@@ -8276,38 +8283,55 @@ let atime fn = (stat fn).Unix.st_atime
 let mtime fn = (stat fn).Unix.st_mtime
 let ctime fn = (stat fn).Unix.st_ctime
 
+(***
+  ()
+  (* specify some testing utils *)
+
+  let fileTest f =
+    mkdir_p Tests.data_dir;
+    withCd Tests.data_dir (fun _ ->
+      iter (ignoreE rm_r) (lsFull ".");
+      let rv = catch f () in
+      iter (ignoreE rm_r) (lsFull ".");
+      match rv with
+        | Error e -> raise e
+        | Result v -> v
+    )
+**)
 
 let rename = Sys.rename
 (***
-  let f = Tests.data_dir ^/ "renameSrc" in
-  let g = Tests.data_dir ^/ "renameDst" in
-  touch f;
-  ignoreE rm g;
-  "f exists" @? (fileExists f);
-  "g doesn't" @? (not (fileExists g));
-  rename f g;
-  "g exists" @? (fileExists g);
-  "f doesn't" @? (not (fileExists f));
-  rm g
+  fileTest (fun () ->
+    let f = "renameSrc" in
+    let g = "renameDst" in
+    touch f;
+    "f exists" @? (fileExists f);
+    "g doesn't" @? (not (fileExists g));
+    rename f g;
+    "g exists" @? (fileExists g);
+    "f doesn't" @? (not (fileExists f));
+    rm g
+  )
 **)
 
 let ls d = PreArray.to_list (Sys.readdir d)
 (***
-  let fns = ["foo"; "bar"; "baz"] in
-  let full_fns = map ((^/) Tests.data_dir) fns in
-  iter (ignoreE rm) full_fns;
-  "ls doesn't contain fns" @? (diff fns (ls Tests.data_dir) = fns);
-  iter touch full_fns;
-  "ls contains fns" @? (diff fns (ls Tests.data_dir) = []);
-  iter (ignoreE rm) full_fns
+  fileTest (fun () ->
+    let fns = ["foo"; "bar"; "baz"] in
+    "ls doesn't contain fns" @? (diff fns (ls ".") = fns);
+    iter touch fns;
+    "ls contains fns" @? (diff fns (ls ".") = [])
+  )
 **)
 let rm = Sys.remove
 (***
-  let fn = Tests.data_dir ^/ "foo" in
-  touch fn;
-  "fn exists" @? (fileExists fn);
-  rm fn;
-  "fn doesn't exist" @? (not (fileExists fn))
+  fileTest (fun () ->
+    let fn = "foo" in
+    touch fn;
+    "fn exists" @? (fileExists fn);
+    rm fn;
+    "fn doesn't exist" @? (not (fileExists fn))
+  )
 **)
 let ln_s = Unix.symlink
 let ln = Unix.link
@@ -8316,13 +8340,14 @@ let rmdir = Unix.rmdir
 
 let touch fn = withFileOut fn (fun _ -> Unix.utimes fn 0.0 0.0)
 (***
-  let fn = Tests.data_dir ^/ "foo" in
-  ignoreE rm fn;
-  "fn doesn't exist" @? (not (fileExists fn));
-  touch fn;
-  "fn exists" @? (fileExists fn);
-  rm fn;
-  "fn doesn't exist" @? (not (fileExists fn))
+  fileTest (fun () ->
+    let fn = "foo" in
+    "fn doesn't exist" @? (not (fileExists fn));
+    touch fn;
+    "fn exists" @? (fileExists fn);
+    rm fn;
+    "fn doesn't exist" @? (not (fileExists fn))
+  )
 **)
 
 let getcwd = Sys.getcwd
@@ -8330,32 +8355,43 @@ let pwd = Sys.getcwd
 let chdir = Unix.chdir
 let cd = Unix.chdir
 
+let withCd dir f =
+  let od = getcwd () in
+  finally (fun _ -> cd od) f (cd dir; dir)
+(**T
+  withCd "/" ((=) "/")
+  withCd "/" (fun d -> getcwd () = "/")
+  getcwd () != "/"
+**)
+
 let chmod perm filename = Unix.chmod filename perm
 (***
-  let fn = Tests.data_dir ^/ "foo" in
-  ignoreE rm fn;
-  touch fn;
-  chmod 0o600 fn;
-  "readable" @? (isReadable fn);
-  "writable" @? (isWritable fn);
-  chmod 0o400 fn;
-  "readable" @? (isReadable fn);
-  "not writable" @? (not @@ isWritable fn);
-  "not executable" @? (not @@ isExecutable fn);
-  chmod 0o500 fn;
-  "readable" @? (isReadable fn);
-  "not writable" @? (not @@ isWritable fn);
-  "executable" @? (isExecutable fn);
-  rm fn
+  fileTest (fun () ->
+    let fn = "foo" in
+    touch fn;
+    chmod 0o600 fn;
+    "readable" @? (isReadable fn);
+    "writable" @? (isWritable fn);
+    chmod 0o400 fn;
+    "readable" @? (isReadable fn);
+    "not writable" @? (not @@ isWritable fn);
+    "not executable" @? (not @@ isExecutable fn);
+    chmod 0o500 fn;
+    "readable" @? (isReadable fn);
+    "not writable" @? (not @@ isWritable fn);
+    "executable" @? (isExecutable fn);
+    rm fn
+  )
 **)
 
 let fileUid fn = (Unix.stat fn).Unix.st_uid
 (***
-  let fn = Tests.data_dir ^/ "foo" in
-  ignoreE rm fn;
-  touch fn;
-  "fileUid fn = currentUid ()" @? (fileUid fn = currentUid ());
-  rm fn
+  fileTest (fun () ->
+    let fn = "foo" in
+    touch fn;
+    "fileUid fn = currentUid ()" @? (fileUid fn = currentUid ());
+    rm fn
+  )
 **)
 let fileGid fn = (Unix.stat fn).Unix.st_gid
 
@@ -8465,6 +8501,9 @@ end
 
 let (^/) = Filename.concat
 let dirSeparator = sslice 1 (-2) ("a" ^/ "b")
+(**T
+  dirSeparator != ""
+**)
 
 let lsFull d = map ((^/) (expandPath d)) (ls d)
 (**T
@@ -8482,12 +8521,17 @@ let isRoot d =
 (**T
   isRoot "/" = true
   isRoot "/tmp" = false
+  withCd "/" (fun _ -> isRoot ".")
 **)
 let parentDirs d =
-  generateUntil (eq "") (nrsplit 2 "/" |>. PreList.first) (expandPath d) @ ["/"]
+  let popdir d = first (nrsplit 2 "/" d) in
+  let d = expandPath d in
+  if d = "/"
+  then ["/"]
+  else generateUntil (eq "") popdir (expandPath d) @ ["/"]
 (**T
   parentDirs "/tmp/foo/bar" = ["/tmp/foo/bar"; "/tmp/foo"; "/tmp"; "/"]
-  parentDirs "/" = ["/"; "/"]
+  parentDirs "/" = ["/"]
   parentDirs "" = parentDirs (getcwd ())
 **)
 
@@ -8531,12 +8575,26 @@ let relativePath path =
 let dirname = Filename.dirname
 let basename = Filename.basename
 
+let rm_r fn =
+  let rec aux dirs todo =
+    match todo with
+      | fn::t when isDir fn -> aux (fn::dirs) ((lsFull fn) @ t)
+      | fn::t -> rm fn; aux dirs t
+      | [] -> iter rmdir dirs in
+  aux [] [fn]
+(**T
+  fileTest (fun () -> mkdir_p "foo/bar"; touch "foo/bar/baz"; rm_r "foo"; not (fileExists "foo"))
+  fileTest (fun () -> mkdir_p "foo/bar"; touch "baz"; rm_r "foo"; fileExists "baz")
+  fileTest (fun () -> touch "foo"; touch "baz"; rm_r "foo"; not (fileExists "foo") && fileExists "baz")
+**)
+
 let mkdir_p ?(perm=0o755) s =
   let nex, ex = span (not @. Sys.file_exists) (parentDirs s) in
   PreList.iter (mkdir ~perm) (reverse nex)
-(***
-  (* FIXME *)
-  ()
+(**T
+  fileTest (fun () -> mkdir_p "foo/bar/baz"; fileExists "foo/bar/baz" && isDir "foo/bar/baz")
+  fileTest (fun () -> mkdir_p "foo"; fileExists "foo" && isDir "foo")
+  fileTest (fun () -> mkdir_p "foo/"; fileExists "foo" && isDir "foo" && ls "foo" = [])
 **)
 
 (* File and IO operations *)
