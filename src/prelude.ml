@@ -8660,9 +8660,8 @@ let readAll ch =
   let ret = Buffer.create 4096 in
   let buf = String.create 4096 in
   aux ch ret buf
-(***
-  (* FIXME *)
-  ()
+(**Q
+  Q.string (fun s -> s = fileTest (fun _ -> writeFile "foo" s; withFile "foo" readAll))
 **)
 
 let readFile filename = withFile filename readAll
