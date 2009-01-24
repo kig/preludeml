@@ -8665,10 +8665,19 @@ let readAll ch =
 **)
 
 let readFile filename = withFile filename readAll
-let writeFile filename str = withFileOut filename (flip output_string str)
-let appendToFile filename str = withFileAppend filename (flip output_string str)
+(**Q
+  Q.string (fun s -> s = fileTest (fun _ -> writeFile "foo" s; readFile "foo"))
+**)
+let writeFile filename str = withFileOut filename (fun oc -> output_string oc str)
+(**Q
+  Q.string (fun s -> s = fileTest (fun _ -> writeFile "foo" s; readFile "foo"))
+**)
+let appendToFile filename str = withFileAppend filename (fun oc -> output_string oc str)
+(**Q
+  Q.string (fun s -> s^(srev s) = fileTest (fun _ -> writeFile "foo" s; appendToFile "foo" (srev s); readFile "foo"))
+**)
 
-let readLines = lines @. readFile
+let readLines fn = lines (readFile fn)
 
 let tokenize t ic = unfoldlOpt (maybeEOF None (fun ic -> Some (t ic, ic))) ic
 let tokenizeN t n ic = readN t n ic
