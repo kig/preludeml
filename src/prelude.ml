@@ -8597,16 +8597,23 @@ let mkdir_p ?(perm=0o755) s =
   fileTest (fun () -> mkdir_p "foo/"; fileExists "foo" && isDir "foo" && ls "foo" = [])
 **)
 
+
 (* File and IO operations *)
+
+let output_endline oc line =
+  output_string oc line; output_char oc '\n'; flush oc
+
+let print_line = print_endline
+let output_line = output_endline
 
 let putStr = print_string
 let putStrLn = print_endline
-let puts s = if rexmatch (rx "\n$") s
-             then print_string s
-             else print_endline s
-let output_line oc line =
-  output_string oc line;
-  output_char oc '\n'
+
+let outputs oc s =
+  if endsWith "\n" s
+  then (output_string oc s; flush oc)
+  else output_line oc s
+let puts s = outputs stdout s
 
 let readLine = input_line
 let readChar = input_char
@@ -8617,7 +8624,7 @@ let readFloat ic = parseFloat (readLine ic)
 let read ?buf bytes ch =
   let rec aux ch bytes c buf =
     match input ch buf c (bytes-c) with
-      | 0 when c = 0 -> raise End_of_file
+      | 0 when c = 0 && bytes <> 0 -> raise End_of_file
       | 0 -> ssub 0 c buf
       | b when c + b = bytes -> buf
       | b -> aux ch bytes (c+b) buf in
@@ -8629,9 +8636,18 @@ let read ?buf bytes ch =
                         "Prelude.read: buffer size %d differs from read size %d"
                         (slen s) bytes) in
   aux ch bytes 0 buf
-(***
-  (* FIXME *)
-  ()
+(**Q
+  Q.string (fun s -> s = fileTest (fun _ -> writeFile "foo" s; withFile "foo" (read (slen s))))
+  Q.string (fun s -> s = fileTest (fun _ -> writeFile "foo" s; withFile "foo" (read ~buf:(screate (slen s)) (slen s))))
+**)
+(**T
+  None = optE fileTest (fun _ -> writeFile "foo" "bar"; withFile "foo" (read ~buf:(screate 2) 3))
+  None = optE fileTest (fun _ -> writeFile "foo" "bar"; withFile "foo" (read ~buf:(screate 3) 2))
+  None = optE fileTest (fun _ -> writeFile "foo" "bar"; withFile "foo" (read ~buf:(screate 0) (-1)))
+  Some "bar" = optEOF fileTest (fun _ -> writeFile "foo" "bar"; withFile "foo" (read ~buf:(screate 4) 4))
+
+  None = optEOF fileTest (fun _ -> writeFile "foo" "bar"; withFile "foo" (fun oc -> ignore (read ~buf:(screate 3) 3 oc); read 1 oc))
+  Some "" = optEOF fileTest (fun _ -> writeFile "foo" "bar"; withFile "foo" (fun oc -> ignore (read ~buf:(screate 3) 3 oc); read 0 oc))
 **)
 let write = output_string
 
