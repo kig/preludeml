@@ -8678,7 +8678,9 @@ let appendToFile filename str = withFileAppend filename (fun oc -> output_string
 **)
 
 let readLines fn = lines (readFile fn)
-
+(**Q
+  Q.printable_string (fun s -> split "\n" s = fileTest (fun _ -> writeFile "foo" s; readLines "foo"))
+**)
 let tokenize t ic = unfoldlOpt (maybeEOF None (fun ic -> Some (t ic, ic))) ic
 let tokenizeN t n ic = readN t n ic
 let tokenizeIter t f ic = maybeEOF () (loop (f @. t)) ic
