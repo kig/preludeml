@@ -3313,6 +3313,7 @@ struct
     ainterlace 0 [|1;2|] = [|1; 0; 2|]
   **)
 
+
   (* let filter = filter *)
   (**T
     PreArray.filter even (1--|10) = [|2;4;6;8;10|]
@@ -3335,6 +3336,59 @@ struct
     PreArray.without 4 [||] = [||]
     PreArray.without 4 [|4|] = [||]
     awithout 4 [|1|] = [|1|]
+  **)
+
+  (* Predicates *)
+
+  let all p a = None = optNF (find (fun i -> not (p i))) a
+  (**T
+    aall (gt 5) (1--|10) = false
+    aall (lt 11) (1--|10) = true
+    aall (gt 4) [||] = true
+  **)
+  let any p a = None <> optNF (find p) a
+  (**T
+    aany (gt 5) (1--|10) = true
+    aany (gt 11) (1--|10) = false
+    aany (gt 4) [||] = false
+  **)
+
+  let allEqual l =
+    if len l = 0 then true
+    else let h = l.(0) in all (fun i -> h = i) l
+  (**T
+    aallEqual (1--|10) = false
+    aallEqual [||] = true
+    aallEqual (areplicate 10 'a') = true
+  **)
+
+  let includes x = any (fun y -> x = y)
+  (**T
+    aincludes 4 (1--|10) = true
+    aincludes 0 (1--|10) = false
+    aincludes 5 [||] = false
+  **)
+  let has = includes
+  (**T
+    ahas 1 (1--|10) = true
+    ahas 0 (1--|10) = false
+  **)
+  let elem = includes
+  (**T
+    aelem 'b' [|'a'; 'c'|] = false
+    aelem "foo" [|"bar"; "baz"; "foo"|] = true
+  **)
+  let notElem x lst = not @@ elem x lst
+  (**T
+    anotElem 4 (1--|10) = false
+    anotElem 0 (1--|10) = true
+    anotElem 5 [||] = true
+  **)
+
+  let null = function [||] -> true | _ -> false
+  (**T
+    anull [||] = true
+    anull (1--|10) = false
   **)
 
   let groupsOf n a =
@@ -3369,6 +3423,7 @@ struct
     PreArray.splitInto 2 [||] = [[||]]
     asplitInto 1 [||] = [[||]]
   **)
+
 
 
   (* Subsequence iterators *)
@@ -4482,6 +4537,59 @@ struct
     sindexOf '\014' (10--^|20) = 4
     optNF (sindexOf '\001') (10--^|20) = None
     sindexOf 'a' "foobar" = 4
+  **)
+
+  (* Predicates *)
+
+  let all p a = None = optNF (find (fun i -> not (p i))) a
+  (**T
+    sall (gt (chr 5)) (1--^|10) = false
+    sall (lt (chr 11)) (1--^|10) = true
+    sall (gt (chr 4)) "" = true
+  **)
+  let any p a = None <> optNF (find p) a
+  (**T
+    sany (gt (chr 5)) (1--^|10) = true
+    sany (gt (chr 11)) (1--^|10) = false
+    sany (gt (chr 4)) "" = false
+  **)
+
+  let allEqual l =
+    if len l = 0 then true
+    else let h = unsafe_get l 0 in all (fun i -> h = i) l
+  (**T
+    sallEqual (1--^|10) = false
+    sallEqual "" = true
+    sallEqual (sreplicate 10 'a') = true
+  **)
+
+  let includes x = any (fun y -> x = y)
+  (**T
+    sincludes (chr 4) (1--^|10) = true
+    sincludes (chr 0) (1--^|10) = false
+    sincludes (chr 5) "" = false
+  **)
+  let has = includes
+  (**T
+    shas (chr 1) (1--^|10) = true
+    shas (chr 0) (1--^|10) = false
+  **)
+  let elem = includes
+  (**T
+    selem 'b' "foo" = false
+    selem 'b' "foobar" = true
+  **)
+  let notElem x lst = not @@ elem x lst
+  (**T
+    snotElem (chr 4) (1--^|10) = false
+    snotElem (chr 0) (1--^|10) = true
+    snotElem (chr 5) "" = true
+  **)
+
+  let null = function "" -> true | _ -> false
+  (**T
+    snull "" = true
+    snull (1--^|10) = false
   **)
 
   (* Zipping *)
@@ -6521,6 +6629,7 @@ struct
   **)
   let of_list l = of_array (Array.of_list l)
 
+
   (* Searching *)
   (**T
     Bytestring.of_list (65--70) = "ABCDEF"
@@ -6592,6 +6701,44 @@ struct
     bindexOf 14 (10--^|20) = 4
     optNF (bindexOf 1) (10--^|20) = None
     bindexOf 97 ("foobar") = 4
+  **)
+
+  (* Predicates *)
+
+  let all p a = None = optNF (find (fun i -> not (p i))) a
+  (**T
+    ball (gt (5)) (1--^|10) = false
+    ball (lt (11)) (1--^|10) = true
+    ball (gt (4)) "" = true
+  **)
+  let any p a = None <> optNF (find p) a
+  (**T
+    bany (gt (5)) (1--^|10) = true
+    bany (gt (11)) (1--^|10) = false
+    bany (gt (4)) "" = false
+  **)
+
+  let includes x = any (fun y -> x = y)
+  (**T
+    bincludes (4) (1--^|10) = true
+    bincludes (0) (1--^|10) = false
+    bincludes (5) "" = false
+  **)
+  let has = includes
+  (**T
+    bhas (1) (1--^|10) = true
+    bhas (0) (1--^|10) = false
+  **)
+  let elem = includes
+  (**T
+    belem (ord 'b') "foo" = false
+    belem (ord 'b') "foobar" = true
+  **)
+  let notElem x lst = not @@ elem x lst
+  (**T
+    bnotElem (4) (1--^|10) = false
+    bnotElem (0) (1--^|10) = true
+    bnotElem (5) "" = true
   **)
 
   (* Zipping *)
@@ -7698,6 +7845,15 @@ let areplicate = PreArray.replicate
 let anormalizeIndex = PreArray.normalizeIndex
 let acycle = PreArray.cycle
 
+let aall = PreArray.all
+let aany = PreArray.any
+let aallEqual = PreArray.allEqual
+let aincludes = PreArray.includes
+let ahas = PreArray.has
+let aelem = PreArray.elem
+let anotElem = PreArray.notElem
+let anull = PreArray.null
+
 let amap = PreArray.map
 let amapSub = PreArray.mapSub
 let amapSlice = PreArray.mapSlice
@@ -7867,6 +8023,15 @@ let scycle = PreString.cycle
 
 let smapToList = PreString.mapToList
 let smapToArray = PreString.mapToArray
+
+let sall = PreString.all
+let sany = PreString.any
+let sallEqual = PreString.allEqual
+let sincludes = PreString.includes
+let shas = PreString.has
+let selem = PreString.elem
+let snotElem = PreString.notElem
+let snull = PreString.null
 
 let smap = PreString.map
 let smapSub = PreString.mapSub
@@ -8102,6 +8267,15 @@ let breplicate = Bytestring.replicate
 
 let bmapToArray = Bytestring.mapToArray
 let bmapToList = Bytestring.mapToList
+
+let ball = Bytestring.all
+let bany = Bytestring.any
+let ballEqual = Bytestring.allEqual
+let bincludes = Bytestring.includes
+let bhas = Bytestring.has
+let belem = Bytestring.elem
+let bnotElem = Bytestring.notElem
+let bnull = Bytestring.null
 
 let bmap = Bytestring.map
 let bmapSub = Bytestring.mapSub
@@ -8683,17 +8857,28 @@ let readLines fn = lines (readFile fn)
 **)
 let tokenize t ic = unfoldlOpt (maybeEOF None (fun ic -> Some (t ic, ic))) ic
 let tokenizeN t n ic = readN t n ic
-let tokenizeIter t f ic = maybeEOF () (loop (f @. t)) ic
-let tokenizeMap t f ic = tokenize (f @. t) ic
-let tokenizeFile t filename = withFile filename (tokenize t)
-let tokenizeFileN t n fn = withFile fn (tokenizeN t n)
+let tokenizeIter t f ic = maybeEOF () (fun ic -> loop (fun ic -> f (t ic)) ic) ic
+let tokenizeMap t f ic = tokenize (fun ic -> f (t ic)) ic
+let rec tokenizeFold t f init ic =
+  match optEOF t ic with
+    | Some v -> tokenizeFold t f (f init v) ic
+    | None -> init
+let tokenizeFile t filename = withFile filename (fun ic -> tokenize t ic)
+let tokenizeFileN t n fn = withFile fn (fun ic -> tokenizeN t n ic)
 
-let icEachLine f ic = tokenizeIter input_line f ic
-let icMapLines f ic = tokenizeMap input_line f ic
-let eachLine f = flip withFile (icEachLine f)
-let mapLines f = flip withFile (icMapLines f)
+let iterLines f ic = tokenizeIter input_line f ic
+let mapLines f ic = tokenizeMap input_line f ic
+let foldLines f init ic = tokenizeFold input_line f init ic
 
-let output_line_flush oc s = output_line oc s; flush oc
+let iterFileLines f fn = withFile fn (fun ic -> iterLines f ic)
+let mapFileLines f fn = withFile fn (fun ic -> mapLines f ic)
+let foldFileLines f init fn = withFile fn (fun ic -> foldLines f init ic)
+(**T
+  0 = fileTest (fun _ -> writeFile "foo" ""; foldFileLines (fun s _ -> s+1) 0 "foo")
+**)
+(**Q
+  (Q.printable_string_of_size (fun _ -> Q.nng()+1)) (fun s -> fileTest (fun _ -> writeFile "foo" s; foldFileLines (fun s _ -> s+1) 0 "foo") = scount ((=) '\n') s + if endsWith "\n" s then 0 else 1)
+**)
 
 
 let withTempFile suffix f =
@@ -8703,17 +8888,20 @@ let withTempFile suffix f =
     |> find (fun i -> not (fileExists (tmpfilename i)))
     |> tmpfilename in
   finally (fun fn -> if fileExists fn then Sys.remove fn else ()) f fn
-
+(**T
+  not (fileExists (withTempFile "bar" (fun fn -> writeFile fn "hi"; fn)))
+  not (fileExists (withTempFile "" (fun fn -> writeFile fn "hi"; fn)))
+**)
 
 let pipeWith f init i o = recurseOpt (f i o) init
-let pipeChan f = pipeWith (optEOF @.. f)
+let pipeChan f init i o = pipeWith (fun i o init -> optEOF (f i o) init) init i o
 let unitPipe t f = t (fun ic () -> f ic, ())
 let pipeTokenizer input output f ic oc init =
   let line, acc = f (input ic) init in
   output oc line;
   acc
 
-let linePiper = pipeTokenizer input_line output_line_flush
+let linePiper = pipeTokenizer input_line output_line
 let blockPiper ?buf block_sz = pipeTokenizer (read ?buf block_sz) write
 
 let pipeLines f = pipeChan (linePiper f)
@@ -8757,28 +8945,33 @@ let prependFile filename str =
     withFileOut fn (fun oc -> write oc str; appendFileTo oc filename);
     mv fn filename)
   else writeFile filename (str ^ readFile filename)
-(***
-  (* FIXME *)
-  ()
+(**Q
+  Q.string (fun s -> ((srev s)^s = fileTest (fun _ -> writeFile "foo" s; prependFile "foo" (srev s); readFile "foo")))
 **)
 
 
 let shell_escape =
-  let re = Pcre.regexp "(?=[^a-zA-Z0-9._+/-])" in
-  Pcre.replace ~rex:re ~templ:"\\"
+  let re = Pcre.regexp "'" in
+  fun s ->
+    if selem '\000' s
+    then invalid_arg "Prelude.shell_escape: null byte in argument"
+    else "'" ^ Pcre.replace ~rex:re ~templ:"'\\''" s ^ "'"
 (**T
-  shell_escape "" = ""
-  shell_escape " " = "\\ "
-  shell_escape "foo" = "foo"
-  shell_escape "foo's" = "foo\\'s"
-  shell_escape "foo is fan/cy+some!" = "foo\\ is\\ fan/cy+some\\!"
+  shell_escape "" = "''"
+  shell_escape " " = "' '"
+  shell_escape "foo" = "'foo'"
+  shell_escape "foo's" = "'foo'\\''s'"
+  shell_escape "foo is fan/cy+some!" = "'foo is fan/cy+some!'"
+  None = optE shell_escape "\000"
 **)
 (**Q
-  Q.string (fun s -> slen (shell_escape s) >= slen s)
+  Q.string (fun s -> if selem '\000' s then true else slen (shell_escape s) >= slen s)
+  Q.string (fun s -> not (selem '\000' s) ==> (Some s = optE (fun s -> readRawCmd ("/bin/echo -n " ^ (shell_escape s))) s))
 **)
 let escape_cmd args = String.concat " " (PreList.map shell_escape args)
-(**T
-  (* FIXME *)
+(**Q
+  Q.string (fun s -> not (selem '\000' s) ==> (Some s = optE (readRawCmd @. escape_cmd) ["/bin/echo"; "-n"; s]))
+  Q.string (fun s -> selem '\000' s ==> (None = optE (readRawCmd @. escape_cmd) ["/bin/echo"; "-n"; s]))
 **)
 
 exception Command_error of int * string
