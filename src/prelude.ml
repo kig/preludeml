@@ -3362,7 +3362,7 @@ struct
     aallEqual (areplicate 10 'a') = true
   **)
 
-  let includes x = any (fun y -> x = y)
+  let includes x s = None <> optNF (indexOf x) s
   (**T
     aincludes 4 (1--|10) = true
     aincludes 0 (1--|10) = false
@@ -4274,6 +4274,113 @@ end
 
 
 
+module type STRINGSEARCH =
+  sig
+    type t
+
+    val make : string -> t
+    val find : t -> string -> int -> int
+  end
+
+module BoyerMoore : STRINGSEARCH =
+struct
+  exception Done of int
+
+  let memcmp a o1 b o2 len =
+    let rec loop a b o1 o2 i =
+      if i < len then
+        if a.[o1] = b.[o2] then
+          loop a b (o1 + 1) (o2 + 1) (i + 1)
+        else false
+      else true
+    in loop a b o1 o2 0
+
+  let boyermoore_needlematch needle nlen portion offset =
+    let virtual_begin = ref (nlen - offset - portion) in
+    let ignore = ref 0 in
+      if !virtual_begin < 0 then begin
+        ignore := - !virtual_begin;
+        virtual_begin := 0
+      end;
+
+      if !virtual_begin > 0 &&
+        needle.[!virtual_begin - 1] == needle.[nlen - portion - 1] then
+        false
+      else
+        memcmp
+          needle (nlen - portion + !ignore)
+          needle !virtual_begin
+          (portion - !ignore)
+
+  let max_i (a : int) (b : int) = if a > b then a else b
+
+  type t = {
+    skip : int array;
+    occ : int array;
+    needle : string;
+    nlen : int
+  }
+
+  let make needle =
+    let nlen = String.length needle in
+    let skip = Array.make nlen 0 in
+    let occ = Array.make 256 (-1) in
+
+      for a = 0 to nlen - 1 - 1 do
+        occ.(Char.code needle.[a]) <- a;
+      done;
+
+      for a = 0 to nlen - 1 do
+        let value = ref 0 in
+          while !value < nlen &&
+                not (boyermoore_needlematch needle nlen a !value) do
+            incr value
+          done;
+          skip.(nlen - a - 1) <- !value
+      done;
+
+      { skip = skip; occ = occ; needle = needle; nlen = nlen }
+
+  let boyermoore_search t haystack start hlen =
+    let skip = t.skip and occ = t.occ and needle = t.needle and nlen = t.nlen in
+      if nlen > hlen || nlen <= 0 then raise Not_found;
+      try
+        let hpos = ref start in
+        let lim = hlen - nlen in
+          while !hpos <= lim do
+            let npos = ref (nlen - 1) in
+              while needle.[!npos] = haystack.[!npos + !hpos] do
+                if !npos = 0 then raise (Done !hpos);
+                decr npos
+              done;
+              hpos := !hpos +
+              max_i skip.(!npos)
+                (!npos - occ.(Char.code (haystack.[!npos + !hpos])))
+          done;
+          raise Not_found
+      with Done m -> m
+
+  let find t haystack start =
+    if String.length t.needle = 0 && String.length haystack = 0 && start = 0
+    then 0
+    else boyermoore_search t haystack start (String.length haystack)
+
+end
+(**T
+  BoyerMoore.find (BoyerMoore.make "foo") "foobarfoofoo" 0 = 0
+  BoyerMoore.find (BoyerMoore.make "bar") "foobarfoofoo" 0 = 3
+  BoyerMoore.find (BoyerMoore.make "foo") "foobarfoofoo" 3 = 6
+  BoyerMoore.find (BoyerMoore.make "foo") "foobarfoofoo" 9 = 9
+  optNF (BoyerMoore.find (BoyerMoore.make "foo") "foobarfoofoo") 10 = None
+  optNF (BoyerMoore.find (BoyerMoore.make "foo") "foobarfoofoo") 12 = None
+  optNF (BoyerMoore.find (BoyerMoore.make "fooo") "foobarfoofoo") 0 = None
+  optNF (BoyerMoore.find (BoyerMoore.make "") "foobarfoofoo") 0 = None
+  BoyerMoore.find (BoyerMoore.make "") "" 0 = 0
+**)
+(**Q
+  Q.string (fun s -> BoyerMoore.find (BoyerMoore.make (ssub (Random.int(max 1 (slen s))) (Random.int(max 1 (slen s))+1) s)) s 0 >= 0)
+**)
+
 module PreString =
 struct
   include String
@@ -4563,7 +4670,7 @@ struct
     sallEqual (sreplicate 10 'a') = true
   **)
 
-  let includes x = any (fun y -> x = y)
+  let includes x s = None <> optNF (indexOf x) s
   (**T
     sincludes (chr 4) (1--^|10) = true
     sincludes (chr 0) (1--^|10) = false
@@ -5584,13 +5691,55 @@ struct
 
   (* String specific *)
 
-  let rx = Pcre.regexp
+  let replace pat rep s =
+    match pat with
+      | "" when s = "" -> ""
+      | "" -> concat rep (""::(PreList.map string_of_char @@ to_list s)@[""])
+      | pat ->
+        let t = BoyerMoore.make pat in
+        let l = len pat in
+        let indices =
+          unfoldlOpt (fun i ->
+            try let ni = BoyerMoore.find t s i in
+                Some (ni, ni+l)
+            with Not_found -> None
+          ) 0 in
+        match indices with
+          | [] -> copy s
+          | lst ->
+            let r = Buffer.create (len s + List.length lst * (len rep - l)) in
+            let idx = PreList.foldl (fun sidx i ->
+              Buffer.add_substring r s sidx (i-sidx);
+              Buffer.add_string r rep;
+              i+l
+            ) 0 lst in
+            Buffer.add_substring r s idx (len s - idx); 
+            Buffer.contents r
+(*   let replace pat rep s = concat rep (split pat s) *)
+  (**T
+    replace "foob" "nub" "foobar" = "nubar"
+    replace "foo" "bar" "foo" = "bar"
+    replace "" " " "foo" = " f o o "
+    replace "" "foo" "" = ""
+    replace "foo" "bar" "" = ""
+    replace "foo" "" "" = ""
+    replace "foo" "" "foobar" = "bar"
+    replace "f.*b" "nub" "foobar" = "foobar"
+    replace "foob" "n$0b" "foobar" = "n$0bar"
+
+    replace "\000" "\001" "foo\000bar" = "foo\001bar"
+
+    replace "#" " " "##foo###bar####" = join " " (split "#" "##foo###bar####")
+  **)
+
+  let rx ?study ?limit ?iflags ?flags ?chtables s =
+    Pcre.regexp  ?study ?limit ?iflags ?flags ?chtables (replace "\000" "\\x00" s)
   (***
     ignore @@ rx "foo";
     ignore @@ rx ~study:true "foo";
     ignore @@ rx ~limit:4 ~flags:[`MULTILINE; `UTF8; `CASELESS] "foo"
   **)
-  let rex = Pcre.regexp
+  let rex = rx
   (***
     ignore @@ rex "foo";
     ignore @@ rex ~study:true "foo";
@@ -6081,20 +6230,6 @@ struct
     endsWith "f." "f" = false
   **)
 
-  let replace pat rep s = concat rep (split pat s)
-  (**T
-    replace "foob" "nub" "foobar" = "nubar"
-    replace "foo" "bar" "foo" = "bar"
-    replace "" " " "foo" = " f o o "
-    replace "" "foo" "" = ""
-    replace "foo" "bar" "" = ""
-    replace "foo" "" "" = ""
-    replace "foo" "" "foobar" = "bar"
-    replace "f.*b" "nub" "foobar" = "foobar"
-    replace "foob" "n$0b" "foobar" = "n$0bar"
-
-    replace "#" " " "##foo###bar####" = join " " (split "#" "##foo###bar####")
-  **)
   let rexreplace rex templ s = Pcre.replace ~rex ~templ s
   (**T
     rexreplace (rex "foob") "nub" "foobar" = "nubar"
@@ -6718,7 +6853,7 @@ struct
     bany (gt (4)) "" = false
   **)
 
-  let includes x = any (fun y -> x = y)
+  let includes x s = None <> optNF (indexOf x) s
   (**T
     bincludes (4) (1--^|10) = true
     bincludes (0) (1--^|10) = false
@@ -8965,12 +9100,12 @@ let shell_escape =
   None = optE shell_escape "\000"
 **)
 (**Q
-  Q.string (fun s -> if selem '\000' s then true else slen (shell_escape s) >= slen s)
-  Q.string (fun s -> not (selem '\000' s) ==> (Some s = optE (fun s -> readRawCmd ("/bin/echo -n " ^ (shell_escape s))) s))
+  Q.string (fun s -> let s = replace "\000" "\001" s in slen (shell_escape s) >= slen s)
+  Q.string (fun s -> let s = replace "\000" "\001" s in (Some s = optE (fun s -> readRawCmd ("/bin/echo -n " ^ (shell_escape s))) s))
 **)
 let escape_cmd args = String.concat " " (PreList.map shell_escape args)
 (**Q
-  Q.string (fun s -> not (selem '\000' s) ==> (Some s = optE (readRawCmd @. escape_cmd) ["/bin/echo"; "-n"; s]))
+  Q.string (fun s -> let s = replace "\000" "\001" s in (Some s = optE (readRawCmd @. escape_cmd) ["/bin/echo"; "-n"; s]))
   Q.string (fun s -> selem '\000' s ==> (None = optE (readRawCmd @. escape_cmd) ["/bin/echo"; "-n"; s]))
 **)
 
@@ -8983,7 +9118,8 @@ let command args =
   else
     ()
 (**T
-  (* FIXME *)
+  None = optE command ["/bin/false"]
+  Some () = optE command ["/bin/true"]
 **)
 
 
@@ -9136,98 +9272,3 @@ end)
 
 module SMap = Map.Make(String)
 module IMap = Map.Make(struct type t = int let compare = (-) end)
-
-
-module type STRINGSEARCH =
-  sig
-    type t
-
-    val make : string -> t
-    val find : t -> string -> int -> int
-    val find_end : t -> string -> int -> int
-  end
-
-module BoyerMoore : STRINGSEARCH =
-struct
-  exception Done of int
-
-  let memcmp a o1 b o2 len =
-    let rec loop a b o1 o2 i =
-      if i < len then
-        if a.[o1] = b.[o2] then
-          loop a b (o1 + 1) (o2 + 1) (i + 1)
-        else false
-      else true
-    in loop a b o1 o2 0
-
-  let boyermoore_needlematch needle nlen portion offset =
-    let virtual_begin = ref (nlen - offset - portion) in
-    let ignore = ref 0 in
-      if !virtual_begin < 0 then begin
-        ignore := - !virtual_begin;
-        virtual_begin := 0
-      end;
-
-      if !virtual_begin > 0 &&
-        needle.[!virtual_begin - 1] == needle.[nlen - portion - 1] then
-        false
-      else
-        memcmp
-          needle (nlen - portion + !ignore)
-          needle !virtual_begin
-          (portion - !ignore)
-
-  let max_i (a : int) (b : int) = if a > b then a else b
-
-  type t = {
-    skip : int array;
-    occ : int array;
-    needle : string;
-    nlen : int
-  }
-
-  let make needle =
-    let nlen = String.length needle in
-    let skip = Array.make nlen 0 in
-    let occ = Array.make 256 (-1) in
-
-      for a = 0 to nlen - 1 - 1 do
-        occ.(Char.code needle.[a]) <- a;
-      done;
-
-      for a = 0 to nlen - 1 do
-        let value = ref 0 in
-          while !value < nlen &&
-                not (boyermoore_needlematch needle nlen a !value) do
-            incr value
-          done;
-          skip.(nlen - a - 1) <- !value
-      done;
-
-      { skip = skip; occ = occ; needle = needle; nlen = nlen }
-
-  let boyermoore_search t haystack start hlen =
-    let skip = t.skip and occ = t.occ and needle = t.needle and nlen = t.nlen in
-      if nlen > hlen || nlen <= 0 then raise Not_found;
-      try
-        let hpos = ref start in
-        let lim = hlen - nlen in
-          while !hpos <= lim do
-            let npos = ref (nlen - 1) in
-              while needle.[!npos] = haystack.[!npos + !hpos] do
-                if !npos = 0 then raise (Done !hpos);
-                decr npos
-              done;
-              hpos := !hpos +
-              max_i skip.(!npos)
-                (!npos - occ.(Char.code (haystack.[!npos + !hpos])))
-          done;
-          raise Not_found
-      with Done m -> m
-
-  let find t haystack start =
-    boyermoore_search t haystack start (String.length haystack)
-
-  let find_end t haystack start = find t haystack start + t.nlen
-
-end
