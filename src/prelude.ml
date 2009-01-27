@@ -4287,32 +4287,53 @@ module BoyerMoore : STRINGSEARCH =
 struct
   exception Done of int
 
-  let memcmp a o1 b o2 len =
-    let rec loop a b o1 o2 i =
-      if i < len then
-        if a.[o1] = b.[o2] then
-          loop a b (o1 + 1) (o2 + 1) (i + 1)
-        else false
-      else true
-    in loop a b o1 o2 0
+  let suffixes x =
+    let min_i (a:int) (b:int) = if a < b then a else b in
+    let rec aux2 x g m f =
+      if g >= 0 && x.[g] = x.[g+m-1-f]
+      then aux2 x (g-1) m f
+      else g in
+    let rec aux x suff m i g f =
+      if i < 0 then
+        suff
+      else (
+        if (i > g && suff.(i+m-1-f) < i-g) then (
+          suff.(i) <- suff.(i+m-1-f);
+          aux x suff m (i-1) g f
+        ) else (
+          let g = aux2 x (min_i i g) m i in
+          suff.(i) <- i - g;
+          aux x suff m (i-1) g i
+        )
+      ) in
+    let m = String.length x in
+    let suff = Array.make m m in
+    aux x suff m (m-2) (m-1) (m-2)
 
-  let boyermoore_needlematch needle nlen portion offset =
-    let virtual_begin = ref (nlen - offset - portion) in
-    let ignore = ref 0 in
-      if !virtual_begin < 0 then begin
-        ignore := - !virtual_begin;
-        virtual_begin := 0
-      end;
-
-      if !virtual_begin > 0 &&
-        needle.[!virtual_begin - 1] == needle.[nlen - portion - 1] then
-        false
+  let good_suffixes x =
+    let rec aux2 i j m bmGs =
+      if j >= m-1-i then j
+      else (
+        if bmGs.(j) = m then bmGs.(j) <- m-1-i;
+        aux2 i (j+1) m bmGs
+      ) in
+    let rec aux i j m suff bmGs =
+      if i < 0 then ()
+      else if suff.(i) = i+1 then
+        let j = aux2 i j m bmGs in
+        aux (i-1) j m suff bmGs
       else
-        memcmp
-          needle (nlen - portion + !ignore)
-          needle !virtual_begin
-          (portion - !ignore)
-
+        aux (i-1) j m suff bmGs
+      in
+    let m = String.length x in
+    let suff = suffixes x in
+    let bmGs = Array.make m m in
+    aux (m-1) 0 m suff bmGs;
+    for i=0 to m-2 do
+      bmGs.(m-1-suff.(i)) <- m-1-i;
+    done;
+    bmGs
+    
   let max_i (a : int) (b : int) = if a > b then a else b
 
   type t = {
@@ -4324,20 +4345,11 @@ struct
 
   let make needle =
     let nlen = String.length needle in
-    let skip = Array.make nlen 0 in
+    let skip = good_suffixes needle in
     let occ = Array.make 256 (-1) in
 
       for a = 0 to nlen - 1 - 1 do
         occ.(Char.code needle.[a]) <- a;
-      done;
-
-      for a = 0 to nlen - 1 do
-        let value = ref 0 in
-          while !value < nlen &&
-                not (boyermoore_needlematch needle nlen a !value) do
-            incr value
-          done;
-          skip.(nlen - a - 1) <- !value
       done;
 
       { skip = skip; occ = occ; needle = needle; nlen = nlen }
@@ -4350,13 +4362,13 @@ struct
         let lim = hlen - nlen in
           while !hpos <= lim do
             let npos = ref (nlen - 1) in
-              while String.unsafe_get needle !npos = String.unsafe_get haystack (!npos + !hpos) do
+              while needle.[!npos] = haystack.[!npos + !hpos] do
                 if !npos = 0 then raise (Done !hpos);
                 decr npos
               done;
               hpos := !hpos +
               max_i (Array.unsafe_get skip !npos)
-                (!npos - (Array.unsafe_get occ (Char.code (String.unsafe_get haystack (!npos + !hpos)))))
+                (!npos - (occ.(Char.code (haystack.[!npos + !hpos]))))
           done;
           raise Not_found
       with Done m -> m
@@ -4397,24 +4409,49 @@ struct
 
   let char_find needle haystack start =
     let rec aux c h hl hi =
-      if hi >= hl then
-        raise Not_found
-      else if c = String.unsafe_get h hi then
-        hi
-      else
-        aux c h hl (hi+1)
-      in
+      if hi >= hl then raise Not_found
+      else if c = String.unsafe_get h hi then hi
+      else aux c h hl (hi+1) in
     aux needle haystack (String.length haystack) start
 
-  type engine_t = BM of BoyerMoore.t | Char of char
+  let escape_null_bytes s =
+    let idxs = unfoldlOpt (fun i ->
+      try let ni = char_find '\000' s i in
+          Some (ni, ni+1)
+      with Not_found -> None
+    ) 0 in
+    match idxs with
+      | [] -> s
+      | lst ->
+        let rep = "\\x00" in
+        let ls = String.length s in
+        let r = Buffer.create (ls + List.length lst * (String.length rep - 1)) in
+        let idx = List.fold_left (fun sidx i ->
+          Buffer.add_substring r s sidx (i-sidx);
+          Buffer.add_string r rep;
+          i+1
+        ) 0 lst in
+        Buffer.add_substring r s idx (ls - idx);
+        Buffer.contents r
+
+
+  let rex_make s =
+    Pcre.regexp (escape_null_bytes (Pcre.quote s))
+
+  let rex_find rex haystack pos =
+    (Pcre.pcre_exec ~rex ~pos haystack).(0)
+
+  type engine_t = BM of BoyerMoore.t | RE of Pcre.regexp | Char of char | Null
 
   type t = int * string * engine_t
 
   let make needle =
     let nl = String.length needle in
-   let et = if nl = 1
-      then Char needle.[0]
-      else BM (BoyerMoore.make needle) in
+    let et = match nl with
+      | 0 -> Null
+      | 1 -> Char needle.[0]
+      | x when x < 5 -> RE (rex_make needle)
+      | _ -> BM (BoyerMoore.make needle) in
     (nl, needle, et)
       
 
@@ -4427,7 +4464,9 @@ struct
     else
       match et with
         | BM t -> BoyerMoore.find t haystack start
+        | RE t -> rex_find t haystack start
         | Char t -> char_find t haystack start
+        | Null -> raise Not_found
 end
 (**T
   StringSearch.find (StringSearch.make "foo") "foobarfoofoo" 0 = 0
@@ -5755,7 +5794,7 @@ struct
 
   (* String specific *)
 
-  let findAllIndexes' pat s =
+  let findAllIndexes pat s =
     let t = StringSearch.make pat in
     let l = len pat in
     unfoldlOpt (fun i ->
@@ -5764,18 +5803,21 @@ struct
       with Not_found -> None
     ) 0
   (**T
-    PreString.findAllIndexes' "" "foo" = []
-    PreString.findAllIndexes' "foo" "foo" = [0]
-    PreString.findAllIndexes' "foo" "foobarfofoobarfoo" = [0; 8; 14]
+    PreString.findAllIndexes "" "foo" = []
+    PreString.findAllIndexes "foo" "foo" = [0]
+    findAllIndexes "foo" "foobarfofoobarfoo" = [0; 8; 14]
+  **)
+  (**Q
+    Q.printable_string (fun s -> all (lt (slen s)) (findAllIndexes "ax" s))
   **)
 
-  let replace' pat rep s =
+  let replace pat rep s =
     match pat with
       | "" when s = "" -> ""
       | "" -> concat rep (""::(PreList.map string_of_char @@ to_list s)@[""])
       | pat ->
         let plen = len pat in
-        let indices = findAllIndexes' pat s in
+        let indices = findAllIndexes pat s in
         match indices with
           | [] -> copy s
           | lst ->
@@ -5788,23 +5830,23 @@ struct
             Buffer.add_substring r s idx (len s - idx); 
             Buffer.contents r
   (**T
-    PreString.replace' "foob" "nub" "foobar" = "nubar"
-    PreString.replace' "foo" "bar" "foo" = "bar"
-    PreString.replace' "" " " "foo" = " f o o "
-    PreString.replace' "" "foo" "" = ""
-    PreString.replace' "foo" "bar" "" = ""
-    PreString.replace' "foo" "" "" = ""
-    PreString.replace' "foo" "" "foobar" = "bar"
-    PreString.replace' "f.*b" "nub" "foobar" = "foobar"
-    PreString.replace' "foob" "n$0b" "foobar" = "n$0bar"
+    PreString.replace "foob" "nub" "foobar" = "nubar"
+    PreString.replace "foo" "bar" "foo" = "bar"
+    PreString.replace "" " " "foo" = " f o o "
+    PreString.replace "" "foo" "" = ""
+    PreString.replace "foo" "bar" "" = ""
+    PreString.replace "foo" "" "" = ""
+    PreString.replace "foo" "" "foobar" = "bar"
+    PreString.replace "f.*b" "nub" "foobar" = "foobar"
+    PreString.replace "foob" "n$0b" "foobar" = "n$0bar"
 
-    PreString.replace' "\000" "\001" "foo\000bar" = "foo\001bar"
+    replace "\000" "\001" "foo\000bar" = "foo\001bar"
 
-    PreString.replace' "#" " " "##foo###bar####" = join " " (split "#" "##foo###bar####")
+    replace "#" " " "##foo###bar####" = join " " (split "#" "##foo###bar####")
   **)
 
   let rx ?study ?limit ?iflags ?flags ?chtables s =
-    Pcre.regexp  ?study ?limit ?iflags ?flags ?chtables (replace' "\000" "\\x00" s)
+    Pcre.regexp  ?study ?limit ?iflags ?flags ?chtables (replace "\000" "\\x00" s)
   (***
     ignore @@ rx "foo";
     ignore @@ rx ~study:true "foo";
@@ -6137,43 +6179,6 @@ struct
     scan_nth 0 "" "foo" = [""]
     scan_nth 0 "" "" = [""]
     scan_nth 0 "[0-9]+" "A 7 greetings from the 5th world of 159" = ["7";"5";"159"]
-  **)
-
-  let findAllIndexes n h =
-    if n = ""
-    then (if h = "" then [0] else [])
-    else
-      let r = rex (escape_rex n) in
-      unfoldlOpt (fun i ->
-        try let ni = Pcre.pcre_exec ~rex:r ~pos:i h in
-          Some (ni.(0), ni.(1))
-        with Not_found -> None
-      ) 0
-  (**T
-    findAllIndexes "" "foo" = []
-    findAllIndexes "" "" = [0]
-    findAllIndexes "foo" "foo" = [0]
-    findAllIndexes "foo" "foobarfofoobarfoo" = [0; 8; 14]
-  **)
-  (**Q
-    Q.printable_string (fun s -> all (lt (slen s)) (findAllIndexes "ax" s))
-  **)
-
-  let replace pat rep s = concat rep (split pat s)
-  (**T
-    replace "foob" "nub" "foobar" = "nubar"
-    replace "foo" "bar" "foo" = "bar"
-    replace "" " " "foo" = " f o o "
-    replace "" "foo" "" = ""
-    replace "foo" "bar" "" = ""
-    replace "foo" "" "" = ""
-    replace "foo" "" "foobar" = "bar"
-    replace "f.*b" "nub" "foobar" = "foobar"
-    replace "foob" "n$0b" "foobar" = "n$0bar"
-
-    replace "\000" "\001" "foo\000bar" = "foo\001bar"
-
-    replace "#" " " "##foo###bar####" = join " " (split "#" "##foo###bar####")
   **)
 
   let extract rex s = list (Pcre.extract ~rex s)
