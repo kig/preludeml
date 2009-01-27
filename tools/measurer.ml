@@ -234,7 +234,7 @@ let alloc_diff =
   ignore (t1 -. t0);
   b1 -. b0
 
-let bm f = ex (fun v ->
+let bm f v = ex (fun v ->
     Gc.compact ();
     let s0 = Gc.stat () in
     let b0 = Gc.allocated_bytes () in
@@ -253,7 +253,7 @@ let bm f = ex (fun v ->
       (* accurate in bytecode, approximate in native code (see Gc.stat.minor_words) *)
       allocated_bytes = b1 -. b0 -. alloc_diff;
     }
-  )
+  ) v
 
 module type MEASURER =
   sig

@@ -4282,6 +4282,7 @@ module type STRINGSEARCH =
     val find : t -> string -> int -> int
   end
 
+
 module BoyerMoore : STRINGSEARCH =
 struct
   exception Done of int
@@ -4349,13 +4350,13 @@ struct
         let lim = hlen - nlen in
           while !hpos <= lim do
             let npos = ref (nlen - 1) in
-              while needle.[!npos] = haystack.[!npos + !hpos] do
+              while String.unsafe_get needle !npos = String.unsafe_get haystack (!npos + !hpos) do
                 if !npos = 0 then raise (Done !hpos);
                 decr npos
               done;
               hpos := !hpos +
-              max_i skip.(!npos)
-                (!npos - occ.(Char.code (haystack.[!npos + !hpos])))
+              max_i (Array.unsafe_get skip !npos)
+                (!npos - (Array.unsafe_get occ (Char.code (String.unsafe_get haystack (!npos + !hpos)))))
           done;
           raise Not_found
       with Done m -> m
@@ -4380,6 +4381,69 @@ end
 (**Q
   Q.string (fun s -> BoyerMoore.find (BoyerMoore.make (ssub (Random.int(max 1 (slen s))) (Random.int(max 1 (slen s))+1) s)) s 0 >= 0)
 **)
+
+module StringSearch : STRINGSEARCH =
+struct
+  let endsWith suffix s =
+    let rec aux s p pl sl i =
+      if i >= pl then true
+      else if String.unsafe_get s (sl-i-1) = String.unsafe_get p (pl-i-1)
+      then aux s p pl sl (i+1)
+      else false in
+    let sl = String.length s
+    and pl = String.length suffix in
+    if pl > sl then false
+    else aux s suffix pl sl 0
+
+  let char_find needle haystack start =
+    let rec aux c h hl hi =
+      if hi >= hl then
+        raise Not_found
+      else if c = String.unsafe_get h hi then
+        hi
+      else
+        aux c h hl (hi+1)
+      in
+    aux needle haystack (String.length haystack) start
+
+  type engine_t = BM of BoyerMoore.t | Char of char
+
+  type t = int * string * engine_t
+
+  let make needle =
+    let nl = String.length needle in
+   let et = if nl = 1
+      then Char needle.[0]
+      else BM (BoyerMoore.make needle) in
+    (nl, needle, et)
+      
+
+  let find (nl,needle,et) haystack start =
+    let hl = String.length haystack in
+    if nl = (hl-start) && endsWith needle haystack then
+      start
+    else if nl = 0 || nl > (hl-start) then
+      raise Not_found
+    else
+      match et with
+        | BM t -> BoyerMoore.find t haystack start
+        | Char t -> char_find t haystack start
+end
+(**T
+  StringSearch.find (StringSearch.make "foo") "foobarfoofoo" 0 = 0
+  StringSearch.find (StringSearch.make "bar") "foobarfoofoo" 0 = 3
+  StringSearch.find (StringSearch.make "foo") "foobarfoofoo" 3 = 6
+  StringSearch.find (StringSearch.make "foo") "foobarfoofoo" 9 = 9
+  optNF (StringSearch.find (StringSearch.make "foo") "foobarfoofoo") 10 = None
+  optNF (StringSearch.find (StringSearch.make "foo") "foobarfoofoo") 12 = None
+  optNF (StringSearch.find (StringSearch.make "fooo") "foobarfoofoo") 0 = None
+  optNF (StringSearch.find (StringSearch.make "") "foobarfoofoo") 0 = None
+  StringSearch.find (StringSearch.make "") "" 0 = 0
+**)
+(**Q
+  Q.string (fun s -> StringSearch.find (StringSearch.make (ssub (Random.int(max 1 (slen s))) (Random.int(max 1 (slen s))+1) s)) s 0 >= 0)
+**)
+
 
 module PreString =
 struct
@@ -5691,49 +5755,56 @@ struct
 
   (* String specific *)
 
-  let replace pat rep s =
+  let findAllIndexes' pat s =
+    let t = StringSearch.make pat in
+    let l = len pat in
+    unfoldlOpt (fun i ->
+      try let ni = StringSearch.find t s i in
+          Some (ni, ni+l)
+      with Not_found -> None
+    ) 0
+  (**T
+    PreString.findAllIndexes' "" "foo" = []
+    PreString.findAllIndexes' "foo" "foo" = [0]
+    PreString.findAllIndexes' "foo" "foobarfofoobarfoo" = [0; 8; 14]
+  **)
+
+  let replace' pat rep s =
     match pat with
       | "" when s = "" -> ""
       | "" -> concat rep (""::(PreList.map string_of_char @@ to_list s)@[""])
       | pat ->
-        let t = BoyerMoore.make pat in
-        let l = len pat in
-        let indices =
-          unfoldlOpt (fun i ->
-            try let ni = BoyerMoore.find t s i in
-                Some (ni, ni+l)
-            with Not_found -> None
-          ) 0 in
+        let plen = len pat in
+        let indices = findAllIndexes' pat s in
         match indices with
           | [] -> copy s
           | lst ->
-            let r = Buffer.create (len s + List.length lst * (len rep - l)) in
+            let r = Buffer.create (len s + List.length lst * (len rep - plen)) in
             let idx = PreList.foldl (fun sidx i ->
               Buffer.add_substring r s sidx (i-sidx);
               Buffer.add_string r rep;
-              i+l
+              i+plen
             ) 0 lst in
             Buffer.add_substring r s idx (len s - idx); 
             Buffer.contents r
-(*   let replace pat rep s = concat rep (split pat s) *)
   (**T
-    replace "foob" "nub" "foobar" = "nubar"
-    replace "foo" "bar" "foo" = "bar"
-    replace "" " " "foo" = " f o o "
-    replace "" "foo" "" = ""
-    replace "foo" "bar" "" = ""
-    replace "foo" "" "" = ""
-    replace "foo" "" "foobar" = "bar"
-    replace "f.*b" "nub" "foobar" = "foobar"
-    replace "foob" "n$0b" "foobar" = "n$0bar"
+    PreString.replace' "foob" "nub" "foobar" = "nubar"
+    PreString.replace' "foo" "bar" "foo" = "bar"
+    PreString.replace' "" " " "foo" = " f o o "
+    PreString.replace' "" "foo" "" = ""
+    PreString.replace' "foo" "bar" "" = ""
+    PreString.replace' "foo" "" "" = ""
+    PreString.replace' "foo" "" "foobar" = "bar"
+    PreString.replace' "f.*b" "nub" "foobar" = "foobar"
+    PreString.replace' "foob" "n$0b" "foobar" = "n$0bar"
 
-    replace "\000" "\001" "foo\000bar" = "foo\001bar"
+    PreString.replace' "\000" "\001" "foo\000bar" = "foo\001bar"
 
-    replace "#" " " "##foo###bar####" = join " " (split "#" "##foo###bar####")
+    PreString.replace' "#" " " "##foo###bar####" = join " " (split "#" "##foo###bar####")
   **)
 
   let rx ?study ?limit ?iflags ?flags ?chtables s =
-    Pcre.regexp  ?study ?limit ?iflags ?flags ?chtables (replace "\000" "\\x00" s)
+    Pcre.regexp  ?study ?limit ?iflags ?flags ?chtables (replace' "\000" "\\x00" s)
   (***
     ignore @@ rx "foo";
     ignore @@ rx ~study:true "foo";
@@ -6066,6 +6137,43 @@ struct
     scan_nth 0 "" "foo" = [""]
     scan_nth 0 "" "" = [""]
     scan_nth 0 "[0-9]+" "A 7 greetings from the 5th world of 159" = ["7";"5";"159"]
+  **)
+
+  let findAllIndexes n h =
+    if n = ""
+    then (if h = "" then [0] else [])
+    else
+      let r = rex (escape_rex n) in
+      unfoldlOpt (fun i ->
+        try let ni = Pcre.pcre_exec ~rex:r ~pos:i h in
+          Some (ni.(0), ni.(1))
+        with Not_found -> None
+      ) 0
+  (**T
+    findAllIndexes "" "foo" = []
+    findAllIndexes "" "" = [0]
+    findAllIndexes "foo" "foo" = [0]
+    findAllIndexes "foo" "foobarfofoobarfoo" = [0; 8; 14]
+  **)
+  (**Q
+    Q.printable_string (fun s -> all (lt (slen s)) (findAllIndexes "ax" s))
+  **)
+
+  let replace pat rep s = concat rep (split pat s)
+  (**T
+    replace "foob" "nub" "foobar" = "nubar"
+    replace "foo" "bar" "foo" = "bar"
+    replace "" " " "foo" = " f o o "
+    replace "" "foo" "" = ""
+    replace "foo" "bar" "" = ""
+    replace "foo" "" "" = ""
+    replace "foo" "" "foobar" = "bar"
+    replace "f.*b" "nub" "foobar" = "foobar"
+    replace "foob" "n$0b" "foobar" = "n$0bar"
+
+    replace "\000" "\001" "foo\000bar" = "foo\001bar"
+
+    replace "#" " " "##foo###bar####" = join " " (split "#" "##foo###bar####")
   **)
 
   let extract rex s = list (Pcre.extract ~rex s)
@@ -8346,6 +8454,8 @@ let xfindOpt = PreString.xfindOpt
 let smatch = PreString.smatch
 let rexmatch = PreString.rexmatch
 let xmatch = PreString.xmatch
+
+let findAllIndexes = PreString.findAllIndexes
 
 let replace = PreString.replace
 let rexreplace = PreString.rexreplace
