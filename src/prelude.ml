@@ -8667,6 +8667,11 @@ let withFile filename f = finally close_in f (open_in_bin filename)
 let withFileOut filename f = finally close_out f (open_out_bin filename)
 let withFileAppend filename f = finally close_out f (open_append_bin filename)
 
+let withFiles f infile outfile =
+  withFile infile (fun ic -> withFileOut outfile (fun oc -> f ic oc))
+let withFilesAppend f infile outfile =
+  withFile infile (fun ic -> withFileAppend outfile (fun oc -> f ic oc))
+
 let withUnixFile ?(flags=[Unix.O_RDONLY]) ?(perm=0o644) fn f =
   finally Unix.close f (Unix.openfile fn flags perm)
 let withUnixFileOut ?(flags=[Unix.O_WRONLY;Unix.O_TRUNC;Unix.O_CREAT]) ?(perm=0o644) fn f =
@@ -8674,8 +8679,29 @@ let withUnixFileOut ?(flags=[Unix.O_WRONLY;Unix.O_TRUNC;Unix.O_CREAT]) ?(perm=0o
 let withUnixFileAppend ?(flags=[Unix.O_APPEND;Unix.O_CREAT]) ?(perm=0o644) fn f =
   finally Unix.close f (Unix.openfile fn flags perm)
 
+let withUnixFiles f infile outfile =
+  withUnixFile infile (fun ic -> withUnixFileOut outfile (fun oc -> f ic oc))
+let withUnixFilesAppend f infile outfile =
+  withUnixFile infile (fun ic -> withUnixFileAppend outfile (fun oc -> f ic oc))
+
 
 (** Common filesystem operations *)
+
+(***
+  ()
+  (* specify some testing utils *)
+
+  let fileTest f =
+    mkdir_p Tests.data_dir;
+    withCd Tests.data_dir (fun _ ->
+      iter (ignoreE rm_r) (lsFull ".");
+      let rv = catch f () in
+      iter (ignoreE rm_r) (lsFull ".");
+      match rv with
+        | Error e -> raise e
+        | Result v -> v
+    )
+**)
 
 let stat = Unix.lstat
 
@@ -8698,6 +8724,14 @@ let fileUid fn = (stat fn).Unix.st_uid
 let fileOwner fn = userName (fileUid fn)
 let fileGid fn = (stat fn).Unix.st_gid
 let fileGroup fn = groupName (fileGid fn)
+(***
+  fileTest (fun () ->
+    let fn = "foo" in
+    touch fn;
+    "fileUid fn = currentUid ()" @? (fileUid fn = currentUid ());
+    rm fn
+  )
+**)
 
 let isReadable fn = try Unix.access fn [Unix.R_OK]; true with _ -> false
 let isWritable fn = try Unix.access fn [Unix.W_OK]; true with _ -> false
@@ -8706,22 +8740,6 @@ let isExecutable fn = try Unix.access fn [Unix.X_OK]; true with _ -> false
 let atime fn = (stat fn).Unix.st_atime
 let mtime fn = (stat fn).Unix.st_mtime
 let ctime fn = (stat fn).Unix.st_ctime
-
-(***
-  ()
-  (* specify some testing utils *)
-
-  let fileTest f =
-    mkdir_p Tests.data_dir;
-    withCd Tests.data_dir (fun _ ->
-      iter (ignoreE rm_r) (lsFull ".");
-      let rv = catch f () in
-      iter (ignoreE rm_r) (lsFull ".");
-      match rv with
-        | Error e -> raise e
-        | Result v -> v
-    )
-**)
 
 let rename = Sys.rename
 (***
@@ -8807,17 +8825,6 @@ let chmod perm filename = Unix.chmod filename perm
     rm fn
   )
 **)
-
-let fileUid fn = (Unix.stat fn).Unix.st_uid
-(***
-  fileTest (fun () ->
-    let fn = "foo" in
-    touch fn;
-    "fileUid fn = currentUid ()" @? (fileUid fn = currentUid ());
-    rm fn
-  )
-**)
-let fileGid fn = (Unix.stat fn).Unix.st_gid
 
 let chownUid ?gid uid fn =
   let gid = match gid with None -> fileGid fn | Some gid -> gid in
@@ -9105,14 +9112,17 @@ let readLines fn = lines (readFile fn)
 (**Q
   Q.printable_string (fun s -> split "\n" s = fileTest (fun _ -> writeFile "foo" s; readLines "foo"))
 **)
-let tokenize t ic = unfoldlOpt (maybeEOF None (fun ic -> Some (t ic, ic))) ic
+
+let tokenize f ic =
+  unfoldlOpt (fun ic -> try Some (f ic, ic) with End_of_file -> None) ic
 let tokenizeN t n ic = readN t n ic
-let tokenizeIter t f ic = maybeEOF () (fun ic -> loop (fun ic -> f (t ic)) ic) ic
+let tokenizeIter t f ic = try while true do f (t ic) done with End_of_file -> ()
 let tokenizeMap t f ic = tokenize (fun ic -> f (t ic)) ic
 let rec tokenizeFold t f init ic =
-  match optEOF t ic with
+  match (try Some (t ic) with End_of_file -> None) with
     | Some v -> tokenizeFold t f (f init v) ic
     | None -> init
+
 let tokenizeFile t filename = withFile filename (fun ic -> tokenize t ic)
 let tokenizeFileN t n fn = withFile fn (fun ic -> tokenizeN t n ic)
 
@@ -9158,11 +9168,6 @@ let pipeLines f = pipeChan (linePiper f)
 let pipeBlocks block_sz f =
   let buf = String.create block_sz in
   pipeChan (blockPiper ~buf block_sz f)
-
-let withFiles f infile outfile =
-  withFile infile (fun ic -> withFileOut outfile (fun oc -> f ic oc))
-let withFilesAppend f infile outfile =
-  withFile infile (fun ic -> withFileAppend outfile (fun oc -> f ic oc))
 
 let pipeFiles f init = withFiles (pipeChan f init)
 let pipeFileLines f init = withFiles (pipeLines f init)
@@ -9343,11 +9348,11 @@ let bacreateMmap ?(layout=Bigarray.c_layout) ?(shared=true)
 let bacreateShared ?layout kind l =
   bacreateMmap ?layout kind l "/dev/zero"
 
-let par_bainit ?process_count ?layout kind f l =
+let bapar_init ?process_count ?layout kind f l =
   let ba = bacreateShared ?layout kind l in
   pforN ?process_count (fun i -> Bigarray.Array1.set ba i (f i)) l;
   ba
-let bapinit = par_bainit
+let bapinit = bapar_init
 
 
 (* Hashtables *)
@@ -9357,6 +9362,10 @@ let string_hash_djb2 s =
     if i >= len then v
     else aux s len (((v lsl 5) + v) + (ord (suget s i))) (i+1) in
   aux s (slen s) 5381 0
+(**T
+  string_hash_djb2 "foobarbaalice" <> string_hash_djb2 "foobarbabob"
+  string_hash_djb2 "foobarbaalice" = string_hash_djb2 "foobarbaalice"
+**)
 
 let string_hash_head =
   let ws = Sys.word_size / 8 - 1 in
@@ -9364,6 +9373,10 @@ let string_hash_head =
     if i < 0 then sum
     else aux ((sum lsl 8) lor (ord (suget s i))) s (i-1) in
   fun s -> aux 0 s ((min (slen s) ws) - 1)
+(**T
+  string_hash_head "foobarbaalice" = string_hash_head "foobarbabob"
+  string_hash_head "doobarbaalice" <> string_hash_head "foobarbabob"
+**)
 
 (* SHash is a Hashtbl with strings as keys.
    SHash uses string_hash_djb2 as the hash function.
@@ -9373,6 +9386,11 @@ module SHash = Hashtbl.Make(struct
   let equal (a:t) (b:t) = a = b
   let hash = string_hash_djb2
 end)
+(**T
+  let h = SHash.create 10 in SHash.add h "foo" "bar"; SHash.find h "foo" = "bar"
+  let h = SHash.create 10 in optNF (SHash.find h) "boo" = None
+**)
+
 (* HHash is a Hashtbl with hash strings as keys.
    HHash uses string_hash_head as the hash function.
 *)
@@ -9381,9 +9399,21 @@ module HHash = Hashtbl.Make(struct
   let equal (a:t) (b:t) = a = b
   let hash = string_hash_head
 end)
+(**T
+  let h = HHash.create 10 in HHash.add h "foo" "bar"; HHash.find h "foo" = "bar"
+  let h = HHash.create 10 in optNF (HHash.find h) "boo" = None
+**)
 
 
 (* Maps *)
 
 module SMap = Map.Make(String)
+(**T
+  let h = SMap.empty in SMap.find "foo" (SMap.add "foo" "bar" h) = "bar"
+  let h = SMap.empty in optNF (SMap.find "boo") h = None
+**)
 module IMap = Map.Make(struct type t = int let compare = (-) end)
+(**T
+  let h = IMap.empty in IMap.find 10 (IMap.add 10 "bar" h) = "bar"
+  let h = IMap.empty in optNF (IMap.find 10) h = None
+**)

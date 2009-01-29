@@ -46,9 +46,8 @@ they're good eta/beta-reduction tests for the compiler.
 
 Latest news
 -----------
-  - 80% done with writing a more complete set of tests for src/prelude.ml
-  - quickcheck-style testing
-  - Boyer-Moore string search module courtesy of Mauricio Fernandez
+  - tagged 0.9
+  - 90% done with writing a more complete set of tests for src/prelude.ml
 
 
 Examples
