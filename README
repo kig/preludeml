@@ -46,8 +46,9 @@ they're good eta/beta-reduction tests for the compiler.
 
 Latest news
 -----------
-  - tagged 0.9
-  - 90% done with writing a more complete set of tests for src/prelude.ml
+  - working on other stuff, will try to trickle in bug fixes when found, along
+    with extra tests
+  - done with writing a more complete set of tests for src/prelude.ml
 
 
 Examples
