@@ -9193,9 +9193,15 @@ let appendFiles dst srcs = iter (appendFileToFile dst) srcs
 let concatFiles dst srcs = withFileOut dst (fun oc -> iter (appendFileTo oc) srcs)
 
 let cp s d = pipeFileBlocks 4096 tuple () s d
+(**Q
+  Q.string (fun s -> fileTest (fun _ -> writeFile "foo" s; cp "foo" "bar"; readFile "bar" = s && readFile "foo" = s))
+**)
 let mv s d =
   try Sys.rename s d
   with Sys_error "Invalid cross-device link" -> cp s d; Sys.remove s
+(**Q
+  Q.string (fun s -> fileTest (fun _ -> writeFile "foo" s; mv "foo" "bar"; readFile "bar" = s && not (fileExists "foo")))
+**)
 
 let prependFile filename str =
   if fileSize filename > 32000000 (* use temp file if larger than 32 megs *)
