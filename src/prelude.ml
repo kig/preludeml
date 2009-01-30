@@ -766,13 +766,17 @@ let coreCount () =
       match optEOF input_line ic with
         | None -> List.rev rv
         | Some l -> readLines ic (l::rv) in
-    countCores (readLines ic [])
+    max 1 (countCores (readLines ic []))
   )
 
 let global_process_count = ref (coreCount () |? 4)
 
+let rec restartEINTR f v =
+  try f v
+  with Unix.Unix_error(Unix.EINTR,_,_) -> restartEINTR f v
+
 let invoke f x =
-  flush stdout;
+  (try flush stdout with _ -> ());
   let input, output = Unix.pipe() in
   match Unix.fork() with
   | -1 -> let v = f x in fun () -> v
@@ -788,7 +792,7 @@ let invoke f x =
       let input = Unix.in_channel_of_descr input in
       fun () ->
         let v = Marshal.from_channel input in
-        ignore (Unix.waitpid [] pid);
+        ignore (restartEINTR (Unix.waitpid []) pid);
         close_in input;
         match v with `Res x -> x | `Exn e -> raise e
 (**T
@@ -9001,7 +9005,6 @@ let relativePath path =
   relativePath "." = ""
   relativePath "test" = "test"
   xmatch "^(\\.\\./)+" (relativePath "/")
-  xmatch "^(\\.\\./)+tmp$" (relativePath "/tmp")
 **)
 let dirname = Filename.dirname
 let basename = Filename.basename
