@@ -9259,7 +9259,7 @@ let cmdCode args = try command args; 0 with Command_error (rv,_) -> rv
 
 let withRawCmd cmd f =
   let ic,oc = Unix.open_process cmd in
-  finally (fun _ -> maybeE () close_out oc; maybeE () close_in ic)
+  finally (fun _ -> maybeE () (fun x -> ignore (Unix.close_process x)) (ic, oc))
           (f ic) oc
 let withRawCmdStdin args f =
   withRawCmd args (fun ic oc -> maybeE () close_in ic; f oc)
