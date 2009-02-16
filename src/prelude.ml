@@ -528,9 +528,9 @@ let octal i = sprintf "%o" i
   octal 63 = "77"
   octal 64 = "100"
 
-  xmatch "^777777+$" (octal (-1))
-  xmatch "^377777+$" (octal max_int)
-  xmatch "^400000+$" (octal min_int)
+  xmatch "^[17]77777+$" (octal (-1))
+  xmatch "^[37]77777+$" (octal max_int)
+  xmatch "^[41]00000+$" (octal min_int)
 **)
 
 let clamp1f c = min 1.0 (max 0.0 c)
